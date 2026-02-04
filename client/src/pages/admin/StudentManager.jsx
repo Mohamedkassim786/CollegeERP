@@ -369,7 +369,7 @@ const StudentManager = () => {
                                         disabled={newStudent.year === '1'}
                                     >
                                         <option value="">{newStudent.year === '1' ? 'N/A (First Year)' : 'Select Dept'}</option>
-                                        {departments.filter(d => d.name !== 'First Year (General)').map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
+                                        {departments.filter(d => d.name !== 'First Year (General)').map(d => <option key={d.id} value={d.name}>{d.code || d.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
@@ -472,7 +472,7 @@ const StudentManager = () => {
                                         disabled={parseInt(editingStudent.year) === 1}
                                     >
                                         <option value="">{parseInt(editingStudent.year) === 1 ? 'N/A (First Year)' : 'Select Dept'}</option>
-                                        {departments.filter(d => d.name !== 'First Year (General)').map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
+                                        {departments.filter(d => d.name !== 'First Year (General)').map(d => <option key={d.id} value={d.name}>{d.code || d.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
