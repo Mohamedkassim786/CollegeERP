@@ -30,8 +30,11 @@ const StudentPromotion = () => {
         const nextYear = Math.min(parseInt(sourceYear) + 1, 4);
         setPromoYear(nextYear.toString());
         setPromoSem((nextYear * 2 - 1).toString());
-        setPromoDept(sourceDept);
-    }, [sourceYear, sourceDept, sourceSection]);
+        
+        // Match sourceDept (which effectively uses code) to the full name for promoDept
+        const matchedDept = departments.find(d => (d.code || d.name) === sourceDept);
+        setPromoDept(matchedDept?.name || '');
+    }, [sourceYear, sourceDept, sourceSection, departments]);
 
     const fetchStudents = async () => {
         setLoading(true);
@@ -308,7 +311,7 @@ const StudentPromotion = () => {
                                     onChange={e => setPromoDept(e.target.value)}
                                 >
                                     <option value="">-- Select Dept --</option>
-                                    {departments.map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
+                                    {departments.map(d => <option key={d.id} value={d.name}>{d.code || d.name}</option>)}
                                 </select>
                             </div>
 
@@ -322,7 +325,7 @@ const StudentPromotion = () => {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Target Section</label>
                                     <select className="input-field border-emerald-200" value={promoSection} onChange={e => setPromoSection(e.target.value)}>
-                                        {(departments.find(d => (d.code || d.name) === ((promoYear === '1' && (!promoDept || promoDept === 'GEN')) ? 'GEN' : promoDept))?.sections?.split(',') || ['A', 'B', 'C']).map(s => (
+                                        {(departments.find(d => d.name === ((promoYear === '1') ? 'First Year (General)' : promoDept))?.sections?.split(',') || ['A', 'B', 'C']).map(s => (
                                             <option key={s} value={s}>Section {s}</option>
                                         ))}
                                     </select>

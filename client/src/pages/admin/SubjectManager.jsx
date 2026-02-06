@@ -192,7 +192,7 @@ const SubjectManager = () => {
                                     disabled={newSubject.type === 'COMMON'}
                                 >
                                     <option value="">{newSubject.type === 'COMMON' ? 'All (Common)' : 'Select'}</option>
-                                    {departments.map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
+                                    {departments.map(d => <option key={d.id} value={d.name}>{d.code || d.name}</option>)}
                                 </select>
                             </div>
                         </div>

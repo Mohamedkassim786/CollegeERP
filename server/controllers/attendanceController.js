@@ -1,6 +1,16 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Helper: Get robust department filter (matches Name OR Code)
+const getDeptCriteria = async (deptString) => {
+    if (!deptString) return {};
+    const deptDef = await prisma.department.findFirst({
+        where: { OR: [{ name: deptString }, { code: deptString }] }
+    });
+    if (deptDef) return { in: [deptDef.name, deptDef.code].filter(Boolean) };
+    return deptString;
+};
+
 // --- Faculty Actions ---
 
 // Get list of students for attendance (by subject & section)
@@ -18,10 +28,12 @@ const getStudentsForAttendance = async (req, res) => {
         const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
 
+        const deptCriteria = await getDeptCriteria(subject.department);
+
         const students = await prisma.student.findMany({
             where: {
-                department: subject.department,
-                year: Math.ceil(subject.semester / 2), // Approx year from sem
+                department: deptCriteria,
+                year: Math.ceil(subject.semester / 2),
                 semester: subject.semester,
                 section: section
             },

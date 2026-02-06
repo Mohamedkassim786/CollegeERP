@@ -3,6 +3,28 @@ const ExcelJS = require('exceljs');
 
 const prisma = new PrismaClient();
 
+
+
+// Helper: Get robust department filter (matches Name OR Code)
+const getDeptCriteria = async (deptString) => {
+    if (!deptString) return {}; // Handle null/undefined if necessary
+
+    // Attempt to find the department definition
+    const deptDef = await prisma.department.findFirst({
+        where: {
+            OR: [{ name: deptString }, { code: deptString }]
+        }
+    });
+
+    if (deptDef) {
+        // Match either the Name OR the Code
+        return { in: [deptDef.name, deptDef.code].filter(Boolean) };
+    }
+
+    // Fallback to strict match if not found in DB
+    return deptString;
+};
+
 // Get subjects assigned to the logged-in faculty
 const getAssignedSubjects = async (req, res) => {
     const facultyId = req.user.id;
@@ -16,9 +38,11 @@ const getAssignedSubjects = async (req, res) => {
 
         const enhancedAssignments = await Promise.all(assignments.map(async (assignment) => {
             // Count students
+            const deptCriteria = await getDeptCriteria(assignment.subject.department);
+
             const studentCount = await prisma.student.count({
                 where: {
-                    department: assignment.subject.department,
+                    department: deptCriteria,
                     semester: assignment.subject.semester,
                     section: assignment.section
                 }
@@ -27,7 +51,7 @@ const getAssignedSubjects = async (req, res) => {
             // Calculate Avg Marks
             const students = await prisma.student.findMany({
                 where: {
-                    department: assignment.subject.department,
+                    department: deptCriteria,
                     semester: assignment.subject.semester,
                     section: assignment.section
                 },
@@ -78,9 +102,11 @@ const getClassDetails = async (req, res) => {
 
         if (!assignment) return res.status(403).json({ message: 'Not authorized for this class' });
 
+        const deptCriteria = await getDeptCriteria(assignment.subject.department);
+
         const studentCount = await prisma.student.count({
             where: {
-                department: assignment.subject.department,
+                department: deptCriteria,
                 semester: assignment.subject.semester,
                 section: assignment.section
             }
@@ -140,9 +166,11 @@ const getClassStudents = async (req, res) => {
 
         if (!assignment) return res.status(403).json({ message: 'Not authorized' });
 
+        const deptCriteria = await getDeptCriteria(assignment.subject.department);
+
         const students = await prisma.student.findMany({
             where: {
-                department: assignment.subject.department,
+                department: deptCriteria, // Smart lookup
                 semester: assignment.subject.semester,
                 section: assignment.section
             },
@@ -243,9 +271,11 @@ const getSubjectMarks = async (req, res) => {
         console.log(`[DEBUG] Found Assignment: Section ${assignment.section}`);
 
         // 2. Fetch students matching Department, Semester AND Section
+        const deptCriteria = await getDeptCriteria(subject.department);
+
         const students = await prisma.student.findMany({
             where: {
-                department: subject.department,
+                department: deptCriteria,
                 semester: subject.semester,
                 section: assignment.section
             },
@@ -395,9 +425,11 @@ const getFacultyDashboardStats = async (req, res) => {
         const classPerformance = [];
 
         for (const assignment of assignments) {
+            const deptCriteria = await getDeptCriteria(assignment.subject.department);
+
             const students = await prisma.student.findMany({
                 where: {
-                    department: assignment.subject.department,
+                    department: deptCriteria,
                     semester: assignment.subject.semester,
                     section: assignment.section
                 },
@@ -454,9 +486,12 @@ const getFacultyDashboardStats = async (req, res) => {
         let submittedMarksEntries = 0;
 
         for (const assignment of assignments) {
+            // Re-use criteria if possible or fetch new (performance: could be optimized but safe here)
+            const deptCriteriaStats = await getDeptCriteria(assignment.subject.department);
+
             const students = await prisma.student.count({
                 where: {
-                    department: assignment.subject.department,
+                    department: deptCriteriaStats,
                     semester: assignment.subject.semester,
                     section: assignment.section
                 }
@@ -631,10 +666,12 @@ const exportClassAttendanceExcel = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized for this subject' });
         }
 
+        const deptCriteria = await getDeptCriteria(assignment.subject.department);
+
         // Fetch students with attendance
         const students = await prisma.student.findMany({
             where: {
-                department: assignment.subject.department,
+                department: deptCriteria,
                 semester: assignment.subject.semester,
                 section: assignment.section
             },
