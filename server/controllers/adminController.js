@@ -570,20 +570,21 @@ const getDepartments = async (req, res) => {
             // Stats Aggregation
             const isGeneral = dept.name === 'First Year (General)';
 
-            const deptCriteria = { in: [dept.name, dept.code].filter(Boolean) };
+            // Robust matching: trim and filter nulls
+            const deptCriteria = [dept.name, dept.code].filter(Boolean).map(s => s.trim());
 
             const studentCount = await prisma.student.count({
                 where: isGeneral
-                    ? { OR: [{ department: { in: deptCriteria.in } }, { department: null }, { department: '' }], year: 1 }
-                    : { department: { in: deptCriteria.in } }
+                    ? { OR: [{ department: { in: deptCriteria } }, { department: null }, { department: '' }], year: 1 }
+                    : { department: { in: deptCriteria } }
             });
             const facultyCount = await prisma.user.count({
-                where: { department: { in: deptCriteria.in }, role: 'FACULTY' }
+                where: { department: { in: deptCriteria }, role: 'FACULTY' }
             });
             const subjectCount = await prisma.subject.count({
                 where: isGeneral
-                    ? { OR: [{ department: { in: deptCriteria.in } }, { department: null }, { department: '' }], type: 'COMMON' }
-                    : { department: { in: deptCriteria.in } }
+                    ? { OR: [{ department: { in: deptCriteria } }, { department: null }, { department: '' }], type: 'COMMON' }
+                    : { department: { in: deptCriteria } }
             });
 
             return {
@@ -1092,31 +1093,33 @@ const getDashboardStats = async (req, res) => {
             const deptName = dept.name;
             const isFirstYear = deptName === 'First Year (General)';
 
-            let whereClause = {};
+            let studentWhere = {};
+            let facultyWhere = { role: 'FACULTY' };
 
             if (isFirstYear) {
-                // First Year includes null, empty, or explicit "First Year (General)"
-                whereClause.OR = [
-                    { department: null },
-                    { department: '' },
-                    { department: 'First Year (General)' },
-                    { department: 'GEN' }
-                ];
+                const firstYearDeptCriteria = {
+                    OR: [
+                        { department: null },
+                        { department: '' },
+                        { department: 'First Year (General)' },
+                        { department: 'GEN' }
+                    ]
+                };
+                studentWhere = { ...firstYearDeptCriteria, year: 1 };
+                facultyWhere = { ...facultyWhere, ...firstYearDeptCriteria };
             } else {
-                // Standard Dept: Match Name OR Code
-                // We already have name and code from 'dept' object
-                whereClause.department = { in: [dept.name, dept.code].filter(Boolean) };
+                const deptCriteria = [dept.name, dept.code].filter(Boolean).map(s => s.trim());
+                const standardSpecs = { department: { in: deptCriteria } };
+                studentWhere = standardSpecs;
+                facultyWhere = { ...facultyWhere, ...standardSpecs };
             }
 
             const studentCount = await prisma.student.count({
-                where: whereClause // Same logic for students
+                where: studentWhere
             });
 
             const facultyCount = await prisma.user.count({
-                where: {
-                    role: 'FACULTY',
-                    ...whereClause // Same logic for faculty
-                }
+                where: facultyWhere
             });
 
             return {

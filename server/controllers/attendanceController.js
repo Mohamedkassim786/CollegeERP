@@ -3,12 +3,39 @@ const prisma = new PrismaClient();
 
 // Helper: Get robust department filter (matches Name OR Code)
 const getDeptCriteria = async (deptString) => {
-    if (!deptString) return {};
+    if (!deptString) {
+        return {
+            OR: [
+                { department: null },
+                { department: '' },
+                { department: 'First Year (General)' },
+                { department: 'GEN' }
+            ]
+        };
+    }
+
+    const trimmed = deptString.trim();
+    if (trimmed === 'GEN' || trimmed === 'First Year (General)') {
+        return {
+            OR: [
+                { department: 'First Year (General)' },
+                { department: 'GEN' },
+                { department: null },
+                { department: '' }
+            ]
+        };
+    }
+
     const deptDef = await prisma.department.findFirst({
-        where: { OR: [{ name: deptString }, { code: deptString }] }
+        where: { OR: [{ name: trimmed }, { code: trimmed }] }
     });
-    if (deptDef) return { in: [deptDef.name, deptDef.code].filter(Boolean) };
-    return deptString;
+
+    if (deptDef) {
+        const criteria = [deptDef.name, deptDef.code].filter(Boolean).map(s => s.trim());
+        return { department: { in: criteria } };
+    }
+
+    return { department: trimmed };
 };
 
 // --- Faculty Actions ---
@@ -16,15 +43,9 @@ const getDeptCriteria = async (deptString) => {
 // Get list of students for attendance (by subject & section)
 const getStudentsForAttendance = async (req, res) => {
     const { subjectId, section, date } = req.query;
-
-    console.log(`Getting students for attendance: Subject=${subjectId}, Section=${section}, Date=${date}`);
-
     try {
-        if (!subjectId || !section) {
-            return res.status(400).json({ message: 'Subject ID and Section are required' });
-        }
+        if (!subjectId || !section) return res.status(400).json({ message: 'Subject ID and Section are required' });
 
-        // 1. Get students in this section
         const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
 
@@ -32,27 +53,18 @@ const getStudentsForAttendance = async (req, res) => {
 
         const students = await prisma.student.findMany({
             where: {
-                department: deptCriteria,
-                year: Math.ceil(subject.semester / 2),
+                ...deptCriteria,
                 semester: subject.semester,
                 section: section
             },
             orderBy: { registerNumber: 'asc' }
         });
 
-        // 2. Check if attendance already taken for this date & subject
-        // Note: We might need period too if granular, but for now assuming 1 entry per subject/day or handled by period param
         const period = req.query.period ? parseInt(req.query.period) : 0;
-
         const existingAttendance = await prisma.studentAttendance.findMany({
-            where: {
-                subjectId: parseInt(subjectId),
-                date: date,
-                period: period
-            }
+            where: { subjectId: parseInt(subjectId), date: date, period: period }
         });
 
-        // Map existing status if available
         const attendanceMap = {};
         existingAttendance.forEach(a => attendanceMap[a.studentId] = a.status);
 
@@ -60,61 +72,34 @@ const getStudentsForAttendance = async (req, res) => {
             id: s.id,
             name: s.name,
             registerNumber: s.registerNumber,
-            status: attendanceMap[s.id] || 'PRESENT' // Default to Present
+            status: attendanceMap[s.id] || 'PRESENT'
         }));
 
-        res.json({
-            students: result,
-            isAlreadyTaken: existingAttendance.length > 0
-        });
-
+        res.json({ students: result, isAlreadyTaken: existingAttendance.length > 0 });
     } catch (error) {
-        console.error(error);
         res.status(500).json({ message: error.message });
     }
 };
 
 // Submit Attendance
 const submitAttendance = async (req, res) => {
-    const { subjectId, date, period, attendanceData } = req.body; // attendanceData: [{ studentId, status }]
+    const { subjectId, date, period, attendanceData } = req.body;
     const facultyId = req.user.id;
-
     try {
         const sId = parseInt(subjectId);
-        const pId = period ? parseInt(period) : 0; // Default to 0
+        const pId = period ? parseInt(period) : 0;
 
-        // Transaction for atomic update
         const operations = attendanceData.map(record => {
             return prisma.studentAttendance.upsert({
-                where: {
-                    studentId_subjectId_date_period: {
-                        studentId: record.studentId,
-                        subjectId: sId,
-                        date: date,
-                        period: pId
-                    }
-                },
-                update: {
-                    status: record.status,
-                    facultyId: facultyId
-                },
-                create: {
-                    studentId: record.studentId,
-                    subjectId: sId,
-                    date: date,
-                    period: pId,
-                    status: record.status,
-                    facultyId: facultyId
-                }
+                where: { studentId_subjectId_date_period: { studentId: record.studentId, subjectId: sId, date: date, period: pId } },
+                update: { status: record.status, facultyId: facultyId },
+                create: { studentId: record.studentId, subjectId: sId, date: date, period: pId, status: record.status, facultyId: facultyId }
             });
         });
 
         await prisma.$transaction(operations);
-
         res.json({ message: 'Attendance submitted successfully', count: operations.length });
-
     } catch (error) {
-        console.error('Submit Attendance Error:', error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -123,19 +108,17 @@ const submitAttendance = async (req, res) => {
 
 const getAttendanceReport = async (req, res) => {
     const { department, year, section, fromDate, toDate, subjectId } = req.query;
-
     try {
         const where = {};
         if (department) {
-            where.department = await getDeptCriteria(department);
+            const deptFilter = await getDeptCriteria(department);
+            Object.assign(where, deptFilter);
         }
         if (year) where.year = parseInt(year);
         if (section) where.section = section;
 
-        console.log('Attendance Report Query:', JSON.stringify(where, null, 2));
-
         const students = await prisma.student.findMany({
-            where: where,
+            where: { ...where },
             include: {
                 attendance: {
                     where: {
@@ -166,12 +149,10 @@ const getAttendanceReport = async (req, res) => {
         });
 
         res.json(report);
-
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
-
 
 module.exports = {
     getStudentsForAttendance,
