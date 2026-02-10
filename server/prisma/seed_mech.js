@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 const facultyData = [
@@ -47,13 +48,14 @@ async function main() {
     console.log('Starting seed...');
 
     // 1. Upsert Faculty
+    const hashedPassword = await bcrypt.hash('password123', 10);
     for (const f of facultyData) {
         const user = await prisma.user.upsert({
             where: { username: f.code },
-            update: { fullName: f.name, department: 'MECH' },
+            update: { fullName: f.name, department: 'MECH', password: hashedPassword },
             create: {
                 username: f.code,
-                password: 'password123', // Default password
+                password: hashedPassword,
                 role: 'FACULTY',
                 fullName: f.name,
                 department: 'MECH'
