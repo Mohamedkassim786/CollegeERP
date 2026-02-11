@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import FacultyDashboard from './pages/FacultyDashboard';
+import ExternalDashboard from './pages/external/ExternalDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -15,9 +16,13 @@ function App() {
                 <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 
-            {/* Faculty Routes */}
             <Route element={<ProtectedRoute allowedRoles={['FACULTY']} />}>
                 <Route path="/faculty/*" element={<FacultyDashboard />} />
+            </Route>
+
+            {/* External Staff Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['EXTERNAL_STAFF']} />}>
+                <Route path="/external/*" element={<ExternalDashboard />} />
             </Route>
         </Routes>
     );

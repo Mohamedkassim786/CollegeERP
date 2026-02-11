@@ -27,6 +27,8 @@ const Login = () => {
 
             if (user.role === 'ADMIN') {
                 navigate('/admin');
+            } else if (user.role === 'EXTERNAL_STAFF') {
+                navigate('/external');
             } else {
                 navigate('/faculty');
             }

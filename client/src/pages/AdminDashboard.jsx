@@ -12,6 +12,10 @@ import AdminMarksApproval from './admin/AdminMarksApproval';
 import TimetableManager from './admin/TimetableManager';
 import DepartmentManager from './admin/DepartmentManager';
 import AttendanceReports from './admin/AttendanceReports';
+import ExamControlCenter from './admin/ExamControlCenter';
+import EndSemMarksEntry from './admin/EndSemMarksEntry';
+import ExternalStaffManager from './admin/ExternalStaffManager';
+import Announcements from './Announcements';
 import Settings from './Settings';
 
 const AdminDashboard = () => {
@@ -36,6 +40,10 @@ const AdminDashboard = () => {
                         <Route path="timetable" element={<TimetableManager />} />
                         <Route path="marks/:subjectId" element={<AdminMarksManager />} />
                         <Route path="marks-approval" element={<AdminMarksApproval />} />
+                        <Route path="exams" element={<ExamControlCenter />} />
+                        <Route path="end-sem-marks" element={<EndSemMarksEntry />} />
+                        <Route path="external" element={<ExternalStaffManager />} />
+                        <Route path="announcements" element={<Announcements role="ADMIN" />} />
                         <Route path="attendance" element={<AttendanceReports />} />
                         <Route path="settings" element={<Settings />} />
                         {/* Fallback */}

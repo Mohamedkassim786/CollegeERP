@@ -36,4 +36,12 @@ const isFaculty = (req, res, next) => {
     }
 };
 
-module.exports = { verifyToken, isAdmin, isFaculty };
+const isExternalStaff = (req, res, next) => {
+    if (req.user && req.user.role === 'EXTERNAL_STAFF') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Require External Staff Role' });
+    }
+};
+
+module.exports = { verifyToken, isAdmin, isFaculty, isExternalStaff };

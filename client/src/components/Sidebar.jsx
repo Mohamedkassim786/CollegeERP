@@ -17,6 +17,9 @@ const Sidebar = ({ role, activePath }) => {
         { label: 'Timetable', path: '/admin/timetable', icon: Calendar },
         { label: 'Attendance', path: '/admin/attendance', icon: FileText },
         { label: 'Marks Approval', path: '/admin/marks-approval', icon: CheckCircle },
+        { label: 'Exams & Results', path: '/admin/exams', icon: Award },
+        { label: 'End Sem Marks', path: '/admin/end-sem-marks', icon: Award },
+        { label: 'External Staff', path: '/admin/external', icon: Users },
         { label: 'Departments', path: '/admin/departments', icon: Building2 },
         { label: 'Settings', path: '/admin/settings', icon: SettingsIcon },
     ];
@@ -25,14 +28,20 @@ const Sidebar = ({ role, activePath }) => {
         { label: 'Dashboard', path: '/faculty', icon: LayoutDashboard },
         { label: 'My Timetable', path: '/faculty/timetable', icon: Calendar },
         { label: 'Attendance', path: '/faculty/attendance', icon: UserCheck },
-        { label: 'Enter Marks', path: '/faculty/marks', icon: Award },
+        { label: 'Enter CIA Marks', path: '/faculty/marks', icon: Award },
+        { label: 'View Results', path: '/faculty/results', icon: CheckCircle },
         { label: 'My Classes', path: '/faculty/classes', icon: Users },
         { label: 'Materials', path: '/faculty/materials', icon: Book },
         { label: 'Announcements', path: '/faculty/announcements', icon: Bell },
         { label: 'Settings', path: '/faculty/settings', icon: SettingsIcon },
     ];
 
-    const menu = role === 'ADMIN' ? adminMenu : facultyMenu;
+    const externalStaffMenu = [
+        { label: 'Dashboard', path: '/external', icon: LayoutDashboard },
+        { label: 'Settings', path: '/external/settings', icon: SettingsIcon },
+    ];
+
+    const menu = role === 'ADMIN' ? adminMenu : (role === 'FACULTY' ? facultyMenu : externalStaffMenu);
 
     return (
         <div className="w-64 bg-[#003B73] text-white min-h-screen flex flex-col shadow-2xl fixed left-0 top-0 bottom-0 z-50">
@@ -44,7 +53,9 @@ const Sidebar = ({ role, activePath }) => {
                     </div>
                     <div>
                         <span className="text-xl font-black tracking-tight font-sans">MIET ERP</span>
-                        <p className="text-[10px] text-blue-200 uppercase tracking-widest">{role === 'ADMIN' ? 'Administrator' : 'Faculty Faculty'}</p>
+                        <p className="text-[10px] text-blue-200 uppercase tracking-widest">
+                            {role === 'ADMIN' ? 'Administrator' : (role === 'EXTERNAL_STAFF' ? 'External Staff' : 'Faculty')}
+                        </p>
                     </div>
                 </div>
             </div>

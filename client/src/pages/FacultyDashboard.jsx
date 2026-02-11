@@ -7,6 +7,9 @@ import FacultyTimetable from './faculty/FacultyTimetable';
 import AttendanceManager from './faculty/AttendanceManager';
 import MyClasses from './faculty/MyClasses';
 import ClassDetails from './faculty/ClassDetails';
+import PublishedResults from './faculty/PublishedResults';
+import Announcements from './Announcements';
+import Materials from './Materials';
 import Settings from './Settings';
 import { useContext, useEffect, useState } from 'react';
 import api from '../api/axios';
@@ -41,10 +44,13 @@ const FacultyDashboard = () => {
                     <Routes>
                         <Route path="/" element={<FacultyHome assignedSubjects={assignedSubjects} />} />
                         <Route path="/marks" element={<EnterMarks />} />
+                        <Route path="/results" element={<PublishedResults />} />
                         <Route path="/timetable" element={<FacultyTimetable />} />
                         <Route path="/attendance" element={<AttendanceManager />} />
                         <Route path="/classes" element={<MyClasses />} />
                         <Route path="/class/:subjectId" element={<ClassDetails />} />
+                        <Route path="/announcements" element={<Announcements role="FACULTY" />} />
+                        <Route path="/materials" element={<Materials role="FACULTY" />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="*" element={<Navigate to="/faculty" replace />} />
                     </Routes>

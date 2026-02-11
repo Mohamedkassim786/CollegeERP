@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,45 +8,46 @@ datasource db {
 }
 
 model User {
-  id                  Int      @id @default(autoincrement())
-  username            String   @unique
+  id                  Int                 @id @default(autoincrement())
+  username            String              @unique
   password            String
-  role                String   // "ADMIN" or "FACULTY"
+  role                String
   fullName            String?
-  email               String?  @unique
+  email               String?             @unique
   phoneNumber         String?
-  department          String?  // Nullable for admin
-  designation         String?  // e.g. "Professor", "HOD"
-  lastPasswordChange  DateTime? @default(now())
-  isDisabled          Boolean   @default(false)
-  forcePasswordChange Boolean   @default(false)
+  department          String?
+  designation         String?
+  lastPasswordChange  DateTime?           @default(now())
+  isDisabled          Boolean             @default(false)
+  forcePasswordChange Boolean             @default(false)
   lastLogin           DateTime?
-  
-  timetables          Timetable[]
+  createdAt           DateTime            @default(now())
+  activityPerformed   ActivityLog[]       @relation("PerformedBy")
+  announcements       Announcement[]      @relation("PostedBy")
+  externalStaffTasks  ExternalStaffTask[] @relation("ExternalStaffTasks")
   facultyAbsences     FacultyAbsence[]
-  substitutions       Substitution[]
-  marksApproved       Marks[] @relation("MarksApprover")
+  marksApproved       Marks[]             @relation("MarksApprover")
+  materials           Material[]          @relation("Instructor")
   takenAttendance     StudentAttendance[]
-  activityPerformed   ActivityLog[] @relation("PerformedBy")
-  
-  createdAt           DateTime @default(now())
+  substitutions       Substitution[]
+  timetables          Timetable[]
 }
 
 model ActivityLog {
   id          Int      @id @default(autoincrement())
-  action      String   // e.g. "RESET_PASSWORD", "DISABLE_ACCOUNT"
+  action      String
   description String
   performedBy Int
-  performer   User     @relation("PerformedBy", fields: [performedBy], references: [id])
-  targetId    Int?     // User ID of the faculty affected
+  targetId    Int?
   timestamp   DateTime @default(now())
+  performer   User     @relation("PerformedBy", fields: [performedBy], references: [id])
 }
 
 model Department {
   id        Int      @id @default(autoincrement())
   name      String   @unique
-  code      String?  @unique // e.g. "CSE", "ECE"
-  hodId     Int?     // User ID of the HOD
+  code      String?  @unique
+  hodId     Int?
   sections  String   @default("A,B,C")
   years     String   @default("2,3,4")
   createdAt DateTime @default(now())
@@ -57,41 +55,39 @@ model Department {
 }
 
 model Student {
-  id             Int      @id @default(autoincrement())
-  registerNumber String   @unique
+  id             Int                 @id @default(autoincrement())
+  registerNumber String              @unique
   name           String
   department     String?
-  year           Int      // 1, 2, 3, 4
-  section        String   // A, B, C
+  year           Int
+  section        String
   semester       Int
-  createdAt      DateTime @default(now())
+  createdAt      DateTime            @default(now())
+  arrears        Arrear[]
   marks          Marks[]
+  results        SemesterResult[]
   attendance     StudentAttendance[]
 }
 
 model Timetable {
-  id          Int      @id @default(autoincrement())
-  department  String?
-  year        Int
-  semester    Int
-  section     String
-  day         String   // MON, TUE, WED, THU, FRI
-  period      Int      // 1 to 8
-  duration    Int      @default(1) // Number of periods (1 for regular class, 2-3 for labs)
-  type        String?  // "THEORY", "LAB"
-
-  subjectName String?
-  facultyName String? // This could be a direct link to User model if faculty are users
-  room        String?
-
-  subjectId   Int?
-  facultyId   Int? // Link to User model for faculty
-
-  subject     Subject? @relation(fields: [subjectId], references: [id])
-  faculty     User?    @relation(fields: [facultyId], references: [id])
+  id            Int            @id @default(autoincrement())
+  department    String?
+  year          Int
+  semester      Int
+  section       String
+  day           String
+  period        Int
+  duration      Int            @default(1)
+  type          String?
+  subjectName   String?
+  facultyName   String?
+  room          String?
+  subjectId     Int?
+  facultyId     Int?
+  updatedAt     DateTime       @updatedAt
   substitutions Substitution[]
-
-  updatedAt     DateTime @updatedAt
+  faculty       User?          @relation(fields: [facultyId], references: [id])
+  subject       Subject?       @relation(fields: [subjectId], references: [id])
 
   @@unique([department, year, semester, section, day, period])
 }
@@ -103,87 +99,214 @@ model Subject {
   shortName          String?
   department         String?
   semester           Int
-  type               String              @default("DEPARTMENT") // "COMMON", "DEPARTMENT"
-  marks              Marks[]
-  attendance         StudentAttendance[]
+  credits            Int                 @default(3)
+  type               String              @default("DEPARTMENT")
+  arrears            Arrear[]
+  externalStaffTasks ExternalStaffTask[]
   facultyAssignments FacultyAssignment[]
+  marks              Marks[]
+  materials          Material[]
+  attendance         StudentAttendance[]
   timetables         Timetable[]
 }
 
+model Announcement {
+  id         Int      @id @default(autoincrement())
+  title      String
+  content    String
+  category   String   @default("GENERAL")
+  department String?
+  year       Int?
+  semester   Int?
+  section    String?
+  postedBy   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  author     User     @relation("PostedBy", fields: [postedBy], references: [id])
+}
+
+model Material {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?
+  fileUrl      String?
+  subjectId    Int
+  instructorId Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  instructor   User     @relation("Instructor", fields: [instructorId], references: [id])
+  subject      Subject  @relation(fields: [subjectId], references: [id])
+}
+
 model FacultyAssignment {
-  id        Int    @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   facultyId Int
   subjectId Int
-  section   String // A, B, C...
-
-  subject Subject @relation(fields: [subjectId], references: [id])
-  // We link to User (must be Faculty) manually or via logic, pure relation enforcing role is hard in SQL alone
-  // For simplicity we just store the ID, logic will verify it's a faculty
+  section   String
+  subject   Subject @relation(fields: [subjectId], references: [id])
 }
 
 model Marks {
-  id              Int    @id @default(autoincrement())
+  id              Int          @id @default(autoincrement())
   studentId       Int
   subjectId       Int
   cia1_test       Float?
   cia1_assignment Float?
   cia1_attendance Float?
-
   cia2_test       Float?
   cia2_assignment Float?
   cia2_attendance Float?
-
   cia3_test       Float?
   cia3_assignment Float?
   cia3_attendance Float?
-
-  internal  Float? // Calculated
-  
-  // -- DEPRECATED (Keeping for backwards safety during migration, but logic will move to specifics) --
-  isLocked  Boolean  @default(false) 
-  isApproved  Boolean  @default(false)
-  // -----------------------------------------------------------------------------------------------
-
-  // Granular Locking & Approval
-  isLocked_cia1 Boolean @default(false)
-  isLocked_cia2 Boolean @default(false)
-  isLocked_cia3 Boolean @default(false)
-
-  isApproved_cia1 Boolean @default(false)
-  isApproved_cia2 Boolean @default(false)
-  isApproved_cia3 Boolean @default(false)
-  approvedBy  Int?
-  approvedAt  DateTime?
-  
-  updatedAt DateTime @updatedAt
-
-  student Student @relation(fields: [studentId], references: [id])
-  subject Subject @relation(fields: [subjectId], references: [id])
-  approver User? @relation("MarksApprover", fields: [approvedBy], references: [id])
+  internal        Float?
+  isLocked        Boolean      @default(false)
+  isApproved      Boolean      @default(false)
+  isLocked_cia1   Boolean      @default(false)
+  isLocked_cia2   Boolean      @default(false)
+  isLocked_cia3   Boolean      @default(false)
+  isApproved_cia1 Boolean      @default(false)
+  isApproved_cia2 Boolean      @default(false)
+  isApproved_cia3 Boolean      @default(false)
+  approvedBy      Int?
+  approvedAt      DateTime?
+  updatedAt       DateTime     @updatedAt
+  endSemMarks     EndSemMarks?
+  approver        User?        @relation("MarksApprover", fields: [approvedBy], references: [id])
+  subject         Subject      @relation(fields: [subjectId], references: [id])
+  student         Student      @relation(fields: [studentId], references: [id])
 
   @@unique([studentId, subjectId])
+}
+
+model EndSemMarks {
+  id            Int      @id @default(autoincrement())
+  marksId       Int      @unique
+  externalMarks Float?
+  totalMarks    Float?
+  grade         String?
+  resultStatus  String?
+  isPublished   Boolean  @default(false)
+  isLocked      Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+  marks         Marks    @relation(fields: [marksId], references: [id])
+}
+
+model GradeSettings {
+  id            Int      @id @default(autoincrement())
+  regulation    String
+  grade         String
+  minPercentage Float
+  maxPercentage Float
+  gradePoint    Int
+  resultStatus  String   @default("PASS")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([regulation, grade])
+}
+
+model SemesterControl {
+  id            Int      @id @default(autoincrement())
+  department    String
+  year          Int
+  semester      Int
+  section       String
+  markEntryOpen Boolean  @default(false)
+  isPublished   Boolean  @default(false)
+  isLocked      Boolean  @default(false)
+  isFrozen      Boolean  @default(false)
+  actionLogs    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([department, year, semester, section])
+}
+
+model SemesterResult {
+  id            Int      @id @default(autoincrement())
+  studentId     Int
+  semester      Int
+  gpa           Float
+  cgpa          Float
+  totalCredits  Int
+  earnedCredits Int
+  resultStatus  String
+  isLocked      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  student       Student  @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, semester])
+}
+
+model Arrear {
+  id           Int             @id @default(autoincrement())
+  studentId    Int
+  subjectId    Int
+  semester     Int
+  attemptCount Int             @default(1)
+  isCleared    Boolean         @default(false)
+  clearedInSem Int?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  subject      Subject         @relation(fields: [subjectId], references: [id])
+  student      Student         @relation(fields: [studentId], references: [id])
+  attempts     ArrearAttempt[]
+
+  @@unique([studentId, subjectId])
+}
+
+model ArrearAttempt {
+  id            Int       @id @default(autoincrement())
+  arrearId      Int
+  semester      Int
+  internalMarks Float?
+  externalMarks Float?
+  totalMarks    Float?
+  grade         String?
+  resultStatus  String?
+  examDate      DateTime?
+  createdAt     DateTime  @default(now())
+  arrear        Arrear    @relation(fields: [arrearId], references: [id])
+}
+
+model ExternalStaffTask {
+  id               Int      @id @default(autoincrement())
+  staffId          Int
+  subjectId        Int
+  deadline         DateTime
+  status           String   @default("ASSIGNED")
+  questionPaperUrl String?
+  remarks          String?
+  version          Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  subject          Subject  @relation(fields: [subjectId], references: [id])
+  staff            User     @relation("ExternalStaffTasks", fields: [staffId], references: [id])
 }
 
 model FacultyAbsence {
   id        Int      @id @default(autoincrement())
   facultyId Int
-  date      String   // ISO Date String YYYY-MM-DD
-  period    Int      @default(0) // 0 = Generic/All Day, >0 = Specific Period
+  date      String
+  period    Int      @default(0)
   reason    String?
   createdAt DateTime @default(now())
   faculty   User     @relation(fields: [facultyId], references: [id])
+
   @@unique([facultyId, date, period])
 }
 
 model Substitution {
-  id                  Int      @id @default(autoincrement())
-  timetableId         Int      // Link to original timetable slot
-  substituteFacultyId Int      // Who is taking the class
-  date                String   // ISO Date String YYYY-MM-DD
-  createdAt           DateTime @default(now())
-  
-  timetable           Timetable @relation(fields: [timetableId], references: [id])
+  id                  Int       @id @default(autoincrement())
+  timetableId         Int
+  substituteFacultyId Int
+  date                String
+  createdAt           DateTime  @default(now())
   substituteFaculty   User      @relation(fields: [substituteFacultyId], references: [id])
+  timetable           Timetable @relation(fields: [timetableId], references: [id])
+
   @@unique([timetableId, date])
 }
 
@@ -191,15 +314,14 @@ model StudentAttendance {
   id        Int      @id @default(autoincrement())
   studentId Int
   subjectId Int
-  facultyId Int      // Who marked it
-  date      String   // ISO Date String YYYY-MM-DD
+  facultyId Int
+  date      String
   period    Int      @default(0)
-  status    String   // PRESENT, ABSENT, OD
+  status    String
   createdAt DateTime @default(now())
+  faculty   User     @relation(fields: [facultyId], references: [id])
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  student   Student  @relation(fields: [studentId], references: [id])
 
-  student   Student @relation(fields: [studentId], references: [id])
-  subject   Subject @relation(fields: [subjectId], references: [id])
-  faculty   User    @relation(fields: [facultyId], references: [id])
-  
-  @@unique([studentId, subjectId, date, period]) // Prevent duplicate entries for same slot
+  @@unique([studentId, subjectId, date, period])
 }
