@@ -2,70 +2,144 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const PDFDocument = require('pdfkit');
 
-// Helper to calculate seating distribution
-const calculateSeating = (students, halls) => {
-    console.log(`[Algorithm] Generating seating for ${students.length} students in ${halls.length} halls.`);
-    // 1. Group students by subject for alternation
-    const subjectPoolsMap = {};
+// CIA Seating: 2 students per bench, different subjects on same bench
+const calculateSeatingCIA = (students, halls) => {
+    // 1. Group students by subject
+    const subjectPools = {};
     students.forEach(s => {
-        if (!subjectPoolsMap[s.currentSubjectId]) subjectPoolsMap[s.currentSubjectId] = [];
-        subjectPoolsMap[s.currentSubjectId].push(s);
+        if (!subjectPools[s.currentSubjectId]) subjectPools[s.currentSubjectId] = [];
+        subjectPools[s.currentSubjectId].push(s);
     });
 
-    // Convert to an array of pools and sort by subject ID for consistency
-    const pools = Object.keys(subjectPoolsMap)
-        .sort((a, b) => parseInt(a) - parseInt(b))
-        .map(id => subjectPoolsMap[id]);
+    const pools = Object.values(subjectPools).sort((a, b) => b.length - a.length);
 
-    let currentPoolIdx = 0;
-    const allocations = [];
-
-    // Sort halls by name/id to ensure consistency
-    const sortedHalls = [...halls].sort((a, b) => a.id - b.id);
-
-    for (const hall of sortedHalls) {
-        let isSessionDone = false;
-        for (let c = 1; c <= hall.benchesPerRow; c++) {
-            if (isSessionDone) break;
-            for (let r = 1; r <= hall.totalRows; r++) {
-
-                // 2. Find a student from the next active subject pool (Alternation Logic)
-                let studentFound = null;
-                let checkedPools = 0;
-
-                while (checkedPools < pools.length) {
-                    if (pools[currentPoolIdx].length > 0) {
-                        studentFound = pools[currentPoolIdx].shift();
-                        // Advance index for next seat
-                        currentPoolIdx = (currentPoolIdx + 1) % pools.length;
-                        break;
-                    }
-                    // Skip empty pool
-                    currentPoolIdx = (currentPoolIdx + 1) % pools.length;
-                    checkedPools++;
-                }
-
-                if (!studentFound) {
-                    isSessionDone = true;
-                    break;
-                }
-
-                allocations.push({
-                    hallId: hall.id,
-                    studentId: studentFound.id,
-                    subjectId: studentFound.currentSubjectId,
-                    department: studentFound.department,
-                    year: studentFound.year,
-                    seatNumber: `${String.fromCharCode(64 + c)}${r}`, // e.g., A1, B1
-                    rowNumber: r,
-                    columnNumber: c
-                });
-                console.log(`[Algorithm] Assigned ${studentFound.rollNo} to ${hall.hallName} - ${String.fromCharCode(64 + c)}${r}`);
+    // 2. Interleave subjects to ensure diversity
+    const interleaved = [];
+    let total = students.length;
+    while (interleaved.length < total) {
+        for (let i = 0; i < pools.length; i++) {
+            if (pools[i].length > 0) {
+                interleaved.push(pools[i].shift());
             }
         }
     }
 
-    return { allocations, remaining: pools.flat() };
+    const allocations = [];
+    let studentIdx = 0;
+
+    for (const hall of halls) {
+        for (const col of hall.columns) {
+            for (let b = 1; b <= col.benches; b++) {
+                // Bench can take up to 2 students
+                for (let pos = 1; pos <= 2; pos++) {
+                    if (studentIdx >= interleaved.length) break;
+
+                    const student = interleaved[studentIdx];
+
+                    // Simple subject check for same bench
+                    if (pos === 2 && allocations.length > 0) {
+                        const prev = allocations[allocations.length - 1];
+                        if (prev.benchIndex === b && prev.columnLabel === col.label && prev.hallId === hall.id) {
+                            if (prev.subjectId === student.currentSubjectId) {
+                                // Try to find a different subject student from further down
+                                let swapIdx = studentIdx + 1;
+                                while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === student.currentSubjectId) {
+                                    swapIdx++;
+                                }
+                                if (swapIdx < interleaved.length) {
+                                    // Swap
+                                    [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
+                                }
+                            }
+                        }
+                    }
+
+                    const currentStudent = interleaved[studentIdx];
+                    allocations.push({
+                        hallId: hall.id,
+                        studentId: currentStudent.id,
+                        subjectId: currentStudent.currentSubjectId,
+                        department: currentStudent.department,
+                        year: currentStudent.year,
+                        seatNumber: `${col.label}${b}${pos === 1 ? 'A' : 'B'}`,
+                        benchIndex: b,
+                        columnLabel: col.label
+                    });
+                    studentIdx++;
+                }
+                if (studentIdx >= interleaved.length) break;
+            }
+            if (studentIdx >= interleaved.length) break;
+        }
+        if (studentIdx >= interleaved.length) break;
+    }
+
+    return { allocations, remaining: interleaved.slice(studentIdx) };
+};
+
+// END_SEM Seating: 1 student per bench, alternate subjects vertically
+const calculateSeatingENDSEM = (students, halls) => {
+    const subjectPools = {};
+    students.forEach(s => {
+        if (!subjectPools[s.currentSubjectId]) subjectPools[s.currentSubjectId] = [];
+        subjectPools[s.currentSubjectId].push(s);
+    });
+
+    const pools = Object.values(subjectPools).sort((a, b) => b.length - a.length);
+
+    const interleaved = [];
+    let total = students.length;
+    while (interleaved.length < total) {
+        for (let i = 0; i < pools.length; i++) {
+            if (pools[i].length > 0) {
+                interleaved.push(pools[i].shift());
+            }
+        }
+    }
+
+    const allocations = [];
+    let studentIdx = 0;
+
+    for (const hall of halls) {
+        for (const col of hall.columns) {
+            let lastSubjectId = null;
+            for (let b = 1; b <= col.benches; b++) {
+                if (studentIdx >= interleaved.length) break;
+
+                let student = interleaved[studentIdx];
+
+                // Vertical alternation check
+                if (student.currentSubjectId === lastSubjectId) {
+                    let swapIdx = studentIdx + 1;
+                    while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === lastSubjectId) {
+                        swapIdx++;
+                    }
+                    if (swapIdx < interleaved.length) {
+                        [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
+                        student = interleaved[studentIdx];
+                    }
+                }
+
+                allocations.push({
+                    hallId: hall.id,
+                    studentId: student.id,
+                    subjectId: student.currentSubjectId,
+                    department: student.department,
+                    year: student.year,
+                    seatNumber: `${col.label}${b}`,
+                    benchIndex: b,
+                    columnLabel: col.label
+                });
+
+                lastSubjectId = student.currentSubjectId;
+                studentIdx++;
+            }
+            if (studentIdx >= interleaved.length) break;
+        }
+        if (studentIdx >= interleaved.length) break;
+    }
+
+    return { allocations, remaining: interleaved.slice(studentIdx) };
 };
 
 exports.getSessions = async (req, res) => {
@@ -85,7 +159,7 @@ exports.getSessions = async (req, res) => {
 
 exports.createSession = async (req, res) => {
     try {
-        const { examName, examDate, session, subjectIds } = req.body;
+        const { examName, examDate, session, examMode, subjectIds } = req.body;
 
         const result = await prisma.$transaction(async (tx) => {
             const newSession = await tx.examSession.create({
@@ -93,6 +167,7 @@ exports.createSession = async (req, res) => {
                     examName,
                     examDate: new Date(examDate),
                     session,
+                    examMode: examMode || "CIA",
                     createdBy: req.user.id
                 }
             });
@@ -129,18 +204,43 @@ exports.getHalls = async (req, res) => {
 
 exports.addHall = async (req, res) => {
     try {
-        const { hallName, blockName, totalRows, benchesPerRow } = req.body;
+        const { hallName, blockName, columns } = req.body;
+
+        const totalBenches = columns.reduce((acc, col) => acc + parseInt(col.benches), 0);
+
+        // 1. Create Hall
         const hall = await prisma.hall.create({
             data: {
                 hallName,
                 blockName,
-                totalRows: parseInt(totalRows),
-                benchesPerRow: parseInt(benchesPerRow),
-                capacity: parseInt(totalRows) * parseInt(benchesPerRow)
+                totalBenches,
+                capacityCIA: totalBenches * 2,
+                capacityEND: totalBenches * 1
             }
         });
-        res.json(hall);
+
+        // 2. Create Columns
+        if (columns && columns.length > 0) {
+            const columnPromises = columns.map(col =>
+                prisma.hallColumn.create({
+                    data: {
+                        hallId: hall.id,
+                        label: col.label,
+                        benches: parseInt(col.benches)
+                    }
+                })
+            );
+            await prisma.$transaction(columnPromises);
+        }
+
+        const result = await prisma.hall.findUnique({
+            where: { id: hall.id },
+            include: { columns: true }
+        });
+
+        res.json(result);
     } catch (error) {
+        console.error("Add Hall Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -156,7 +256,7 @@ exports.deleteHall = async (req, res) => {
 };
 
 exports.generateAllocations = async (req, res) => {
-    console.log("[API] Generate Allocations called - VER: V4V");
+    console.log("[API] Generate Allocations called - MODE UPGRADE");
     try {
         const { sessionId, hallIds } = req.body;
 
@@ -170,32 +270,32 @@ exports.generateAllocations = async (req, res) => {
 
         // 1. Fetch all students registered for these subjects
         const subjectIds = session.subjects.map(s => s.subjectId);
-
-        // This is tricky: we need students taking these subjects. 
-        // We'll use the StudentAttendance or Marks table as a proxy for registration if no direct registration table exists,
-        // but in this ERP, students are tied to departments/semesters. 
-        // We filter students where student.semester matches subject.semester AND student.department matches subject.department
-
         const subjects = await prisma.subject.findMany({
             where: { id: { in: subjectIds } }
         });
 
-        let allEligibleStudents = [];
+        // NEW: Fetch all departments to handle Name vs Code mismatch
+        const allDepts = await prisma.department.findMany();
 
+        let allEligibleStudents = [];
         for (const sub of subjects) {
+            // Check if sub.department matches a code or name in our official list
+            const deptMatch = allDepts.find(d => d.code === sub.department || d.name === sub.department);
+            const searchDept = deptMatch ? deptMatch.name : sub.department;
+
+            console.log(`[DEBUG] Fetching students for ${sub.code} | Sem: ${sub.semester} | Dept Search: ${searchDept}`);
+
             const studentList = await prisma.student.findMany({
                 where: {
-                    department: sub.department || undefined,
+                    department: searchDept || undefined,
                     semester: sub.semester
                 },
                 orderBy: { rollNo: 'asc' }
             });
-            // Assign which subject they are taking for this session tracking
             studentList.forEach(s => s.currentSubjectId = sub.id);
             allEligibleStudents = [...allEligibleStudents, ...studentList];
         }
 
-        // Remove duplicates if a student takes multiple subjects in one session (unlikely but safe)
         const uniqueStudents = [];
         const seenIds = new Set();
         for (const s of allEligibleStudents) {
@@ -205,52 +305,60 @@ exports.generateAllocations = async (req, res) => {
             }
         }
 
-        // 2. Fetch selected halls
+        console.log(`[DEBUG] Total unique students found: ${uniqueStudents.length}`);
+
+        if (uniqueStudents.length === 0) {
+            return res.status(400).json({
+                message: "No eligible students found for the selected subjects. Please check if students are added for the correct department and semester."
+            });
+        }
+
+        // 2. Fetch selected halls with columns
         const halls = await prisma.hall.findMany({
-            where: { id: { in: hallIds.map(id => parseInt(id)) }, isActive: true }
+            where: { id: { in: hallIds.map(id => parseInt(id)) }, isActive: true },
+            include: { columns: { orderBy: { label: 'asc' } } }
         });
 
-        halls.forEach(h => {
-            console.log(`[Algorithm] Hall: ${h.hallName}, Rows: ${h.totalRows}, Benches/Row: ${h.benchesPerRow}, Cap: ${h.capacity}`);
-        });
+        const totalCapacity = halls.reduce((acc, h) => {
+            return acc + (session.examMode === 'CIA' ? h.capacityCIA : h.capacityEND);
+        }, 0);
 
-        const totalCapacity = halls.reduce((acc, h) => acc + h.capacity, 0);
         if (uniqueStudents.length > totalCapacity) {
             return res.status(400).json({
                 message: `Insufficient capacity. Students: ${uniqueStudents.length}, Capacity: ${totalCapacity}`
             });
         }
 
-        // 3. Algorithm: Balanced Seating
-        // Group by subject and department for balancing later if needed
-        // For now, let's shuffle or sort to mix depts
-        const processedStudents = uniqueStudents.sort((a, b) => a.department.localeCompare(b.department) || a.year - b.year);
-
-        const { allocations, remaining } = calculateSeating(processedStudents, halls);
+        // 3. Algorithm choice based on Exam Mode
+        const { allocations, remaining } = session.examMode === 'CIA'
+            ? calculateSeatingCIA(uniqueStudents, halls)
+            : calculateSeatingENDSEM(uniqueStudents, halls);
 
         // 4. Save to DB within transaction
         await prisma.$transaction(async (tx) => {
-            // Delete old allocations for this session
             await tx.hallAllocation.deleteMany({ where: { examSessionId: session.id } });
 
-            // Bulk Create (Batching for performance)
-            await tx.hallAllocation.createMany({
-                data: allocations.map(a => ({
-                    examSessionId: session.id,
-                    hallId: a.hallId,
-                    studentId: a.studentId,
-                    subjectId: a.subjectId,
-                    department: a.department,
-                    year: a.year,
-                    seatNumber: a.seatNumber,
-                    rowNumber: a.rowNumber,
-                    columnNumber: a.columnNumber
-                }))
-            });
+            // Batch create allocations
+            for (let i = 0; i < allocations.length; i += 100) {
+                const batch = allocations.slice(i, i + 100);
+                await tx.hallAllocation.createMany({
+                    data: batch.map(a => ({
+                        examSessionId: session.id,
+                        hallId: a.hallId,
+                        studentId: a.studentId,
+                        subjectId: a.subjectId,
+                        department: a.department,
+                        year: a.year,
+                        seatNumber: a.seatNumber,
+                        benchIndex: a.benchIndex,
+                        columnLabel: a.columnLabel
+                    }))
+                });
+            }
         });
 
         res.json({
-            message: "Allocation generated successfully (ALGO: VERTICAL_V4V)",
+            message: `Allocation generated successfully for ${session.examMode} mode`,
             count: allocations.length,
             unallocated: remaining.length
         });
@@ -357,8 +465,7 @@ exports.updateSessionSubjects = async (req, res) => {
 const getRegisterRanges = (students) => {
     if (!students || students.length === 0) return "";
 
-    // Extract numeric parts of roll numbers and sort
-    const regNos = students.map(s => s.rollNo).filter(Boolean).sort();
+    const regNos = students.map(s => s.registerNumber || s.rollNo).filter(Boolean).sort();
 
     const ranges = [];
     let start = regNos[0];
@@ -367,16 +474,16 @@ const getRegisterRanges = (students) => {
     for (let i = 1; i <= regNos.length; i++) {
         const current = regNos[i];
 
-        // Check if current is continuous with prev
-        // In many colleges, the last 3-4 digits are numeric
-        const prevNum = parseInt(prev.slice(-3));
-        const currNum = current ? parseInt(current.slice(-3)) : null;
+        const prevNum = parseInt(String(prev).slice(-3));
+        const currNum = current ? parseInt(String(current).slice(-3)) : null;
+        const prevPrefix = String(prev).slice(0, -3);
+        const currPrefix = current ? String(current).slice(0, -3) : null;
 
-        if (currNum !== prevNum + 1 || i === regNos.length) {
+        if (currNum !== prevNum + 1 || prevPrefix !== currPrefix || i === regNos.length) {
             if (start === prev) {
                 ranges.push(start);
             } else {
-                ranges.push(`${start}-${prev.slice(-3)}`);
+                ranges.push(`${start}-${String(prev).slice(-3)}`);
             }
             start = current;
         }
@@ -404,291 +511,367 @@ exports.exportConsolidatedPlan = async (req, res) => {
             include: {
                 student: true,
                 subject: true,
-                hall: true
+                hall: { include: { columns: true } }
             },
             orderBy: [
                 { hall: { hallName: 'asc' } },
                 { year: 'asc' },
-                { department: 'asc' }
+                { department: 'asc' },
+                { student: { rollNo: 'asc' } }
             ]
         });
 
         const doc = new PDFDocument({ margin: 30, size: 'A4' });
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=Hall_Plan_${session.examName.replace(/\s+/g, '_')}.pdf`);
+        res.setHeader('Content-Disposition', `attachment; filename=Consolidated_Plan_${session.examName.replace(/\s+/g, '_')}.pdf`);
         doc.pipe(res);
 
-        // --- HEADER SECTION ---
-        const logoPath = require('path').join(process.cwd(), '..', 'client', 'public', 'miet-logo.png');
-        try {
-            doc.image(logoPath, 40, 30, { width: 80 });
-        } catch (e) {
-            console.warn("Logo not found at", logoPath);
-        }
+        const drawMainHeader = () => {
+            const logoPath = require('path').join(process.cwd(), '..', 'client', 'public', 'miet-logo.png');
+            try { doc.image(logoPath, 40, 30, { width: 70 }); } catch (e) { }
 
-        doc.fontSize(16).font('Helvetica-Bold').text('M.I.E.T. ENGINEERING COLLEGE', 130, 35, { align: 'center', width: 350 });
-        doc.fontSize(10).font('Helvetica').text('(AUTONOMOUS)', 130, 52, { align: 'center', width: 350 });
-        doc.fontSize(9).text('(AFFILIATED TO ANNA UNIVERSITY, CHENNAI)', 130, 65, { align: 'center', width: 350 });
-        doc.text('TIRUCHIRAPPALLI', 130, 75, { align: 'center', width: 350 });
-        doc.fontSize(11).font('Helvetica-Bold').text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', 130, 90, { align: 'center', width: 350 });
+            doc.fontSize(16).font('Helvetica-Bold').text('M.I.E.T. ENGINEERING COLLEGE', 120, 35, { align: 'center', width: 400 });
+            doc.fontSize(10).font('Helvetica').text('(AUTONOMOUS)', 120, 52, { align: 'center', width: 400 });
+            doc.fontSize(9).font('Helvetica').text('(AFFILIATED TO ANNA UNIVERSITY, CHENNAI)', 120, 64, { align: 'center', width: 400 });
+            doc.fontSize(9).font('Helvetica').text('TIRUCHIRAPPALLI', 120, 75, { align: 'center', width: 400 });
+            doc.fontSize(10).font('Helvetica-Bold').text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', 120, 90, { align: 'center', width: 400 });
 
-        doc.moveDown(2);
+            // Border for header
+            doc.rect(40, 30, 515, 80).stroke();
 
-        // Title Boxes
-        const topY = 120;
-        doc.rect(40, topY, 520, 25).stroke();
-        doc.fontSize(11).font('Helvetica-Bold').text(session.examName.toUpperCase(), 40, topY + 7, { align: 'center', width: 520 });
+            // Sub titles border
+            doc.rect(40, 115, 515, 30).stroke();
+            doc.fontSize(11).font('Helvetica-Bold').text(session.examName.toUpperCase(), 30, 120, { align: 'center', width: 535 });
+            doc.fontSize(10).font('Helvetica-Bold').text('CONSOLIDATED HALL PLAN', 30, 134, { align: 'center', width: 535 });
+        };
 
-        doc.rect(40, topY + 25, 520, 20).stroke();
-        doc.fontSize(10).text('CONSOLIDATED HALL PLAN', 40, topY + 30, { align: 'center', width: 520 });
-
-        // --- DATA PROCESSING ---
-        // Group by Hall -> then by (Year/Dept)
-        const groupedData = [];
-        const hallsMap = new Map();
-
+        const hallGroups = {};
         allocations.forEach(a => {
-            if (!hallsMap.has(a.hall.hallName)) {
-                hallsMap.set(a.hall.hallName, {
+            const hId = a.hallId;
+            if (!hallGroups[hId]) {
+                hallGroups[hId] = {
                     name: a.hall.hallName,
                     totalStrength: 0,
-                    rows: []
-                });
+                    deptData: {}
+                };
             }
-            const hall = hallsMap.get(a.hall.hallName);
-            hall.totalStrength++;
+            const h = hallGroups[hId];
+            h.totalStrength++;
 
-            const rowKey = `${a.year}-${a.department}`;
-            let row = hall.rows.find(r => r.key === rowKey);
-            if (!row) {
-                row = {
-                    key: rowKey,
-                    year: a.year,
+            const key = `${a.subject.semester}-${a.department}`;
+            if (!h.deptData[key]) {
+                h.deptData[key] = {
+                    sem: a.subject.semester,
                     dept: a.department,
                     students: []
                 };
-                hall.rows.push(row);
             }
-            row.students.push(a.student);
+            h.deptData[key].students.push(a.student);
         });
 
-        // --- TABLE RENDERING ---
-        const startY = topY + 45;
-        let currentY = startY;
+        drawMainHeader();
 
-        // Table Header
-        const colWidths = {
-            sno: 30,
-            sem: 40,
-            dept: 50,
-            hall: 60,
-            reg: 220,
-            str: 60,
-            total: 60
-        };
-        const colX = {
-            sno: 40,
-            sem: 40 + colWidths.sno,
-            dept: 40 + colWidths.sno + colWidths.sem,
-            hall: 40 + colWidths.sno + colWidths.sem + colWidths.dept,
-            reg: 40 + colWidths.sno + colWidths.sem + colWidths.dept + colWidths.hall,
-            str: 40 + colWidths.sno + colWidths.sem + colWidths.dept + colWidths.hall + colWidths.reg,
-            total: 40 + colWidths.sno + colWidths.sem + colWidths.dept + colWidths.hall + colWidths.reg + colWidths.str
+        let currentY = 145;
+        const colX = { sno: 40, sem: 65, dept: 95, hall: 145, reg: 205, str: 445, total: 495, end: 555 };
+        const colW = {
+            sno: colX.sem - colX.sno,
+            sem: colX.dept - colX.sem,
+            dept: colX.hall - colX.dept,
+            hall: colX.reg - colX.hall,
+            reg: colX.str - colX.reg,
+            str: colX.total - colX.str,
+            total: colX.end - colX.total
         };
 
         const drawTableHeader = (y) => {
-            doc.font('Helvetica-Bold').fontSize(9);
-            doc.rect(40, y, 520, 30).stroke();
-            doc.text('S.', colX.sno, y + 5, { width: colWidths.sno, align: 'center' });
-            doc.text('No.', colX.sno, y + 15, { width: colWidths.sno, align: 'center' });
-            doc.text('Sem', colX.sem, y + 10, { width: colWidths.sem, align: 'center' });
-            doc.text('Dept.', colX.dept, y + 10, { width: colWidths.dept, align: 'center' });
-            doc.text('Hall', colX.hall, y + 5, { width: colWidths.hall, align: 'center' });
-            doc.text('Name', colX.hall, y + 15, { width: colWidths.hall, align: 'center' });
-            doc.text('Roll Number', colX.reg, y + 10, { width: colWidths.reg, align: 'center' });
-            doc.text('Strength', colX.str, y + 10, { width: colWidths.str, align: 'center' });
-            doc.text('Total', colX.total, y + 5, { width: colWidths.total, align: 'center' });
-            doc.text('Strength', colX.total, y + 15, { width: colWidths.total, align: 'center' });
+            doc.rect(colX.sno, y, colX.end - colX.sno, 25).fill('#f0f0f0').stroke('#000000');
+            doc.fill('#000000').font('Helvetica-Bold').fontSize(8);
 
-            // Vertical lines for header
-            [colX.sem, colX.dept, colX.hall, colX.reg, colX.str, colX.total].forEach(x => {
-                doc.moveTo(x, y).lineTo(x, y + 30).stroke();
+            Object.values(colX).forEach(x => {
+                if (x !== colX.end) doc.moveTo(x, y).lineTo(x, y + 25).stroke();
             });
-            return y + 30;
+
+            const textY = y + 8;
+            doc.text('S.\nNo.', colX.sno, y + 4, { width: colW.sno, align: 'center' });
+            doc.text('Sem', colX.sem, textY, { width: colW.sem, align: 'center' });
+            doc.text('Dept.', colX.dept, textY, { width: colW.dept, align: 'center' });
+            doc.text('Hall\nName', colX.hall, y + 4, { width: colW.hall, align: 'center' });
+            doc.text('Register Number', colX.reg, textY, { width: colW.reg, align: 'center' });
+            doc.text('Strength', colX.str, textY, { width: colW.str, align: 'center' });
+            doc.text('Total\nStrength', colX.total, y + 4, { width: colW.total, align: 'center' });
+            return y + 25;
         };
 
+        doc.lineWidth(0.5);
         currentY = drawTableHeader(currentY);
-
         let sNo = 1;
-        Array.from(hallsMap.values()).forEach(hall => {
-            const hallRowHeight = Math.max(hall.rows.length * 30, 40); // Minimum height or dynamic
 
-            // Page break check
-            if (currentY + hallRowHeight > 750) {
+        Object.values(hallGroups).forEach(hall => {
+            const depts = Object.values(hall.deptData);
+
+            depts.forEach(d => {
+                const ranges = getRegisterRanges(d.students);
+                d.rangesText = ranges;
+                const textHeight = doc.font('Helvetica').fontSize(8).heightOfString(ranges, { width: colW.reg - 8 });
+                d.rowHeight = Math.max(20, textHeight + 8);
+            });
+
+            const hallHeight = depts.reduce((sum, d) => sum + d.rowHeight, 0);
+
+            if (currentY + hallHeight > 780) {
                 doc.addPage();
-                currentY = drawTableHeader(50);
+                drawMainHeader();
+                currentY = 145;
+                currentY = drawTableHeader(currentY);
             }
 
             const hallStartY = currentY;
+            let rowY = currentY;
 
-            hall.rows.forEach((row, rowIdx) => {
-                const rowHeight = 30;
-                doc.font('Helvetica').fontSize(9);
+            depts.forEach((d) => {
+                doc.font('Helvetica').fontSize(8);
 
-                // Draw cells
-                doc.rect(40, currentY, 520, rowHeight).stroke();
+                doc.rect(colX.sem, rowY, colW.sem, d.rowHeight).stroke();
+                const semText = getRomanNumeral(d.sem);
+                doc.text(semText, colX.sem, rowY + (d.rowHeight / 2) - 4, { width: colW.sem, align: 'center' });
 
-                // Semester (assuming Year * 2 - 1 for consistency, or we could fetch actual semester)
-                // Let's use Year for now as a placeholder
-                doc.text(getRomanNumeral(row.year * 2), colX.sem, currentY + 10, { width: colWidths.sem, align: 'center' });
-                doc.text(row.dept, colX.dept, currentY + 10, { width: colWidths.dept, align: 'center' });
+                doc.rect(colX.dept, rowY, colW.dept, d.rowHeight).stroke();
+                doc.text(d.dept, colX.dept, rowY + (d.rowHeight / 2) - 4, { width: colW.dept, align: 'center' });
 
-                // Register numbers range
-                const ranges = getRegisterRanges(row.students);
-                doc.text(ranges, colX.reg + 5, currentY + 5, { width: colWidths.reg - 10, align: 'left' });
+                doc.rect(colX.reg, rowY, colW.reg, d.rowHeight).stroke();
+                const textH = doc.heightOfString(d.rangesText, { width: colW.reg - 8 });
+                doc.text(d.rangesText, colX.reg + 4, rowY + (d.rowHeight / 2) - (textH / 2), { width: colW.reg - 8, align: 'left', lineGap: 1 });
 
-                doc.text(row.students.length.toString(), colX.str, currentY + 10, { width: colWidths.str, align: 'center' });
+                doc.rect(colX.str, rowY, colW.str, d.rowHeight).stroke();
+                doc.text(d.students.length.toString(), colX.str, rowY + (d.rowHeight / 2) - 4, { width: colW.str, align: 'center' });
 
-                // Vertical lines (except for merged ones)
-                [colX.sem, colX.dept, colX.hall, colX.reg, colX.str, colX.total].forEach(x => {
-                    if (x === colX.hall || x === colX.total) return; // We draw these after loop
-                    doc.moveTo(x, currentY).lineTo(x, currentY + rowHeight).stroke();
-                });
-
-                currentY += rowHeight;
+                rowY += d.rowHeight;
             });
 
-            // Draw Merged Cells for this hall
-            const totalHeight = currentY - hallStartY;
+            doc.rect(colX.sno, hallStartY, colW.sno, hallHeight).stroke();
+            doc.font('Helvetica').text(sNo.toString(), colX.sno, hallStartY + (hallHeight / 2) - 4, { width: colW.sno, align: 'center' });
 
-            // S.No
-            doc.rect(colX.sno, hallStartY, colWidths.sno, totalHeight).stroke();
-            doc.font('Helvetica-Bold').text(sNo.toString(), colX.sno, hallStartY + (totalHeight / 2) - 5, { width: colWidths.sno, align: 'center' });
+            doc.rect(colX.hall, hallStartY, colW.hall, hallHeight).stroke();
+            doc.text(hall.name, colX.hall, hallStartY + (hallHeight / 2) - 4, { width: colW.hall, align: 'center' });
 
-            // Hall Name
-            doc.rect(colX.hall, hallStartY, colWidths.hall, totalHeight).stroke();
-            doc.font('Helvetica-Bold').text(hall.name, colX.hall, hallStartY + (totalHeight / 2) - 5, { width: colWidths.hall, align: 'center' });
+            doc.rect(colX.total, hallStartY, colW.total, hallHeight).stroke();
+            doc.text(hall.totalStrength.toString(), colX.total, hallStartY + (hallHeight / 2) - 4, { width: colW.total, align: 'center' });
 
-            // Total Strength
-            doc.rect(colX.total, hallStartY, colWidths.total, totalHeight).stroke();
-            doc.font('Helvetica-Bold').text(hall.totalStrength.toString(), colX.total, hallStartY + (totalHeight / 2) - 5, { width: colWidths.total, align: 'center' });
-
+            currentY += hallHeight;
             sNo++;
         });
 
-        // --- INDIVIDUAL HALL PAGES ---
-        Array.from(hallsMap.values()).forEach(hall => {
-            doc.addPage();
+        doc.end();
+    } catch (error) {
+        console.error("PDF Export Error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
 
-            // Re-draw Header for individual hall page
-            try {
-                doc.image(logoPath, 40, 30, { width: 60 });
-            } catch (e) { }
+exports.exportSeatingGrid = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const session = await prisma.examSession.findUnique({
+            where: { id: parseInt(id) }
+        });
 
-            doc.fontSize(14).font('Helvetica-Bold').text('M.I.E.T. ENGINEERING COLLEGE', 110, 35, { align: 'center', width: 380 });
-            doc.fontSize(9).font('Helvetica').text('(AUTONOMOUS)', 110, 50, { align: 'center', width: 380 });
-            doc.fontSize(10).font('Helvetica-Bold').text('End Semester Examinations- ' + (session.examName.includes('20') ? session.examName.match(/20\d{2}/)[0] : '2025'), 110, 65, { align: 'center', width: 380 });
+        if (!session) return res.status(404).json({ message: "Session not found" });
 
-            // Date and Session
-            const examDateStr = new Date(session.examDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
-            doc.fontSize(10).text(`DATE- ${examDateStr}      ${session.session}`, 110, 80, { align: 'center', width: 380 });
+        const allocations = await prisma.hallAllocation.findMany({
+            where: { examSessionId: parseInt(id) },
+            include: {
+                student: true,
+                subject: true,
+                hall: { include: { columns: true } }
+            },
+            orderBy: [{ hall: { hallName: 'asc' } }, { columnLabel: 'asc' }, { benchIndex: 'asc' }]
+        });
 
-            // Hall Number Box (Right Aligned)
-            doc.rect(430, 95, 130, 20).stroke();
-            doc.fontSize(10).font('Helvetica-Bold').text(`HALL NO-${hall.name}`, 430, 100, { align: 'center', width: 130 });
+        const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Seating_Grid_${session.examName.replace(/\s+/g, '_')}.pdf`);
+        doc.pipe(res);
 
-            // --- SEATING GRID ---
-            const gridTop = 120;
-            const gridWidth = 520;
-            const colLabels = ['A', 'B', 'C', 'D'];
-            const numCols = 4;
-            const colW = gridWidth / numCols;
-            const rowH = 22; // Height per seat row
+        const halls = Array.from(new Set(allocations.map(a => a.hallId)));
 
-            // Header for Grid (A, B, C, D)
-            doc.rect(40, gridTop, gridWidth, 20).stroke();
+        // A4 Landscape available width with 30px margins = 841.89 - 60 = ~780
+        const availableWidth = 780;
+
+        halls.forEach((hId, index) => {
+            if (index > 0) doc.addPage();
+
+            const hallAllocations = allocations.filter(a => a.hallId === hId);
+            const hall = hallAllocations[0].hall;
+
+            const logoPath = require('path').join(process.cwd(), '..', 'client', 'public', 'miet-logo.png');
+            try { doc.image(logoPath, 40, 30, { width: 70 }); } catch (e) { }
+
+            doc.fontSize(16).font('Helvetica-Bold').text('M.I.E.T. ENGINEERING COLLEGE', 120, 35, { align: 'center', width: availableWidth - 80 });
+            doc.fontSize(10).font('Helvetica').text('(AUTONOMOUS)', 120, 52, { align: 'center', width: availableWidth - 80 });
+            doc.fontSize(9).font('Helvetica').text('(AFFILIATED TO ANNA UNIVERSITY, CHENNAI)', 120, 64, { align: 'center', width: availableWidth - 80 });
+            doc.fontSize(9).font('Helvetica').text('TIRUCHIRAPPALLI', 120, 75, { align: 'center', width: availableWidth - 80 });
+            doc.fontSize(10).font('Helvetica-Bold').text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', 120, 90, { align: 'center', width: availableWidth - 80 });
+
+            doc.rect(40, 30, availableWidth, 80).stroke();
+
+            doc.rect(40, 115, availableWidth, 20).stroke();
+            doc.fontSize(10).font('Helvetica-Bold').text(session.examName.toUpperCase(), 50, 120);
+            doc.fontSize(10).font('Helvetica-Bold').text(`HALL NO - ${hall.hallName}`, availableWidth - 100, 120, { width: 130, align: 'right' });
+
+            const colLabels = hall.columns.map(c => c.label);
+            const maxBenches = Math.max(...hall.columns.map(c => c.benches));
+
+            const startX = 40;
+            let currentX = startX;
+            const blockW = availableWidth / colLabels.length;
+            const seatW = blockW < 100 ? 20 : 25; // Responsive to col count
+            const stuW = (blockW - seatW) / 2;
+
+            const headerY1 = 145;
+            const headerY2 = headerY1 + 15;
+            const headerCellH = 35; // Taller headers
+            const seatCellH = 30; // Taller seat cells
+
             colLabels.forEach((label, i) => {
-                doc.font('Helvetica-Bold').text(label, 40 + (i * colW), gridTop + 5, { width: colW, align: 'center' });
-                if (i > 0) doc.moveTo(40 + (i * colW), gridTop).lineTo(40 + (i * colW), gridTop + 20).stroke();
+                doc.rect(currentX, headerY1, seatW, 15).stroke();
+                if (i === 0) {
+                    doc.fontSize(7).font('Helvetica-Bold').text('Stage', currentX, headerY1 + 4, { width: seatW, align: 'center' });
+                }
+
+                doc.rect(currentX + seatW, headerY1, stuW * 2, 15).stroke();
+                doc.fontSize(9).font('Helvetica-Bold').text(label, currentX + seatW, headerY1 + 3, { width: stuW * 2, align: 'center' });
+
+                const benchAllocations = hallAllocations.filter(a => a.columnLabel === label);
+                const leftStus = benchAllocations.filter(a => a.seatNumber.endsWith('A') || a.seatNumber === a.columnLabel + a.benchIndex);
+                const rightStus = benchAllocations.filter(a => a.seatNumber.endsWith('B'));
+
+                const getHeaderStr = (stus) => {
+                    const unique = [...new Set(stus.map(s => {
+                        let dept = s.department;
+                        if (dept === "Mechanical Engineering") dept = "Mechanical";
+                        else if (dept === "Civil Engineering") dept = "Civil";
+                        else if (dept === "Computer Science and Engineering") dept = "CSE";
+                        else if (dept === "Electronics and Communication Engineering") dept = "ECE";
+                        else if (dept === "Electrical and Electronics Engineering") dept = "EEE";
+                        else if (dept === "Information Technology") dept = "IT";
+                        else if (dept === "Artificial Intelligence and Data Science") dept = "AIDS";
+                        else if (dept === "Biomedical Engineering") dept = "BME";
+
+                        return `${getRomanNumeral(s.year)} ${dept}`;
+                    }))];
+                    return unique.join(' /\n');
+                };
+
+                let leftStr = getHeaderStr(leftStus);
+                let rightStr = getHeaderStr(rightStus);
+
+                if (session.examMode === 'CIA') {
+                    doc.rect(currentX + seatW, headerY2, stuW, headerCellH).stroke();
+                    doc.rect(currentX + seatW + stuW, headerY2, stuW, headerCellH).stroke();
+                    const leftH = doc.fontSize(6).font('Helvetica-Bold').heightOfString(leftStr, { width: stuW - 2 });
+                    const rightH = doc.fontSize(6).font('Helvetica-Bold').heightOfString(rightStr, { width: stuW - 2 });
+                    doc.text(leftStr, currentX + seatW + 1, headerY2 + (headerCellH / 2) - (leftH / 2), { width: stuW - 2, align: 'center', lineGap: 1 });
+                    doc.text(rightStr, currentX + seatW + stuW + 1, headerY2 + (headerCellH / 2) - (rightH / 2), { width: stuW - 2, align: 'center', lineGap: 1 });
+                } else {
+                    doc.rect(currentX + seatW, headerY2, stuW * 2, headerCellH).stroke();
+                    const leftH = doc.fontSize(6).font('Helvetica-Bold').heightOfString(leftStr, { width: stuW * 2 - 2 });
+                    doc.text(leftStr, currentX + seatW + 1, headerY2 + (headerCellH / 2) - (leftH / 2), { width: stuW * 2 - 2, align: 'center', lineGap: 1 });
+                }
+
+                doc.rect(currentX, headerY2, seatW, headerCellH).stroke();
+
+                currentX += blockW;
             });
 
-            // Find max rows for this hall to draw grid
-            const hallAllocations = allocations.filter(a => a.hall.hallName === hall.name);
-            const maxRow = Math.max(...hallAllocations.map(a => a.rowNumber), 7);
+            let currentY = headerY2 + headerCellH;
+            for (let b = 1; b <= maxBenches; b++) {
+                currentX = startX;
+                colLabels.forEach((label) => {
+                    doc.rect(currentX, currentY, seatW, seatCellH).stroke();
+                    doc.fontSize(7).font('Helvetica-Bold').text(`${label}${b}`, currentX, currentY + (seatCellH / 2) - 4, { width: seatW, align: 'center' });
 
-            let currentGridY = gridTop + 20;
-            for (let r = 1; r <= maxRow; r++) {
-                doc.rect(40, currentGridY, gridWidth, rowH).stroke();
+                    const benchStus = hallAllocations.filter(a => a.columnLabel === label && a.benchIndex === b);
+                    const leftStu = benchStus.find(a => a.seatNumber.endsWith('A') || a.seatNumber === label + b);
+                    const rightStu = benchStus.find(a => a.seatNumber.endsWith('B'));
 
-                for (let c = 1; c <= numCols; c++) {
-                    const colX = 40 + (c - 1) * colW;
+                    if (session.examMode === 'CIA') {
+                        doc.rect(currentX + seatW, currentY, stuW, seatCellH).stroke();
+                        doc.rect(currentX + seatW + stuW, currentY, stuW, seatCellH).stroke();
 
-                    if (c > 1) doc.moveTo(colX, currentGridY).lineTo(colX, currentGridY + rowH).stroke();
-
-                    const seatLabel = `${colLabels[c - 1]}${r}`;
-
-                    // Always show the seat label (A1, A2...)
-                    doc.save().font('Helvetica').fontSize(8).fillColor('#333333').text(seatLabel, colX + 3, currentGridY + 7, { width: 25 }).restore();
-
-                    const studentAlloc = hallAllocations.find(a => a.rowNumber === r && a.columnNumber === c);
-                    if (studentAlloc) {
-                        const displayText = studentAlloc.student.registerNumber || studentAlloc.student.rollNo;
-                        doc.font('Helvetica-Bold').fontSize(9).fillColor('#000000').text(displayText, colX + 22, currentGridY + 7, { width: colW - 25, align: 'center' });
+                        if (leftStu) {
+                            const leftText = leftStu.student.registerNumber || leftStu.student.rollNo;
+                            // Adding break in register number after first 8 digits to handle huge strings (e.g. 812423114001 -> 81242311\n4001)
+                            const splitLeft = leftText && leftText.length > 8 ? leftText.slice(0, 8) + "\n" + leftText.slice(8) : leftText;
+                            const textH = doc.fontSize(6).font('Helvetica').heightOfString(splitLeft, { width: stuW - 2 });
+                            doc.text(splitLeft, currentX + seatW + 1, currentY + (seatCellH / 2) - (textH / 2), { width: stuW - 2, align: 'center', lineGap: 1 });
+                        }
+                        if (rightStu) {
+                            const rightText = rightStu.student.registerNumber || rightStu.student.rollNo;
+                            const splitRight = rightText && rightText.length > 8 ? rightText.slice(0, 8) + "\n" + rightText.slice(8) : rightText;
+                            const textH = doc.fontSize(6).font('Helvetica').heightOfString(splitRight, { width: stuW - 2 });
+                            doc.text(splitRight, currentX + seatW + stuW + 1, currentY + (seatCellH / 2) - (textH / 2), { width: stuW - 2, align: 'center', lineGap: 1 });
+                        }
                     } else {
-                        // Shading/Empty box (Moved start point to not cover label)
-                        doc.save().fillColor('#f5f5f5').rect(colX + 22, currentGridY + 1, colW - 23, rowH - 2).fill().restore();
+                        doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
+                        if (leftStu) {
+                            const leftText = leftStu.student.registerNumber || leftStu.student.rollNo;
+                            const splitLeft = leftText && leftText.length > 8 ? leftText.slice(0, 8) + "\n" + leftText.slice(8) : leftText;
+                            const textH = doc.fontSize(6).font('Helvetica').heightOfString(splitLeft, { width: (stuW * 2) - 2 });
+                            doc.text(splitLeft, currentX + seatW + 1, currentY + (seatCellH / 2) - (textH / 2), { width: (stuW * 2) - 2, align: 'center', lineGap: 1 });
+                        }
                     }
-                }
-                currentGridY += rowH;
+
+                    currentX += blockW;
+                });
+                currentY += seatCellH;
             }
 
-            // --- HALL SUMMARY TABLE ---
-            doc.moveDown(1);
-            const summaryY = currentGridY + 15;
-            const summaryW = 280;
-            const sumCol1 = 150;
-            const sumCol2 = 130;
+            const summaryY = currentY + 20;
+            if (summaryY < 550) {
+                const deptStats = {};
+                hallAllocations.forEach(a => {
+                    let dept = a.department;
+                    if (dept === "Mechanical Engineering") dept = "Mechanical";
+                    else if (dept === "Civil Engineering") dept = "Civil";
+                    else if (dept === "Computer Science and Engineering") dept = "CSE";
+                    else if (dept === "Electronics and Communication Engineering") dept = "ECE";
+                    else if (dept === "Electrical and Electronics Engineering") dept = "EEE";
+                    else if (dept === "Information Technology") dept = "IT";
+                    else if (dept === "Artificial Intelligence and Data Science") dept = "AIDS";
+                    else if (dept === "Biomedical Engineering") dept = "BME";
 
-            const deptSummary = {};
-            hallAllocations.forEach(a => {
-                const key = a.department;
-                deptSummary[key] = (deptSummary[key] || 0) + 1;
-            });
+                    const key = `${getRomanNumeral(a.year)} ${dept}`;
+                    deptStats[key] = (deptStats[key] || 0) + 1;
+                });
 
-            doc.font('Helvetica-Bold').fontSize(9);
-            const drawSummaryRow = (y, c1, c2, isBold = false) => {
-                doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica');
-                doc.rect(145, y, summaryW, 18).stroke();
-                doc.text(c1, 150, y + 5, { width: sumCol1 - 10 });
-                doc.moveTo(145 + sumCol1, y).lineTo(145 + sumCol1, y + 18).stroke();
-                doc.text(c2, 145 + sumCol1, y + 5, { width: sumCol2, align: 'center' });
-                return y + 18;
-            };
+                const keys = Object.keys(deptStats);
+                let statX = startX;
+                const statW = 60;
+                const statH = Object.keys(deptStats).some(k => k.length > 10) ? 25 : 15;
 
-            let currentSumY = summaryY;
-            Object.entries(deptSummary).forEach(([dept, count]) => {
-                currentSumY = drawSummaryRow(currentSumY, dept, count.toString());
-            });
-            currentSumY = drawSummaryRow(currentSumY, 'TOTAL', hall.totalStrength.toString(), true);
+                keys.forEach(k => {
+                    doc.rect(statX, summaryY, statW, statH).stroke();
+                    const th = doc.fontSize(6).font('Helvetica-Bold').heightOfString(k, { width: statW - 4 });
+                    doc.text(k, statX + 2, summaryY + (statH / 2) - (th / 2), { width: statW - 4, align: 'center' });
+                    doc.rect(statX, summaryY + statH, statW, 15).stroke();
+                    doc.fontSize(8).font('Helvetica').text(deptStats[k].toString(), statX, summaryY + statH + 4, { width: statW, align: 'center' });
+                    statX += statW;
+                });
 
-            // --- FOOTER / SIGNATURES ---
-            const footerY = 720;
-            doc.font('Helvetica').fontSize(9);
-            doc.text('Name & Signature of', 40, footerY);
-            doc.text('hall superintendent', 40, footerY + 12);
+                doc.rect(statX, summaryY, statW, statH).stroke();
+                doc.fontSize(7).font('Helvetica-Bold').text('TOTAL', statX, summaryY + (statH / 2) - 4, { width: statW, align: 'center' });
+                doc.rect(statX, summaryY + statH, statW, 15).stroke();
+                doc.fontSize(8).font('Helvetica-Bold').text(hallAllocations.length.toString(), statX, summaryY + statH + 4, { width: statW, align: 'center' });
 
-            doc.text('Signature of Chief', 430, footerY, { align: 'right', width: 130 });
-            doc.text('superintendent with', 430, footerY + 12, { align: 'right', width: 130 });
-            doc.text('College seal', 430, footerY + 24, { align: 'right', width: 130 });
+                doc.fontSize(10).font('Helvetica-Bold').text('CONTROLLER OF EXAMINATIONS', startX, summaryY + statH + 40, { width: availableWidth, align: 'right' });
+            }
         });
 
         doc.end();
-
     } catch (error) {
-        console.error("PDF Export Error:", error);
-        if (!res.headersSent) {
-            res.status(500).json({ message: error.message });
-        }
+        console.error("Grid Export Error:", error);
+        res.status(500).json({ message: error.message });
     }
 };
+

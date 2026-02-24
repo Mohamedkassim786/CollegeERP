@@ -554,6 +554,8 @@ const getMyTimetable = async (req, res) => {
 const exportClassAttendanceExcel = async (req, res) => {
     const { subjectId } = req.params;
     const facultyId = parseInt(req.user.id);
+    const { fromDate, toDate } = req.query;
+    console.log(`[EXPORT] subjectId=${subjectId} fromDate=${fromDate} toDate=${toDate}`);
     try {
         const assignment = await prisma.facultyAssignment.findFirst({
             where: { subjectId: parseInt(subjectId), facultyId },
@@ -562,58 +564,86 @@ const exportClassAttendanceExcel = async (req, res) => {
         if (!assignment) return res.status(403).json({ message: 'Not authorized' });
 
         const deptCriteria = await getDeptCriteria(assignment.subject.department);
+
+        // Fetch all attendance for this subject (filter in JS for reliable string date comparison)
         const students = await prisma.student.findMany({
             where: { ...deptCriteria, semester: assignment.subject.semester, section: assignment.section },
             include: { attendance: { where: { subjectId: parseInt(subjectId) } } },
             orderBy: { rollNo: 'asc' }
         });
 
+        // Filter attendance records by date range in JavaScript (safe for String dates)
+        const filterByDate = (records) => {
+            return records.filter(a => {
+                if (fromDate && a.date < fromDate) return false;
+                if (toDate && a.date > toDate) return false;
+                return true;
+            });
+        };
+
+        // Calculate total periods conducted in the date range (distinct date+period slots)
+        const allAttendanceInRange = students.length > 0 ? filterByDate(students[0].attendance) : [];
+        // Collect all distinct date+period slots from ALL students
+        const allSlots = new Set();
+        students.forEach(s => {
+            filterByDate(s.attendance).forEach(a => {
+                allSlots.add(`${a.date}_${a.period}`);
+            });
+        });
+        const totalPeriodsConducted = allSlots.size;
+
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance Report');
-        worksheet.columns = [
-            { header: 'Roll No', key: 'rollNo', width: 15 },
-            { header: 'Reg No', key: 'regNo', width: 15 },
-            { header: 'Student Name', key: 'name', width: 25 },
-            { header: 'Department', key: 'dept', width: 15 },
-            { header: 'Year', key: 'year', width: 8 },
-            { header: 'Semester', key: 'sem', width: 10 },
-            { header: 'Section', key: 'sec', width: 10 },
-            { header: 'Presents', key: 'present', width: 12 },
-            { header: 'Absents', key: 'absent', width: 12 },
-            { header: 'OD', key: 'od', width: 12 },
-            { header: 'Attendance %', key: 'percentage', width: 15 },
-            { header: 'Status', key: 'status', width: 15 }
-        ];
 
+        // Use direct cell assignment — 100% guaranteed row order, no ExcelJS auto-header interference
+        const headers = ['Roll No', 'Reg No', 'Student Name', 'Department', 'Year', 'Semester', 'Section', 'Presents', 'Absents', 'OD', 'Attendance %', 'Status'];
+        const colWidths = [15, 15, 30, 15, 8, 10, 10, 12, 12, 10, 15, 12];
+
+        // Row 1 — Subject
+        worksheet.getCell('A1').value = `Subject: ${assignment.subject.name} (${assignment.subject.code})`;
+        worksheet.getCell('A1').font = { bold: true, size: 12 };
+
+        // Row 2 — Date range
+        worksheet.getCell('A2').value = `Date Range: ${fromDate || 'All'} to ${toDate || 'All'}`;
+
+        // Row 3 — Total periods conducted
+        worksheet.getCell('A3').value = `Total Periods Conducted: ${totalPeriodsConducted}`;
+        worksheet.getCell('A3').font = { bold: true, color: { argb: 'FF003B73' } };
+
+        // Row 4 — blank separator
+        // (leave empty)
+
+        // Row 5 — Column headers
+        headers.forEach((h, i) => {
+            const cell = worksheet.getCell(5, i + 1);
+            cell.value = h;
+            cell.font = { bold: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+        });
+
+        // Rows 6+ — Student data
+        let rowIndex = 6;
         students.forEach(s => {
-            const total = s.attendance.length;
-            const od = s.attendance.filter(a => a.status === 'OD').length;
-            const presentOnly = s.attendance.filter(a => a.status === 'PRESENT').length;
+            const filtered = filterByDate(s.attendance);
+            const total = filtered.length;
+            const od = filtered.filter(a => a.status === 'OD').length;
+            const presentOnly = filtered.filter(a => a.status === 'PRESENT').length;
             const presentTotal = presentOnly + od;
             const absent = total - presentTotal;
             const percentage = total > 0 ? ((presentTotal / total) * 100).toFixed(2) : '0.00';
-
-            worksheet.addRow({
-                rollNo: s.rollNo,
-                regNo: s.registerNumber || '-',
-                name: s.name,
-                dept: s.department,
-                year: s.year,
-                sem: s.semester,
-                sec: s.section,
-                present: presentOnly,
-                absent: absent,
-                od: od,
-                percentage,
-                status: parseFloat(percentage) >= 75 ? 'Eligible' : 'Shortage'
+            const rowData = [s.rollNo, s.registerNumber || '-', s.name, s.department, s.year, s.semester, s.section, presentOnly, absent, od, percentage, parseFloat(percentage) >= 75 ? 'Eligible' : 'Shortage'];
+            rowData.forEach((val, i) => {
+                worksheet.getCell(rowIndex, i + 1).value = val;
             });
+            rowIndex++;
         });
 
-        // Add footer note
-        if (students.length > 0) {
-            worksheet.addRow([]);
-            worksheet.addRow(['Note: OD (On Duty) is treated as Present for all attendance calculations.']);
-        }
+        // Footer
+        worksheet.getCell(rowIndex + 1, 1).value = 'Note: OD (On Duty) is treated as Present for all attendance calculations.';
+        worksheet.getCell(rowIndex + 1, 1).font = { italic: true, color: { argb: 'FF666666' } };
+
+        // Set column widths
+        colWidths.forEach((w, i) => { worksheet.getColumn(i + 1).width = w; });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=Attendance_${subjectId}.xlsx`);
@@ -623,6 +653,7 @@ const exportClassAttendanceExcel = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 module.exports = {
     getAssignedSubjects, getSubjectMarks, updateMarks, getFacultyDashboardStats,

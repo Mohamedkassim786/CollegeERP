@@ -23,14 +23,15 @@ const HallAllocation = () => {
         examName: '',
         examDate: '',
         session: 'FN',
+        examMode: 'CIA',
         subjectIds: []
     });
 
     const [newHall, setNewHall] = useState({
         hallName: '',
         blockName: '',
-        totalRows: '',
-        benchesPerRow: ''
+        numColumns: 1,
+        columns: [{ label: 'A', benches: '' }]
     });
 
     const [selectedSession, setSelectedSession] = useState(null);
@@ -75,13 +76,37 @@ const HallAllocation = () => {
     const handleAddHall = async (e) => {
         e.preventDefault();
         try {
-            await api.post('admin/hall-allocation/halls', newHall);
+            await api.post('admin/hall-allocation/halls', {
+                hallName: newHall.hallName,
+                blockName: newHall.blockName,
+                columns: newHall.columns
+            });
             toast.success('Hall added');
-            setNewHall({ hallName: '', blockName: '', totalRows: '', benchesPerRow: '' });
+            setNewHall({
+                hallName: '',
+                blockName: '',
+                numColumns: 1,
+                columns: [{ label: 'A', benches: '' }]
+            });
             fetchInitialData();
         } catch (error) {
             toast.error('Failed to add hall');
         }
+    };
+
+    const handleColumnNumChange = (num) => {
+        const count = parseInt(num) || 1;
+        const newCols = Array.from({ length: count }, (_, i) => ({
+            label: String.fromCharCode(65 + i),
+            benches: newHall.columns[i]?.benches || ''
+        }));
+        setNewHall({ ...newHall, numColumns: count, columns: newCols });
+    };
+
+    const handleBenchChange = (idx, val) => {
+        const newCols = [...newHall.columns];
+        newCols[idx].benches = val;
+        setNewHall({ ...newHall, columns: newCols });
     };
 
     const handleGenerate = async () => {
@@ -136,12 +161,30 @@ const HallAllocation = () => {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Hall_Allocation_${selectedSession.examName}.pdf`);
+            link.setAttribute('download', `Consolidated_Plan_${selectedSession.examName}.pdf`);
             document.body.appendChild(link);
             link.click();
             link.remove();
         } catch (error) {
-            toast.error('Failed to export PDF');
+            toast.error('Failed to export Consolidated Plan');
+        }
+    };
+
+    const handleExportGridPDF = async () => {
+        if (!selectedSession) return;
+        try {
+            const response = await api.get(`admin/hall-allocation/sessions/${selectedSession.id}/export-grid`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Seating_Grid_${selectedSession.examName}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            toast.error('Failed to export Seating Grid');
         }
     };
 
@@ -233,16 +276,29 @@ const HallAllocation = () => {
                                             onChange={e => setNewSession({ ...newSession, examDate: e.target.value })}
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Session</label>
-                                        <select
-                                            className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-[#003B73] outline-none font-bold transition-all"
-                                            value={newSession.session}
-                                            onChange={e => setNewSession({ ...newSession, session: e.target.value })}
-                                        >
-                                            <option value="FN">Forenoon (FN)</option>
-                                            <option value="AN">Afternoon (AN)</option>
-                                        </select>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Session</label>
+                                            <select
+                                                className="w-full px-4 py-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-[#003B73] outline-none font-bold text-sm transition-all"
+                                                value={newSession.session}
+                                                onChange={e => setNewSession({ ...newSession, session: e.target.value })}
+                                            >
+                                                <option value="FN">FN</option>
+                                                <option value="AN">AN</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Exam Mode</label>
+                                            <select
+                                                className="w-full px-4 py-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-[#003B73] outline-none font-bold text-sm transition-all"
+                                                value={newSession.examMode}
+                                                onChange={e => setNewSession({ ...newSession, examMode: e.target.value })}
+                                            >
+                                                <option value="CIA">CIA (2x)</option>
+                                                <option value="END_SEM">END SEM (1x)</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                                 <button type="submit" className="w-full py-5 bg-[#003B73] text-white rounded-3xl font-black shadow-xl shadow-blue-900/20 hover:bg-[#002850] transition-all flex items-center justify-center gap-3">
@@ -365,19 +421,27 @@ const HallAllocation = () => {
                                         value={newHall.blockName}
                                         onChange={e => setNewHall({ ...newHall, blockName: e.target.value })}
                                     />
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="relative">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block">Number of Columns</label>
                                         <input
-                                            type="number" required placeholder="Rows"
-                                            className="w-full px-5 py-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-emerald-500 outline-none font-bold text-sm text-center"
-                                            value={newHall.totalRows}
-                                            onChange={e => setNewHall({ ...newHall, totalRows: e.target.value })}
+                                            type="number" min="1" max="10" required
+                                            className="w-full px-5 py-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-emerald-500 outline-none font-bold text-sm"
+                                            value={newHall.numColumns}
+                                            onChange={e => handleColumnNumChange(e.target.value)}
                                         />
-                                        <input
-                                            type="number" required placeholder="Benches"
-                                            className="w-full px-5 py-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-emerald-500 outline-none font-bold text-sm text-center"
-                                            value={newHall.benchesPerRow}
-                                            onChange={e => setNewHall({ ...newHall, benchesPerRow: e.target.value })}
-                                        />
+                                    </div>
+                                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {newHall.columns.map((col, idx) => (
+                                            <div key={idx} className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">{col.label}</div>
+                                                <input
+                                                    type="number" placeholder="Benches" required
+                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-xl border-2 border-transparent focus:border-emerald-500 outline-none font-bold text-sm"
+                                                    value={col.benches}
+                                                    onChange={e => handleBenchChange(idx, e.target.value)}
+                                                />
+                                            </div>
+                                        ))}
                                     </div>
                                     <button type="submit" className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
                                         <Plus size={18} /> Register Hall
@@ -398,7 +462,8 @@ const HallAllocation = () => {
                                     <div>
                                         <h3 className="text-2xl font-black text-[#003B73]">Select Halls</h3>
                                         <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] mt-1">
-                                            Selected: {selectedHalls.length} | Cap: {halls.filter(h => selectedHalls.includes(h.id)).reduce((a, b) => a + b.capacity, 0)}
+                                            Selected: {selectedHalls.length} |
+                                            Cap: {halls.filter(h => selectedHalls.includes(h.id)).reduce((a, b) => a + (selectedSession?.examMode === 'CIA' ? b.capacityCIA : b.capacityEND), 0)}
                                         </p>
                                     </div>
                                 </div>
@@ -432,7 +497,9 @@ const HallAllocation = () => {
                                                 </div>
                                                 <div>
                                                     <h4 className="font-black text-[#003B73] text-sm uppercase">{hall.blockName}</h4>
-                                                    <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase">Capacity: {hall.capacity}</p>
+                                                    <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase">
+                                                        Benches: {hall.totalBenches} | Cap: {selectedSession?.examMode === 'CIA' ? hall.capacityCIA : hall.capacityEND}
+                                                    </p>
                                                 </div>
                                             </div>
                                             {isSelected && <CheckCircle2 size={24} className="text-emerald-500" />}
@@ -464,7 +531,13 @@ const HallAllocation = () => {
                                     onClick={handleExportPDF}
                                     className="px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg"
                                 >
-                                    <Download size={20} /> Export PDF Plan
+                                    <Download size={20} /> Consolidated Plan
+                                </button>
+                                <button
+                                    onClick={handleExportGridPDF}
+                                    className="px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg"
+                                >
+                                    <Download size={20} /> Seating Grid
                                 </button>
                                 <button
                                     onClick={() => setCurrentStep(1)}

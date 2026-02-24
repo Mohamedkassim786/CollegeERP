@@ -230,13 +230,14 @@ const AttendanceTab = ({ subjectId, subject }) => {
         setExporting(true);
         try {
             const response = await api.get(`/faculty/class/${subjectId}/attendance/export-excel`, {
-                responseType: 'blob'
+                responseType: 'blob',
+                params: { fromDate, toDate }
             });
 
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Attendance_${subject.code}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            link.setAttribute('download', `Attendance_${subject.code}_${fromDate}_to_${toDate}.xlsx`);
             document.body.appendChild(link);
             link.click();
             link.remove();

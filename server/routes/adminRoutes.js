@@ -13,7 +13,7 @@ const {
 const {
     getSessions, createSession, getHalls, addHall, deleteHall,
     generateAllocations, getSessionAllocations, toggleSessionLock,
-    exportConsolidatedPlan, updateSessionSubjects, deleteSession
+    exportConsolidatedPlan, exportSeatingGrid, updateSessionSubjects, deleteSession
 } = require('../controllers/hallAllocationController');
 const { getAttendanceReport } = require('../controllers/attendanceController');
 const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
@@ -92,5 +92,6 @@ router.post('/hall-allocation/halls', addHall);
 router.delete('/hall-allocation/halls/:id', deleteHall);
 router.post('/hall-allocation/generate', generateAllocations);
 router.get('/hall-allocation/sessions/:id/export', exportConsolidatedPlan);
+router.get('/hall-allocation/sessions/:id/export-grid', exportSeatingGrid);
 
 module.exports = router;
