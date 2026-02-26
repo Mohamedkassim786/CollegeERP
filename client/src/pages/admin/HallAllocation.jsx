@@ -31,7 +31,7 @@ const HallAllocation = () => {
         hallName: '',
         blockName: '',
         numColumns: 1,
-        columns: [{ label: 'A', benches: '' }]
+        columns: [{ label: 'A', benches: '', benchData: [] }]
     });
 
     const [selectedSession, setSelectedSession] = useState(null);
@@ -99,16 +99,38 @@ const HallAllocation = () => {
         if (count !== '' && isNaN(count)) return;
 
         const effectiveCount = count === '' ? 0 : count;
-        const newCols = Array.from({ length: effectiveCount }, (_, i) => ({
-            label: String.fromCharCode(65 + i),
-            benches: newHall.columns[i]?.benches || ''
-        }));
+        const newCols = Array.from({ length: effectiveCount }, (_, i) => {
+            const existingCol = newHall.columns[i];
+            return {
+                label: String.fromCharCode(65 + i),
+                benches: existingCol?.benches || '',
+                benchData: existingCol?.benchData || []
+            };
+        });
         setNewHall({ ...newHall, numColumns: count, columns: newCols });
     };
 
     const handleBenchChange = (idx, val) => {
         const newCols = [...newHall.columns];
+        const numBenches = parseInt(val) || 0;
         newCols[idx].benches = val;
+
+        // Initialize benchData if needed
+        const newBenchData = Array.from({ length: numBenches }, (_, i) => ({
+            benchNumber: i + 1,
+            capacity: newCols[idx].benchData?.[i]?.capacity || 2
+        }));
+        newCols[idx].benchData = newBenchData;
+
+        setNewHall({ ...newHall, columns: newCols });
+    };
+
+    const handleBenchCapacityToggle = (colIdx, benchIdx) => {
+        const newCols = [...newHall.columns];
+        const bench = newCols[colIdx].benchData?.[benchIdx];
+        if (!bench) return;
+        const currentCapacity = bench.capacity;
+        newCols[colIdx].benchData[benchIdx].capacity = currentCapacity === 2 ? 1 : 2;
         setNewHall({ ...newHall, columns: newCols });
     };
 
@@ -433,16 +455,39 @@ const HallAllocation = () => {
                                             onChange={e => handleColumnNumChange(e.target.value)}
                                         />
                                     </div>
-                                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                         {newHall.columns.map((col, idx) => (
-                                            <div key={idx} className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">{col.label}</div>
-                                                <input
-                                                    type="number" placeholder="Benches" required
-                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-xl border-2 border-transparent focus:border-emerald-500 outline-none font-bold text-sm"
-                                                    value={col.benches}
-                                                    onChange={e => handleBenchChange(idx, e.target.value)}
-                                                />
+                                            <div key={idx} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 space-y-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">{col.label}</div>
+                                                    <input
+                                                        type="number" placeholder="Benches" required
+                                                        className="flex-1 px-4 py-2 bg-white rounded-xl border-2 border-transparent focus:border-emerald-500 outline-none font-bold text-sm"
+                                                        value={col.benches}
+                                                        onChange={e => handleBenchChange(idx, e.target.value)}
+                                                    />
+                                                </div>
+
+                                                {/* Individual Benches */}
+                                                {col.benchData?.length > 0 && (
+                                                    <div className="grid grid-cols-2 gap-2 mt-2 pl-4 border-l-2 border-emerald-100">
+                                                        {col.benchData.map((bench, bIdx) => (
+                                                            <div key={bIdx} className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-50">
+                                                                <span className="text-[10px] font-black text-gray-400">{col.label}{bench.benchNumber}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleBenchCapacityToggle(idx, bIdx)}
+                                                                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${bench.capacity === 2
+                                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                                        : 'bg-blue-100 text-blue-700'
+                                                                        }`}
+                                                                >
+                                                                    {bench.capacity} P
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

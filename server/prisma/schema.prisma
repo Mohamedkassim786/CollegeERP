@@ -430,11 +430,22 @@ model Hall {
 }
 
 model HallColumn {
-  id        Int    @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   hallId    Int
   label     String
-  benches   Int
-  hall      Hall   @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  benches   Int       // Number of benches (legacy/cache)
+  hall      Hall      @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  benchData HallBench[]
+}
+
+model HallBench {
+  id           Int        @id @default(autoincrement())
+  columnId     Int
+  benchNumber  Int        // 1, 2, 3...
+  capacity     Int        @default(2) // 1 or 2
+  column       HallColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@unique([columnId, benchNumber])
 }
 
 model HallAllocation {

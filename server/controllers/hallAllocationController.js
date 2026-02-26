@@ -30,45 +30,65 @@ const calculateSeatingCIA = (students, halls) => {
 
     for (const hall of halls) {
         for (const col of hall.columns) {
-            for (let b = 1; b <= col.benches; b++) {
-                // Bench can take up to 2 students
-                for (let pos = 1; pos <= 2; pos++) {
-                    if (studentIdx >= interleaved.length) break;
+            const benchCount = col.benches || 0;
+            const benchData = col.benchData || [];
 
-                    const student = interleaved[studentIdx];
-
-                    // Simple subject check for same bench
-                    if (pos === 2 && allocations.length > 0) {
-                        const prev = allocations[allocations.length - 1];
-                        if (prev.benchIndex === b && prev.columnLabel === col.label && prev.hallId === hall.id) {
-                            if (prev.subjectId === student.currentSubjectId) {
-                                // Try to find a different subject student from further down
-                                let swapIdx = studentIdx + 1;
-                                while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === student.currentSubjectId) {
-                                    swapIdx++;
-                                }
-                                if (swapIdx < interleaved.length) {
-                                    // Swap
-                                    [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
+            if (benchData.length === 0 && benchCount > 0) {
+                // Fallback for old halls: assumes all benches are 2-person
+                for (let b = 1; b <= benchCount; b++) {
+                    for (let pos = 1; pos <= 2; pos++) {
+                        if (studentIdx >= interleaved.length) break;
+                        const student = interleaved[studentIdx];
+                        if (pos === 2 && allocations.length > 0) {
+                            const prev = allocations[allocations.length - 1];
+                            if (prev.benchIndex === b && prev.columnLabel === col.label && prev.hallId === hall.id) {
+                                if (prev.subjectId === student.currentSubjectId) {
+                                    let swapIdx = studentIdx + 1;
+                                    while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === student.currentSubjectId) swapIdx++;
+                                    if (swapIdx < interleaved.length) [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
                                 }
                             }
                         }
+                        const currentStudent = interleaved[studentIdx];
+                        allocations.push({
+                            hallId: hall.id, studentId: currentStudent.id, subjectId: currentStudent.currentSubjectId,
+                            department: currentStudent.department, year: currentStudent.year,
+                            seatNumber: `${col.label}${b}${pos === 1 ? 'A' : 'B'}`,
+                            benchIndex: b, columnLabel: col.label
+                        });
+                        studentIdx++;
                     }
-
-                    const currentStudent = interleaved[studentIdx];
-                    allocations.push({
-                        hallId: hall.id,
-                        studentId: currentStudent.id,
-                        subjectId: currentStudent.currentSubjectId,
-                        department: currentStudent.department,
-                        year: currentStudent.year,
-                        seatNumber: `${col.label}${b}${pos === 1 ? 'A' : 'B'}`,
-                        benchIndex: b,
-                        columnLabel: col.label
-                    });
-                    studentIdx++;
+                    if (studentIdx >= interleaved.length) break;
                 }
-                if (studentIdx >= interleaved.length) break;
+            } else {
+                const sortedBenches = [...benchData].sort((a, b) => a.benchNumber - b.benchNumber);
+                for (const bench of sortedBenches) {
+                    const b = bench.benchNumber;
+                    const capacity = bench.capacity;
+                    for (let pos = 1; pos <= capacity; pos++) {
+                        if (studentIdx >= interleaved.length) break;
+                        const student = interleaved[studentIdx];
+                        if (pos === 2 && allocations.length > 0) {
+                            const prev = allocations[allocations.length - 1];
+                            if (prev.benchIndex === b && prev.columnLabel === col.label && prev.hallId === hall.id) {
+                                if (prev.subjectId === student.currentSubjectId) {
+                                    let swapIdx = studentIdx + 1;
+                                    while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === student.currentSubjectId) swapIdx++;
+                                    if (swapIdx < interleaved.length) [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
+                                }
+                            }
+                        }
+                        const currentStudent = interleaved[studentIdx];
+                        allocations.push({
+                            hallId: hall.id, studentId: currentStudent.id, subjectId: currentStudent.currentSubjectId,
+                            department: currentStudent.department, year: currentStudent.year,
+                            seatNumber: `${col.label}${b}${capacity === 1 ? '' : (pos === 1 ? 'A' : 'B')}`,
+                            benchIndex: b, columnLabel: col.label
+                        });
+                        studentIdx++;
+                    }
+                    if (studentIdx >= interleaved.length) break;
+                }
             }
             if (studentIdx >= interleaved.length) break;
         }
@@ -104,36 +124,51 @@ const calculateSeatingENDSEM = (students, halls) => {
     for (const hall of halls) {
         for (const col of hall.columns) {
             let lastSubjectId = null;
-            for (let b = 1; b <= col.benches; b++) {
-                if (studentIdx >= interleaved.length) break;
+            const benchCount = col.benches || 0;
+            const benchData = col.benchData || [];
 
-                let student = interleaved[studentIdx];
-
-                // Vertical alternation check
-                if (student.currentSubjectId === lastSubjectId) {
-                    let swapIdx = studentIdx + 1;
-                    while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === lastSubjectId) {
-                        swapIdx++;
+            if (benchData.length === 0 && benchCount > 0) {
+                for (let b = 1; b <= benchCount; b++) {
+                    if (studentIdx >= interleaved.length) break;
+                    let student = interleaved[studentIdx];
+                    if (student.currentSubjectId === lastSubjectId) {
+                        let swapIdx = studentIdx + 1;
+                        while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === lastSubjectId) swapIdx++;
+                        if (swapIdx < interleaved.length) {
+                            [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
+                            student = interleaved[studentIdx];
+                        }
                     }
-                    if (swapIdx < interleaved.length) {
-                        [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
-                        student = interleaved[studentIdx];
-                    }
+                    allocations.push({
+                        hallId: hall.id, studentId: student.id, subjectId: student.currentSubjectId,
+                        department: student.department, year: student.year,
+                        seatNumber: `${col.label}${b}`, benchIndex: b, columnLabel: col.label
+                    });
+                    lastSubjectId = student.currentSubjectId;
+                    studentIdx++;
                 }
-
-                allocations.push({
-                    hallId: hall.id,
-                    studentId: student.id,
-                    subjectId: student.currentSubjectId,
-                    department: student.department,
-                    year: student.year,
-                    seatNumber: `${col.label}${b}`,
-                    benchIndex: b,
-                    columnLabel: col.label
-                });
-
-                lastSubjectId = student.currentSubjectId;
-                studentIdx++;
+            } else {
+                const sortedBenches = [...benchData].sort((a, b) => a.benchNumber - b.benchNumber);
+                for (const bench of sortedBenches) {
+                    if (studentIdx >= interleaved.length) break;
+                    const b = bench.benchNumber;
+                    let student = interleaved[studentIdx];
+                    if (student.currentSubjectId === lastSubjectId) {
+                        let swapIdx = studentIdx + 1;
+                        while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === lastSubjectId) swapIdx++;
+                        if (swapIdx < interleaved.length) {
+                            [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
+                            student = interleaved[studentIdx];
+                        }
+                    }
+                    allocations.push({
+                        hallId: hall.id, studentId: student.id, subjectId: student.currentSubjectId,
+                        department: student.department, year: student.year,
+                        seatNumber: `${col.label}${b}`, benchIndex: b, columnLabel: col.label
+                    });
+                    lastSubjectId = student.currentSubjectId;
+                    studentIdx++;
+                }
             }
             if (studentIdx >= interleaved.length) break;
         }
@@ -220,18 +255,27 @@ exports.addHall = async (req, res) => {
             }
         });
 
-        // 2. Create Columns
+        // 2. Create Columns and Benches
         if (columns && columns.length > 0) {
-            const columnPromises = columns.map(col =>
-                prisma.hallColumn.create({
+            for (const col of columns) {
+                const createdCol = await prisma.hallColumn.create({
                     data: {
                         hallId: hall.id,
                         label: col.label,
                         benches: parseInt(col.benches)
                     }
-                })
-            );
-            await prisma.$transaction(columnPromises);
+                });
+
+                if (col.benchData && col.benchData.length > 0) {
+                    await prisma.hallBench.createMany({
+                        data: col.benchData.map(bench => ({
+                            columnId: createdCol.id,
+                            benchNumber: parseInt(bench.benchNumber),
+                            capacity: parseInt(bench.capacity)
+                        }))
+                    });
+                }
+            }
         }
 
         const result = await prisma.hall.findUnique({
@@ -312,7 +356,7 @@ exports.generateAllocations = async (req, res) => {
         // 2. Fetch selected halls with columns
         const halls = await prisma.hall.findMany({
             where: { id: { in: hallIds.map(id => parseInt(id)) }, isActive: true },
-            include: { columns: { orderBy: { label: 'asc' } } }
+            include: { columns: { include: { benchData: true }, orderBy: { label: 'asc' } } }
         });
 
         const totalCapacity = halls.reduce((acc, h) => {
@@ -692,7 +736,7 @@ exports.exportSeatingGrid = async (req, res) => {
             include: {
                 student: true,
                 subject: true,
-                hall: { include: { columns: true } }
+                hall: { include: { columns: { include: { benchData: true } } } }
             },
             orderBy: [{ hall: { hallName: 'asc' } }, { columnLabel: 'asc' }, { benchIndex: 'asc' }]
         });
@@ -788,36 +832,53 @@ exports.exportSeatingGrid = async (req, res) => {
             for (let b = 1; b <= maxBenches; b++) {
                 currentX = startX;
                 colLabels.forEach((label) => {
+                    const col = hall.columns.find(c => c.label === label);
+                    const bench = col?.benchData?.find(bd => bd.benchNumber === b);
+                    const capacity = bench?.capacity || 2;
+
                     doc.rect(currentX, currentY, seatW, seatCellH).stroke();
                     doc.fontSize(9).font('Helvetica-Bold').text(`${label}${b}`, currentX, currentY + (seatCellH / 2) - 5, { width: seatW, align: 'center' });
 
                     const benchStus = hallAllocations.filter(a => a.columnLabel === label && a.benchIndex === b);
-                    const leftStu = benchStus.find(a => a.seatNumber.endsWith('A') || a.seatNumber === label + b);
-                    const rightStu = benchStus.find(a => a.seatNumber.endsWith('B'));
 
                     if (session.examMode === 'CIA') {
-                        doc.rect(currentX + seatW, currentY, stuW, seatCellH).stroke();
-                        doc.rect(currentX + seatW + stuW, currentY, stuW, seatCellH).stroke();
+                        if (capacity === 1) {
+                            doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
+                            const stu = benchStus[0];
+                            if (stu) {
+                                const text = stu.student.registerNumber || stu.student.rollNo;
+                                const textFontSize = text && text.length > 8 ? 10 : 12;
+                                const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(text, { width: stuW * 2, lineBreak: false });
+                                doc.text(text, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW * 2, align: 'center', lineBreak: false });
+                            }
+                        } else {
+                            doc.rect(currentX + seatW, currentY, stuW, seatCellH).stroke();
+                            doc.rect(currentX + seatW + stuW, currentY, stuW, seatCellH).stroke();
 
-                        if (leftStu) {
-                            const leftText = leftStu.student.registerNumber || leftStu.student.rollNo;
-                            const textFontSize = leftText && leftText.length > 8 ? 9 : 10; // Increased font size
-                            const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(leftText, { width: stuW, lineBreak: false });
-                            doc.text(leftText, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW, align: 'center', lineBreak: false });
-                        }
-                        if (rightStu) {
-                            const rightText = rightStu.student.registerNumber || rightStu.student.rollNo;
-                            const textFontSize = rightText && rightText.length > 8 ? 9 : 10; // Increased font size
-                            const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(rightText, { width: stuW, lineBreak: false });
-                            doc.text(rightText, currentX + seatW + stuW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW, align: 'center', lineBreak: false });
+                            const leftStu = benchStus.find(a => a.seatNumber.endsWith('A'));
+                            const rightStu = benchStus.find(a => a.seatNumber.endsWith('B'));
+
+                            if (leftStu) {
+                                const leftText = leftStu.student.registerNumber || leftStu.student.rollNo;
+                                const textFontSize = leftText && leftText.length > 8 ? 9 : 10;
+                                const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(leftText, { width: stuW, lineBreak: false });
+                                doc.text(leftText, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW, align: 'center', lineBreak: false });
+                            }
+                            if (rightStu) {
+                                const rightText = rightStu.student.registerNumber || rightStu.student.rollNo;
+                                const textFontSize = rightText && rightText.length > 8 ? 9 : 10;
+                                const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(rightText, { width: stuW, lineBreak: false });
+                                doc.text(rightText, currentX + seatW + stuW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW, align: 'center', lineBreak: false });
+                            }
                         }
                     } else {
                         doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
-                        if (leftStu) {
-                            const leftText = leftStu.student.registerNumber || leftStu.student.rollNo;
-                            const textFontSize = leftText && leftText.length > 8 ? 13 : 15; // Much larger font size for End Sem
-                            const textH = doc.fontSize(textFontSize).font('Helvetica-Bold').heightOfString(leftText, { width: stuW * 2, lineBreak: false });
-                            doc.text(leftText, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW * 2, align: 'center', lineBreak: false });
+                        const stu = benchStus[0];
+                        if (stu) {
+                            const text = stu.student.registerNumber || stu.student.rollNo;
+                            const textFontSize = text && text.length > 8 ? 13 : 15;
+                            const textH = doc.fontSize(textFontSize).font('Helvetica-Bold').heightOfString(text, { width: stuW * 2, lineBreak: false });
+                            doc.text(text, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW * 2, align: 'center', lineBreak: false });
                         }
                     }
 
