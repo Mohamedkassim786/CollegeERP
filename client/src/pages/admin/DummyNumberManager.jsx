@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Brain, Lock, RefreshCcw, Table, FileText } from 'lucide-react';
+import { Shield, Brain, Lock, RefreshCcw, Table, FileText, Download } from 'lucide-react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const DummyNumberManager = () => {
     const [departments, setDepartments] = useState([]);
     const [subjects, setSubjects] = useState([]);
     const [filters, setFilters] = useState({
-        department: '',
         semester: '',
         subjectId: ''
     });
@@ -28,13 +29,12 @@ const DummyNumberManager = () => {
         fetchDepts();
     }, []);
 
-    const fetchSubjects = async (dept, sem) => {
-        if (!dept || !sem) return;
+    const fetchSubjects = async (sem) => {
+        if (!sem) return;
         try {
-            const res = await api.get(`/admin/subjects?department=${encodeURIComponent(dept)}&semester=${encodeURIComponent(sem)}`);
+            // Fetch subjects by semester only
+            const res = await api.get(`/admin/subjects?semester=${encodeURIComponent(sem)}`);
             setSubjects(res.data);
-
-            // Auto complete course code dynamically here if needed
         } catch (err) {
             toast.error('Failed to fetch subjects');
         }
@@ -43,19 +43,25 @@ const DummyNumberManager = () => {
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
-        if (name === 'department' || name === 'semester') {
-            fetchSubjects(
-                name === 'department' ? value : filters.department,
-                name === 'semester' ? value : filters.semester
-            );
+
+        if (name === 'semester') {
+            fetchSubjects(value);
+            // Reset subject when semester changes
+            setFilters(prev => ({ ...prev, subjectId: '' }));
+            setMappings([]);
         }
     };
 
     const fetchMappings = async () => {
         if (!filters.subjectId) return;
+
+        const selectedSubject = subjects.find(s => s.id === parseInt(filters.subjectId));
+        if (!selectedSubject) return;
+
         setLoading(true);
         try {
-            const res = await api.get(`/dummy/mapping?department=${encodeURIComponent(filters.department)}&semester=${encodeURIComponent(filters.semester)}&subjectId=${encodeURIComponent(filters.subjectId)}`);
+            // Pass the subject's department to the backend 
+            const res = await api.get(`/dummy/mapping?department=${encodeURIComponent(selectedSubject.department || '')}&semester=${encodeURIComponent(filters.semester)}&subjectId=${encodeURIComponent(filters.subjectId)}`);
             setMappings(res.data);
 
             // Pre-fill existing general fields if already generated
@@ -84,10 +90,15 @@ const DummyNumberManager = () => {
         if (!filters.subjectId) return toast.error('Select a subject first');
         if (!startingDummy) return toast.error('Enter a Starting Dummy Number');
 
+        const selectedSubject = subjects.find(s => s.id === parseInt(filters.subjectId));
+        if (!selectedSubject) return toast.error('Invalid Subject');
+
         setLoading(true);
         try {
             await api.post('/dummy/generate', {
-                ...filters,
+                department: selectedSubject.department || '',
+                semester: filters.semester,
+                subjectId: filters.subjectId,
                 startingDummy,
                 boardCode,
                 qpCode,
@@ -104,8 +115,13 @@ const DummyNumberManager = () => {
 
     const lockMapping = async () => {
         if (!window.confirm('Are you sure? Once locked, dummy numbers cannot be regenerated or modified.')) return;
+        const selectedSubject = subjects.find(s => s.id === parseInt(filters.subjectId));
         try {
-            await api.post('/dummy/lock', filters);
+            await api.post('/dummy/lock', {
+                department: selectedSubject.department || '',
+                semester: filters.semester,
+                subjectId: filters.subjectId
+            });
             toast.success('Mapping locked permanently');
             fetchMappings();
         } catch (err) {
@@ -115,8 +131,13 @@ const DummyNumberManager = () => {
 
     const unlockMapping = async () => {
         if (!window.confirm('Are you sure you want to unlock this mapping? External evaluators might be actively entering marks.')) return;
+        const selectedSubject = subjects.find(s => s.id === parseInt(filters.subjectId));
         try {
-            await api.post('/dummy/unlock', filters);
+            await api.post('/dummy/unlock', {
+                department: selectedSubject.department || '',
+                semester: filters.semester,
+                subjectId: filters.subjectId
+            });
             toast.success('Mapping successfully unlocked');
             fetchMappings();
         } catch (err) {
@@ -131,6 +152,72 @@ const DummyNumberManager = () => {
         setAbsentStudentIds(prev =>
             prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]
         );
+    };
+
+    const exportToExcel = async () => {
+        if (!filters.subjectId || mappings.length === 0) {
+            toast.error('No data available to export');
+            return;
+        }
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Dummy Numbers');
+
+        worksheet.columns = [
+            { header: 'SL.NO', key: 'slno', width: 8 },
+            { header: 'Course Code', key: 'courseCode', width: 15 },
+            { header: 'Register Number', key: 'regNo', width: 20 },
+            { header: 'Answer Script No.', key: 'scriptNo', width: 20 },
+            { header: 'Dummy Number', key: 'dummyNo', width: 15 },
+            { header: 'Marks', key: 'marks', width: 10 },
+            { header: 'Board Code', key: 'boardCode', width: 15 },
+            { header: 'QP.Code', key: 'qpCode', width: 15 },
+            { header: 'Status', key: 'status', width: 15 }
+        ];
+
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
+        };
+
+        let slNo = 1;
+
+        presentStudents.forEach((m) => {
+            const scriptInput = document.getElementById(`script-${m.id}`);
+            const scriptNo = scriptInput ? scriptInput.value : '';
+
+            worksheet.addRow({
+                slno: slNo++,
+                courseCode: courseCodeDisplay,
+                regNo: m.originalRegisterNo,
+                scriptNo: scriptNo,
+                dummyNo: m.dummyNumber || '-',
+                marks: m.marks !== null ? m.marks : '-',
+                boardCode: boardCode,
+                qpCode: qpCode,
+                status: 'Present'
+            });
+        });
+
+        absentStudents.forEach((m) => {
+            worksheet.addRow({
+                slno: slNo++,
+                courseCode: courseCodeDisplay,
+                regNo: m.originalRegisterNo,
+                scriptNo: '-',
+                dummyNo: 'N/A',
+                marks: 'AB',
+                boardCode: boardCode,
+                qpCode: qpCode,
+                status: 'Absent'
+            });
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Dummy_Numbers_${courseCodeDisplay}.xlsx`);
     };
 
     // Derived states
@@ -180,19 +267,19 @@ const DummyNumberManager = () => {
                             <Shield size={20} /> UNLOCK MAPPING
                         </button>
                     )}
+                    <button
+                        onClick={exportToExcel}
+                        disabled={loading || mappings.length === 0}
+                        className="bg-green-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black tracking-wider shadow-lg hover:bg-green-700 transition-all disabled:opacity-50"
+                    >
+                        <Download size={20} /> EXPORT
+                    </button>
                 </div>
             </div>
 
             {/* Top Controls Section */}
-            <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100 mb-8 max-w-6xl">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 border-b border-gray-100 pb-8">
-                    <div>
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Department</label>
-                        <select name="department" value={filters.department} onChange={handleFilterChange} disabled={isLocked} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-black text-[#003B73]">
-                            <option value="">Select Department</option>
-                            {departments.map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
-                        </select>
-                    </div>
+            <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100 mb-8 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 border-b border-gray-100 pb-8">
                     <div>
                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Semester</label>
                         <select name="semester" value={filters.semester} onChange={handleFilterChange} disabled={isLocked} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-black text-[#003B73]">
@@ -202,9 +289,9 @@ const DummyNumberManager = () => {
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Course (Subject)</label>
-                        <select name="subjectId" value={filters.subjectId} onChange={handleFilterChange} disabled={isLocked} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-black text-[#003B73]">
+                        <select name="subjectId" value={filters.subjectId} onChange={handleFilterChange} disabled={isLocked || !filters.semester} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-black text-[#003B73]">
                             <option value="">Select Course</option>
-                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+                            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code}) - {s.department || 'General'}</option>)}
                         </select>
                     </div>
                 </div>
@@ -242,7 +329,7 @@ const DummyNumberManager = () => {
             )}
 
             {/* Main Table: Present Students */}
-            <div className="bg-white rounded-t-3xl shadow-sm border border-gray-200 overflow-hidden mb-6 max-w-7xl">
+            <div className="bg-white rounded-t-3xl shadow-sm border border-gray-200 overflow-hidden mb-6 w-full">
                 <div className="bg-[#003B73] p-4 text-white">
                     <h2 className="text-lg font-black tracking-widest uppercase text-center flex items-center justify-center gap-2">
                         <FileText size={20} /> Dummy Number Generation Registry
@@ -270,7 +357,7 @@ const DummyNumberManager = () => {
                                     <td className="p-3 border-r border-gray-100 font-bold text-gray-600">{courseCodeDisplay}</td>
                                     <td className="p-3 border-r border-gray-100 font-mono font-bold text-[#003B73] whitespace-nowrap">{m.originalRegisterNo}</td>
                                     <td className="p-3 border-r border-gray-100">
-                                        <input type="text" disabled={isLocked} className="w-full bg-transparent border-b border-gray-200 focus:border-blue-500 outline-none text-center font-mono text-xs" />
+                                        <input type="text" id={`script-${m.id}`} disabled={isLocked} className="w-full bg-transparent border-b border-gray-200 focus:border-blue-500 outline-none text-center font-mono text-xs" />
                                     </td>
                                     <td className="p-3 border-r border-gray-100 bg-blue-50/20 font-black text-lg text-[#003B73]">{m.dummyNumber || '-'}</td>
                                     <td className="p-3 border-r border-gray-100 font-black text-gray-400">{m.marks !== null ? m.marks : '-'}</td>
@@ -303,7 +390,7 @@ const DummyNumberManager = () => {
 
             {/* Absentees Table */}
             {absentStudents.length > 0 && (
-                <div className="bg-red-50/50 rounded-b-3xl shadow-sm border border-red-100 overflow-hidden max-w-7xl">
+                <div className="bg-red-50/50 rounded-b-3xl shadow-sm border border-red-100 overflow-hidden w-full">
                     <div className="bg-red-100 p-3 text-red-800 border-b border-red-200">
                         <h3 className="text-sm font-black tracking-widest uppercase text-center">ABSENTEES</h3>
                     </div>

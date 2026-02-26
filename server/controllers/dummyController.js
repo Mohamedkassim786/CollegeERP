@@ -1,23 +1,48 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { getDeptCriteria } = require('../utils/deptUtils');
 
 exports.generateMapping = async (req, res) => {
     try {
         const { department, semester, subjectId, startingDummy, boardCode, qpCode, absentStudentIds = [] } = req.body;
 
-        const deptRecord = await prisma.department.findFirst({
-            where: { OR: [{ code: department }, { name: department }] }
-        });
-        const deptCode = deptRecord ? (deptRecord.code || deptRecord.name) : department;
+        const deptCriteria = await getDeptCriteria(department);
 
-        // 1. Fetch students (sorted by registerNumber ASC)
-        const students = await prisma.student.findMany({
-            where: { department: deptCode, semester: parseInt(semester) },
+        // 1. Fetch regular students (sorted by registerNumber ASC)
+        const regularStudents = await prisma.student.findMany({
+            where: { ...deptCriteria, semester: parseInt(semester) },
             orderBy: { registerNumber: 'asc' }
         });
 
+        // 1b. Fetch arrear students who have an active attempt for this subject
+        const activeArrearAttempts = await prisma.arrearAttempt.findMany({
+            where: {
+                arrear: { subjectId: parseInt(subjectId) },
+                resultStatus: null // Represents an active, ungraded attempt
+            },
+            include: {
+                arrear: { include: { student: true } }
+            }
+        });
+
+        const arrearStudents = activeArrearAttempts.map(attempt => attempt.arrear.student);
+
+        // Combine and remove duplicates (just in case)
+        const allStudentsMap = new Map();
+        [...regularStudents, ...arrearStudents].forEach(s => {
+            if (!allStudentsMap.has(s.id)) {
+                allStudentsMap.set(s.id, s);
+            }
+        });
+
+        const students = Array.from(allStudentsMap.values()).sort((a, b) => {
+            const regA = a.registerNumber || a.rollNo || '';
+            const regB = b.registerNumber || b.rollNo || '';
+            return regA.localeCompare(regB);
+        });
+
         if (students.length === 0) {
-            return res.status(404).json({ message: "No students found for given criteria" });
+            return res.status(404).json({ message: "No students or arrear candidates found for given criteria" });
         }
 
         // 2. Fetch subject
@@ -29,7 +54,7 @@ exports.generateMapping = async (req, res) => {
 
         // 3. Check if mapping already exists and is locked
         const existingLocked = await prisma.subjectDummyMapping.findFirst({
-            where: { subjectId: parseInt(subjectId), department, semester: parseInt(semester), mappingLocked: true }
+            where: { subjectId: parseInt(subjectId), semester: parseInt(semester), mappingLocked: true }
         });
 
         if (existingLocked) {
@@ -40,14 +65,19 @@ exports.generateMapping = async (req, res) => {
         let currentDummy = parseInt(startingDummy);
         const results = [];
 
+        // Fetch students who already have mappings for this subject to skip them
+        const existingMappings = await prisma.subjectDummyMapping.findMany({
+            where: { subjectId: parseInt(subjectId) },
+            select: { studentId: true }
+        });
+        const mappedStudentIds = new Set(existingMappings.map(m => m.studentId));
+
         // We will process this inside a transaction to ensure clean state
         await prisma.$transaction(async (tx) => {
-            // Remove previous unlocked mappings for this group to start fresh
-            await tx.subjectDummyMapping.deleteMany({
-                where: { subjectId: parseInt(subjectId), department, semester: parseInt(semester), mappingLocked: false }
-            });
-
             for (const student of students) {
+                // Skip if already has a mapping
+                if (mappedStudentIds.has(student.id)) continue;
+
                 const isAbsent = absentStudentIds.includes(student.id);
                 let dummyNumber = null;
 
@@ -62,10 +92,10 @@ exports.generateMapping = async (req, res) => {
                         originalRegisterNo: student.registerNumber || student.rollNo,
                         subjectId: subject.id,
                         subjectCode: subject.code,
-                        department,
+                        department: student.department || department, // Fallback to passed department if student has none (e.g. general)
                         semester: parseInt(semester),
                         section: student.section || 'A',
-                        academicYear: "2023-24", // Dynamic year can be added later
+                        academicYear: process.env.ACADEMIC_YEAR || "2023-24",
                         dummyNumber,
                         isAbsent,
                         boardCode: boardCode || null,
@@ -85,24 +115,60 @@ exports.generateMapping = async (req, res) => {
 exports.getMapping = async (req, res) => {
     try {
         const { department, semester, subjectId } = req.query;
+        const deptCriteria = await getDeptCriteria(department);
 
-        const deptRecord = await prisma.department.findFirst({
-            where: { OR: [{ code: department }, { name: department }] }
-        });
-        const deptCode = deptRecord ? (deptRecord.code || deptRecord.name) : department;
-
-        // Fetch all students for this group
-        const students = await prisma.student.findMany({
+        // Fetch all regular students for this group
+        const regularStudents = await prisma.student.findMany({
             where: {
-                department: deptCode,
+                ...deptCriteria,
                 semester: parseInt(semester)
             },
             include: {
                 dummyMappings: {
                     where: { subjectId: parseInt(subjectId) }
                 }
+            }
+        });
+
+        // Fetch arrear students for this subject
+        const activeArrearAttempts = await prisma.arrearAttempt.findMany({
+            where: {
+                arrear: { subjectId: parseInt(subjectId) },
+                resultStatus: null
             },
-            orderBy: { registerNumber: 'asc' }
+            include: {
+                arrear: {
+                    include: {
+                        student: {
+                            include: {
+                                dummyMappings: {
+                                    where: { subjectId: parseInt(subjectId) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const arrearStudents = activeArrearAttempts.map(attempt => {
+            const student = attempt.arrear.student;
+            student.isArrear = true; // flag for frontend if needed
+            return student;
+        });
+
+        // Combine and deduplicate
+        const allStudentsMap = new Map();
+        [...regularStudents, ...arrearStudents].forEach(s => {
+            if (!allStudentsMap.has(s.id)) {
+                allStudentsMap.set(s.id, s);
+            }
+        });
+
+        const students = Array.from(allStudentsMap.values()).sort((a, b) => {
+            const regA = a.registerNumber || a.rollNo || '';
+            const regB = b.registerNumber || b.rollNo || '';
+            return regA.localeCompare(regB);
         });
 
         const results = students.map(student => {
@@ -118,7 +184,8 @@ exports.getMapping = async (req, res) => {
                 qpCode: mapping?.qpCode || '',
                 marks: mapping?.marks || null,
                 mappingLocked: mapping?.mappingLocked || false,
-                isTemp: !mapping
+                isTemp: !mapping,
+                isArrear: student.isArrear || false
             };
         });
 
@@ -130,10 +197,9 @@ exports.getMapping = async (req, res) => {
 
 exports.lockMapping = async (req, res) => {
     try {
-        const { department, semester, subjectId } = req.body;
+        const { semester, subjectId } = req.body;
         await prisma.subjectDummyMapping.updateMany({
             where: {
-                department,
                 semester: parseInt(semester),
                 subjectId: parseInt(subjectId)
             },
@@ -147,10 +213,9 @@ exports.lockMapping = async (req, res) => {
 
 exports.unlockMapping = async (req, res) => {
     try {
-        const { department, semester, subjectId } = req.body;
+        const { semester, subjectId } = req.body;
         await prisma.subjectDummyMapping.updateMany({
             where: {
-                department,
                 semester: parseInt(semester),
                 subjectId: parseInt(subjectId)
             },

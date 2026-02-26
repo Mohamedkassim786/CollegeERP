@@ -1,44 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 const ExcelJS = require('exceljs');
+const markService = require('../services/markService');
+const { getDeptCriteria } = require('../utils/deptUtils');
 
 const prisma = new PrismaClient();
-
-// Helper: Get robust department filter (matches Name OR Code)
-const getDeptCriteria = async (deptString) => {
-    if (!deptString) {
-        return {
-            OR: [
-                { department: null },
-                { department: '' },
-                { department: 'First Year (General)' },
-                { department: 'GEN' }
-            ]
-        };
-    }
-
-    const trimmed = deptString.trim();
-    if (trimmed === 'GEN' || trimmed === 'First Year (General)') {
-        return {
-            OR: [
-                { department: 'First Year (General)' },
-                { department: 'GEN' },
-                { department: null },
-                { department: '' }
-            ]
-        };
-    }
-
-    const deptDef = await prisma.department.findFirst({
-        where: { OR: [{ name: trimmed }, { code: trimmed }] }
-    });
-
-    if (deptDef) {
-        const criteria = [deptDef.name, deptDef.code].filter(Boolean).map(s => s.trim());
-        return { department: { in: criteria } };
-    }
-
-    return { department: trimmed };
-};
 
 // Get subjects assigned to the logged-in faculty
 const getAssignedSubjects = async (req, res) => {
@@ -53,7 +18,7 @@ const getAssignedSubjects = async (req, res) => {
 
         const enhancedAssignments = await Promise.all(assignments.map(async (assignment) => {
             // Count students
-            const deptCriteria = await getDeptCriteria(assignment.subject.department);
+            const deptCriteria = await getDeptCriteria(assignment.department || assignment.subject.department);
 
             const studentCount = await prisma.student.count({
                 where: {
@@ -116,7 +81,7 @@ const getClassDetails = async (req, res) => {
 
         if (!assignment) return res.status(403).json({ message: 'Not authorized for this class' });
 
-        const deptCriteria = await getDeptCriteria(assignment.subject.department);
+        const deptCriteria = await getDeptCriteria(assignment.department || assignment.subject.department);
 
         const studentCount = await prisma.student.count({
             where: {
@@ -170,7 +135,7 @@ const getClassStudents = async (req, res) => {
 
         if (!assignment) return res.status(403).json({ message: 'Not authorized' });
 
-        const deptCriteria = await getDeptCriteria(assignment.subject.department);
+        const deptCriteria = await getDeptCriteria(assignment.department || assignment.subject.department);
 
         const students = await prisma.student.findMany({
             where: {
@@ -257,7 +222,7 @@ const getSubjectMarks = async (req, res) => {
             return res.status(403).json({ message: 'You are not assigned to this subject.' });
         }
 
-        const deptCriteria = await getDeptCriteria(subject.department);
+        const deptCriteria = await getDeptCriteria(assignment.department || subject.department);
 
         const students = await prisma.student.findMany({
             where: {
@@ -294,110 +259,40 @@ const updateMarks = async (req, res) => {
             where: { studentId_subjectId: { studentId: parseInt(studentId), subjectId: parseInt(subjectId) } }
         });
 
-        const cia1Fields = ['cia1_test', 'cia1_assignment', 'cia1_attendance'];
-        const cia2Fields = ['cia2_test', 'cia2_assignment', 'cia2_attendance'];
-        const cia3Fields = ['cia3_test', 'cia3_assignment', 'cia3_attendance'];
-
-        const updates = req.body;
-        const keys = Object.keys(updates);
-
-        const touchingCia1 = keys.some(k => cia1Fields.includes(k));
-        const touchingCia2 = keys.some(k => cia2Fields.includes(k));
-        const touchingCia3 = keys.some(k => cia3Fields.includes(k));
-
-        // 🧱 FIX LOCK ENFORCEMENT (CRITICAL)
-        // 1. Check Semester-level lock
-        const student = await prisma.student.findUnique({ where: { id: parseInt(studentId) } });
-        const semControl = await prisma.semesterControl.findFirst({
-            where: {
-                department: student.department || 'GEN',
-                year: student.year,
-                semester: student.semester,
-                section: student.section
-            }
-        });
-
-        if (semControl && semControl.isLocked) {
-            return res.status(403).json({ message: 'Academic integrity rule: Semester is permanently locked by Administrator.' });
-        }
-
-        if (currentMark) {
-            if (touchingCia1 && currentMark.isLocked_cia1) return res.status(403).json({ message: 'CIA 1 marks are locked.' });
-            if (touchingCia2 && currentMark.isLocked_cia2) return res.status(403).json({ message: 'CIA 2 marks are locked.' });
-            if (touchingCia3 && currentMark.isLocked_cia3) return res.status(403).json({ message: 'CIA 3 marks are locked.' });
-            if (currentMark.isLocked && (touchingCia1 || touchingCia2 || touchingCia3)) return res.status(403).json({ message: 'Marks are globally locked.' });
-        }
-
-        const fieldsToUpdate = {};
-        const allowedFields = [...cia1Fields, ...cia2Fields, ...cia3Fields];
+        const updates = {};
+        const allowedFields = ['cia1_test', 'cia1_assignment', 'cia1_attendance', 'cia2_test', 'cia2_assignment', 'cia2_attendance', 'cia3_test', 'cia3_assignment', 'cia3_attendance'];
 
         allowedFields.forEach(field => {
             if (req.body[field] !== undefined) {
                 const valStr = req.body[field];
                 const val = valStr === '' || valStr === null ? null : parseFloat(valStr);
-
-                // Allow -1 for absentees, but cap others at 100
                 if (val !== null && (val < -1 || val > 100)) {
                     throw new Error(`Invalid mark value for ${field}: ${val}. Must be between -1 and 100.`);
                 }
-                fieldsToUpdate[field] = val;
+                updates[field] = val;
             }
         });
 
-        const merged = { ...currentMark, ...fieldsToUpdate };
+        // 🧱 LOCK ENFORCEMENT & CALCULATIONS (via service)
+        const lockError = await markService.checkLockStatus(parseInt(studentId), currentMark, Object.keys(updates));
+        if (lockError) return res.status(403).json({ message: lockError });
 
-        // Helper to check if a CIA is "Absent" (any component is -1)
-        const isAbsent = (test, assign, att) => (test === -1 || assign === -1 || att === -1);
-
-        const calculateCIAlo = (test, assign, att) => {
-            // Treat -1 as 0 for sum but keep track of absence
-            const t = (test === -1 || test === null) ? 0 : test;
-            const as = (assign === -1 || assign === null) ? 0 : assign;
-            const at = (att === -1 || att === null) ? 0 : att;
-            return t + as + at;
+        const { internal, isApproved_cia1, isApproved_cia2, isApproved_cia3 } = markService.calculateInternalMarks(currentMark, updates);
+        const finalUpdates = {
+            ...updates,
+            internal,
+            isApproved_cia1,
+            isApproved_cia2,
+            isApproved_cia3
         };
-
-        const cia1Absent = isAbsent(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance);
-        const cia2Absent = isAbsent(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance);
-        const cia3Absent = isAbsent(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance);
-
-        const cia1Total = calculateCIAlo(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance);
-        const cia2Total = calculateCIAlo(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance);
-        const cia3Total = calculateCIAlo(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance);
-
-        // Filter out absent totals for best-of-two
-        const availableTotals = [];
-        if (!cia1Absent) availableTotals.push(cia1Total);
-        if (!cia2Absent) availableTotals.push(cia2Total);
-        if (!cia3Absent) availableTotals.push(cia3Total);
-
-        availableTotals.sort((a, b) => b - a);
-
-        let internal = 0;
-        if (availableTotals.length >= 2) {
-            internal = (availableTotals[0] + availableTotals[1]) / 2;
-        } else if (availableTotals.length === 1) {
-            internal = availableTotals[0];
-        } else {
-            internal = 0; // All absent or no marks
-        }
-
-        fieldsToUpdate.internal = internal;
-
-        if (touchingCia1) fieldsToUpdate.isApproved_cia1 = false;
-        if (touchingCia2) fieldsToUpdate.isApproved_cia2 = false;
-        if (touchingCia3) fieldsToUpdate.isApproved_cia3 = false;
 
         const marks = await prisma.marks.upsert({
             where: { studentId_subjectId: { studentId: parseInt(studentId), subjectId: parseInt(subjectId) } },
-            update: fieldsToUpdate,
+            update: finalUpdates,
             create: {
                 studentId: parseInt(studentId),
                 subjectId: parseInt(subjectId),
-                isApproved_cia1: false,
-                isApproved_cia2: false,
-                isApproved_cia3: false,
-                ...fieldsToUpdate
+                ...finalUpdates
             }
         });
 
@@ -420,7 +315,7 @@ const getFacultyDashboardStats = async (req, res) => {
         const classPerformance = [];
 
         for (const assignment of assignments) {
-            const deptCriteria = await getDeptCriteria(assignment.subject.department);
+            const deptCriteria = await getDeptCriteria(assignment.department || assignment.subject.department);
 
             const students = await prisma.student.findMany({
                 where: {
@@ -462,7 +357,7 @@ const getFacultyDashboardStats = async (req, res) => {
         let submittedMarksEntries = 0;
 
         for (const assignment of assignments) {
-            const deptCriteriaStats = await getDeptCriteria(assignment.subject.department);
+            const deptCriteriaStats = await getDeptCriteria(assignment.department || assignment.subject.department);
             const studentsCount = await prisma.student.count({
                 where: {
                     ...deptCriteriaStats,
@@ -496,7 +391,6 @@ const getFacultyDashboardStats = async (req, res) => {
             ]
         });
     } catch (error) {
-        console.error('Faculty dashboard stats error:', error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -555,7 +449,6 @@ const exportClassAttendanceExcel = async (req, res) => {
     const { subjectId } = req.params;
     const facultyId = parseInt(req.user.id);
     const { fromDate, toDate } = req.query;
-    console.log(`[EXPORT] subjectId=${subjectId} fromDate=${fromDate} toDate=${toDate}`);
     try {
         const assignment = await prisma.facultyAssignment.findFirst({
             where: { subjectId: parseInt(subjectId), facultyId },
@@ -563,7 +456,7 @@ const exportClassAttendanceExcel = async (req, res) => {
         });
         if (!assignment) return res.status(403).json({ message: 'Not authorized' });
 
-        const deptCriteria = await getDeptCriteria(assignment.subject.department);
+        const deptCriteria = await getDeptCriteria(assignment.department || assignment.subject.department);
 
         // Fetch all attendance for this subject (filter in JS for reliable string date comparison)
         const students = await prisma.student.findMany({

@@ -33,6 +33,7 @@ model User {
   timetables          Timetable[]
   externalMarksSubmitted ExternalMark[] @relation("ExternalEvaluator")
   examSessions        ExamSession[]   @relation("CreatedSessions")
+  facultyAssignments  FacultyAssignment[] @relation("FacultyToAssignment")
 }
 
 model ActivityLog {
@@ -65,6 +66,8 @@ model Student {
   year           Int
   section        String
   semester       Int
+  regulation     String?             @default("2021")
+  batch          String?
   createdAt      DateTime            @default(now())
   arrears        Arrear[]
   marks          Marks[]
@@ -72,6 +75,8 @@ model Student {
   attendance     StudentAttendance[]
   dummyMappings  SubjectDummyMapping[]
   hallAllocations HallAllocation[]
+
+  @@index([department, year, section, semester]) // New: High-speed roster lookups
 }
 
 
@@ -149,11 +154,13 @@ model Material {
 }
 
 model FacultyAssignment {
-  id        Int     @id @default(autoincrement())
-  facultyId Int
-  subjectId Int
-  section   String
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  id         Int     @id @default(autoincrement())
+  facultyId  Int
+  subjectId  Int
+  section    String
+  department String?
+  subject    Subject @relation(fields: [subjectId], references: [id])
+  faculty    User    @relation("FacultyToAssignment", fields: [facultyId], references: [id])
 }
 
 model Marks {
@@ -189,6 +196,7 @@ model Marks {
   @@unique([studentId, subjectId])
   @@index([studentId])
   @@index([subjectId])
+  @@index([isApproved, isLocked]) // New: Optimization for pending marks
 }
 
 model EndSemMarks {

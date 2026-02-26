@@ -41,6 +41,7 @@ const Sidebar = ({ role, activePath }) => {
             children: [
                 { label: 'Marks Approval', path: '/admin/marks-approval', icon: CheckCircle },
                 { label: 'Exams & Results', path: '/admin/exams', icon: Award },
+                { label: 'Arrear Management', path: '/admin/arrears/manage', icon: ClipboardList },
                 { label: 'End Sem Marks', path: '/admin/end-sem-marks', icon: Award },
                 { label: 'Dummy Mapping', path: '/admin/dummy-mapping', icon: Book },
                 { label: 'External Staff', path: '/admin/external', icon: Users },

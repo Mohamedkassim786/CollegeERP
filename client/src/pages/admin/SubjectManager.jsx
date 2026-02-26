@@ -7,7 +7,7 @@ const SubjectManager = () => {
     const navigate = useNavigate();
     const [subjectList, setSubjectList] = useState([]);
     const [facultyList, setFacultyList] = useState([]);
-    const [newSubject, setNewSubject] = useState({ code: '', name: '', department: '', semester: '', type: 'DEPARTMENT' });
+    const [newSubject, setNewSubject] = useState({ code: '', name: '', departments: [], semester: '', type: 'DEPARTMENT' });
     const [departments, setDepartments] = useState([]);
 
     // UI States
@@ -19,8 +19,8 @@ const SubjectManager = () => {
     const [filterDept, setFilterDept] = useState('');
 
     useEffect(() => {
-        if (filterDept && newSubject.type === 'DEPARTMENT') {
-            setNewSubject(prev => ({ ...prev, department: filterDept }));
+        if (filterDept && newSubject.type === 'DEPARTMENT' && filterDept !== 'COMMON') {
+            setNewSubject(prev => ({ ...prev, departments: [filterDept] }));
         }
     }, [filterDept]);
 
@@ -28,6 +28,7 @@ const SubjectManager = () => {
     const [selectedSubjectId, setSelectedSubjectId] = useState(null);
     const [assignFacultyId, setAssignFacultyId] = useState('');
     const [assignSection, setAssignSection] = useState('A');
+    const [assignDept, setAssignDept] = useState('');
 
     useEffect(() => {
         refreshSubjects();
@@ -68,8 +69,18 @@ const SubjectManager = () => {
     const handleCreateSubject = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/admin/subjects', newSubject);
-            setNewSubject({ code: '', name: '', department: '', semester: '', type: 'DEPARTMENT' });
+            const payload = { ...newSubject };
+            if (payload.type === 'DEPARTMENT') {
+                if (payload.departments.length === 0) {
+                    return alert('Please select at least one department');
+                }
+                payload.department = payload.departments.join(',');
+            } else {
+                payload.department = '';
+            }
+
+            await api.post('/admin/subjects', payload);
+            setNewSubject({ code: '', name: '', departments: [], semester: '', type: 'DEPARTMENT' });
             setShowCreateModal(false);
             refreshSubjects();
             alert('Subject Created');
@@ -84,10 +95,12 @@ const SubjectManager = () => {
             await api.post('/admin/assign-faculty', {
                 facultyId: assignFacultyId,
                 subjectId: selectedSubjectId,
-                section: assignSection
+                section: assignSection,
+                department: assignDept
             });
             alert('Faculty Assigned Successfully');
             setSelectedSubjectId(null);
+            setAssignDept('');
             refreshSubjects();
         } catch (err) {
             alert('Error assigning faculty');
@@ -120,9 +133,16 @@ const SubjectManager = () => {
         const search = searchTerm.toLowerCase();
 
         const matchesSearch = name.includes(search) || code.includes(search);
-        const matchesDept = filterDept === 'COMMON'
-            ? s?.type === 'COMMON'
-            : (filterDept ? s?.department === filterDept : true);
+
+        // Handle comma-separated departments
+        let matchesDept = true;
+        if (filterDept === 'COMMON') {
+            matchesDept = s?.type === 'COMMON';
+        } else if (filterDept) {
+            const subjectDepts = s?.department ? s.department.split(',') : [];
+            matchesDept = subjectDepts.includes(filterDept);
+        }
+
         return matchesSearch && matchesDept;
     });
 
@@ -200,9 +220,16 @@ const SubjectManager = () => {
                                                                 Common • Sem {sub.semester}
                                                             </span>
                                                         ) : (
-                                                            <span className="px-3 py-1 bg-blue-50 text-[#003B73] rounded-lg font-black text-[9px] uppercase tracking-widest border border-blue-100">
-                                                                {sub.department} • Sem {sub.semester}
-                                                            </span>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {(sub.department ? sub.department.split(',') : []).map(dept => (
+                                                                    <span key={dept} className="px-3 py-1 bg-blue-50 text-[#003B73] rounded-lg font-black text-[9px] uppercase tracking-widest border border-blue-100">
+                                                                        {dept}
+                                                                    </span>
+                                                                ))}
+                                                                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg font-black text-[9px] uppercase tracking-widest border border-emerald-100">
+                                                                    Sem {sub.semester}
+                                                                </span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -212,16 +239,25 @@ const SubjectManager = () => {
                                             {sub.assignments?.length > 0 ? (
                                                 <div className="flex flex-wrap gap-2">
                                                     {sub.assignments.map((a, i) => (
-                                                        <div key={i} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-sm group/tag hover:border-[#003B73] transition-all">
-                                                            <span className="text-[10px] font-black text-[#003B73] uppercase tracking-tighter">Sec {a.section}</span>
-                                                            <span className="w-1 h-3 bg-gray-200 rounded-full"></span>
-                                                            <span className="text-xs font-bold text-gray-600">{a.facultyName}</span>
-                                                            <button
-                                                                onClick={() => handleRemoveAssignment(a.id)}
-                                                                className="ml-1 text-gray-300 hover:text-red-500 transition-colors"
-                                                            >
-                                                                <X size={14} />
-                                                            </button>
+                                                        <div key={i} className="flex flex-col gap-1 bg-white px-4 py-3 rounded-2xl border border-gray-100 shadow-sm group/tag hover:border-[#003B73] transition-all">
+                                                            <div className="flex items-center gap-2 border-b border-gray-50 pb-2 mb-1">
+                                                                <span className="text-[10px] font-black text-[#003B73] uppercase tracking-tighter">Sec {a.section}</span>
+                                                                {a.department && (
+                                                                    <>
+                                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                                        <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md uppercase">{a.department}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <span className="text-xs font-bold text-gray-600 truncate max-w-[120px]">{a.facultyName}</span>
+                                                                <button
+                                                                    onClick={() => handleRemoveAssignment(a.id)}
+                                                                    className="text-gray-300 hover:text-red-500 transition-colors"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -275,166 +311,214 @@ const SubjectManager = () => {
             </div>
 
             {/* Create Subject Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-                    <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
-                        <div className="flex justify-between items-center mb-10">
-                            <div>
-                                <h3 className="text-3xl font-black text-[#003B73] tracking-tight">New Subject</h3>
-                                <p className="text-gray-500 font-bold text-sm mt-1">Define a new course for the curriculum.</p>
+            {
+                showCreateModal && (
+                    <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+                        <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
+                            <div className="flex justify-between items-center mb-10">
+                                <div>
+                                    <h3 className="text-3xl font-black text-[#003B73] tracking-tight">New Subject</h3>
+                                    <p className="text-gray-500 font-bold text-sm mt-1">Define a new course for the curriculum.</p>
+                                </div>
+                                <button onClick={() => setShowCreateModal(false)} className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all">
+                                    <X size={32} />
+                                </button>
                             </div>
-                            <button onClick={() => setShowCreateModal(false)} className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all">
-                                <X size={32} />
-                            </button>
+
+                            <form onSubmit={handleCreateSubject} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Subject Code</label>
+                                        <input
+                                            className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all font-mono"
+                                            placeholder="e.g. CS101"
+                                            value={newSubject.code}
+                                            onChange={e => setNewSubject({ ...newSubject, code: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Subject Name</label>
+                                        <input
+                                            className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
+                                            placeholder="e.g. Data Structures"
+                                            value={newSubject.name}
+                                            onChange={e => setNewSubject({ ...newSubject, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Classification</label>
+                                    <div className="flex gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewSubject({ ...newSubject, type: 'DEPARTMENT', departments: [] })}
+                                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === 'DEPARTMENT' ? 'bg-[#003B73] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}
+                                        >
+                                            Department Specific
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewSubject({ ...newSubject, type: 'COMMON', departments: [], semester: '1' })}
+                                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === 'COMMON' ? 'bg-purple-600 text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}
+                                        >
+                                            Common (1st Year)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Semester</label>
+                                        <select
+                                            className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-black text-[#003B73] outline-none transition-all appearance-none cursor-pointer"
+                                            value={newSubject.semester}
+                                            onChange={e => setNewSubject({ ...newSubject, semester: e.target.value })}
+                                            required
+                                        >
+                                            <option value="">Select Sem</option>
+                                            {newSubject.type === 'COMMON'
+                                                ? [1, 2].map(s => <option key={s} value={s}>Semester {s}</option>)
+                                                : [3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>Semester {s}</option>)
+                                            }
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                                            {newSubject.type === 'COMMON' ? 'Target Department' : 'Target Departments (Multi-Select)'}
+                                        </label>
+
+                                        {newSubject.type === 'COMMON' ? (
+                                            <div className="w-full px-6 py-5 bg-gray-100 rounded-3xl font-black text-gray-400 cursor-not-allowed">
+                                                All (Common Pool)
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2 p-2 bg-gray-50 border-2 border-transparent focus-within:border-[#003B73] rounded-3xl min-h-[64px] transition-all">
+                                                {(Array.isArray(departments) ? departments : []).map(d => {
+                                                    const deptCode = d.code || d.name;
+                                                    const isSelected = newSubject.departments.includes(deptCode);
+
+                                                    return (
+                                                        <button
+                                                            key={d.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setNewSubject(prev => ({
+                                                                    ...prev,
+                                                                    departments: isSelected
+                                                                        ? prev.departments.filter(code => code !== deptCode)
+                                                                        : [...prev.departments, deptCode]
+                                                                }));
+                                                            }}
+                                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isSelected
+                                                                ? 'bg-[#003B73] text-white shadow-md scale-105'
+                                                                : 'bg-white text-gray-500 border border-gray-200 hover:border-[#003B73]/50'
+                                                                }`}
+                                                        >
+                                                            {deptCode}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 pt-6">
+                                    <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95">
+                                        Discard
+                                    </button>
+                                    <button type="submit" className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95">
+                                        Confirm Creation
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-
-                        <form onSubmit={handleCreateSubject} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Subject Code</label>
-                                    <input
-                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all font-mono"
-                                        placeholder="e.g. CS101"
-                                        value={newSubject.code}
-                                        onChange={e => setNewSubject({ ...newSubject, code: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Subject Name</label>
-                                    <input
-                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
-                                        placeholder="e.g. Data Structures"
-                                        value={newSubject.name}
-                                        onChange={e => setNewSubject({ ...newSubject, name: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Classification</label>
-                                <div className="flex gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewSubject({ ...newSubject, type: 'DEPARTMENT', department: '' })}
-                                        className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === 'DEPARTMENT' ? 'bg-[#003B73] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}
-                                    >
-                                        Department Specific
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewSubject({ ...newSubject, type: 'COMMON', department: '', semester: '1' })}
-                                        className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === 'COMMON' ? 'bg-purple-600 text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100'}`}
-                                    >
-                                        Common (1st Year)
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Semester</label>
-                                    <select
-                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-black text-[#003B73] outline-none transition-all appearance-none cursor-pointer"
-                                        value={newSubject.semester}
-                                        onChange={e => setNewSubject({ ...newSubject, semester: e.target.value })}
-                                        required
-                                    >
-                                        <option value="">Select Sem</option>
-                                        {newSubject.type === 'COMMON'
-                                            ? [1, 2].map(s => <option key={s} value={s}>Semester {s}</option>)
-                                            : [3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>Semester {s}</option>)
-                                        }
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Target Department</label>
-                                    <select
-                                        className={`w-full px-6 py-5 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-black outline-none transition-all appearance-none cursor-pointer ${newSubject.type === 'COMMON' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-50 text-[#003B73]'}`}
-                                        value={newSubject.type === 'COMMON' ? '' : newSubject.department}
-                                        onChange={e => setNewSubject({ ...newSubject, department: e.target.value })}
-                                        required={newSubject.type === 'DEPARTMENT'}
-                                        disabled={newSubject.type === 'COMMON'}
-                                    >
-                                        <option value="">{newSubject.type === 'COMMON' ? 'All (Common Pool)' : 'Select Dept'}</option>
-                                        {(Array.isArray(departments) ? departments : []).map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4 pt-6">
-                                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95">
-                                    Discard
-                                </button>
-                                <button type="submit" className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95">
-                                    Confirm Creation
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Assignment Modal */}
-            {selectedSubjectId && (
-                <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-                    <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
-                        <div className="flex justify-between items-center mb-10">
-                            <div>
-                                <h3 className="text-3xl font-black text-[#003B73] tracking-tight">Assign Faculty</h3>
-                                <p className="text-gray-500 font-bold text-sm mt-1">Allocate teaching workload for {subjectList.find(s => s.id === selectedSubjectId)?.name}</p>
-                            </div>
-                            <button onClick={() => setSelectedSubjectId(null)} className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all">
-                                <X size={32} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleAssignFaculty} className="space-y-8">
-                            <div>
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Select Professor</label>
-                                <select
-                                    className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-black text-[#003B73] outline-none transition-all appearance-none cursor-pointer"
-                                    value={assignFacultyId}
-                                    onChange={e => setAssignFacultyId(e.target.value)}
-                                    required
-                                >
-                                    <option value="">-- Search Faculty Database --</option>
-                                    {(Array.isArray(facultyList) ? facultyList : []).map(f => (
-                                        <option key={f.id} value={f.id}>{f.fullName} ({f.department})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Target Section</label>
-                                <div className="flex flex-wrap gap-3">
-                                    {['A', 'B', 'C', 'D'].map(s => (
-                                        <button
-                                            key={s}
-                                            type="button"
-                                            onClick={() => setAssignSection(s)}
-                                            className={`w-14 h-14 rounded-2xl font-black text-lg transition-all ${assignSection === s ? 'bg-[#003B73] text-white shadow-lg scale-110' : 'bg-white text-gray-400 border border-gray-100 hover:border-[#003B73]/30'}`}
-                                        >
-                                            {s}
-                                        </button>
-                                    ))}
+            {
+                selectedSubjectId && (
+                    <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+                        <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
+                            <div className="flex justify-between items-center mb-10">
+                                <div>
+                                    <h3 className="text-3xl font-black text-[#003B73] tracking-tight">Assign Faculty</h3>
+                                    <p className="text-gray-500 font-bold text-sm mt-1">Allocate teaching workload for {subjectList.find(s => s.id === selectedSubjectId)?.name}</p>
                                 </div>
+                                <button onClick={() => setSelectedSubjectId(null)} className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all">
+                                    <X size={32} />
+                                </button>
                             </div>
 
-                            <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setSelectedSubjectId(null)} className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95">
-                                    Cancel
-                                </button>
-                                <button type="submit" className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95">
-                                    Save Assignment
-                                </button>
-                            </div>
-                        </form>
+                            <form onSubmit={handleAssignFaculty} className="space-y-8">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Select Professor</label>
+                                    <select
+                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-black text-[#003B73] outline-none transition-all appearance-none cursor-pointer"
+                                        value={assignFacultyId}
+                                        onChange={e => setAssignFacultyId(e.target.value)}
+                                        required
+                                    >
+                                        <option value="">-- Search Faculty Database --</option>
+                                        {(Array.isArray(facultyList) ? facultyList : []).map(f => (
+                                            <option key={f.id} value={f.id}>{f.fullName} ({f.department})</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {selectedSubjectId && subjectList.find(s => s.id === selectedSubjectId)?.department?.includes(',') && (
+                                    <div className="p-6 bg-blue-50/50 rounded-[32px] border border-blue-100">
+                                        <label className="block text-xs font-black text-blue-400 uppercase tracking-widest mb-4 px-1">Target Department</label>
+                                        <div className="flex flex-wrap gap-3">
+                                            {subjectList.find(s => s.id === selectedSubjectId).department.split(',').map(d => (
+                                                <button
+                                                    key={d}
+                                                    type="button"
+                                                    onClick={() => setAssignDept(d)}
+                                                    className={`px-6 py-3 rounded-2xl font-black text-xs uppercase transition-all ${assignDept === d ? 'bg-[#003B73] text-white shadow-lg scale-105' : 'bg-white text-gray-400 border border-gray-100 hover:border-[#003B73]/30'}`}
+                                                >
+                                                    {d}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Target Section</label>
+                                    <div className="flex flex-wrap gap-3">
+                                        {['A', 'B', 'C', 'D'].map(s => (
+                                            <button
+                                                key={s}
+                                                type="button"
+                                                onClick={() => setAssignSection(s)}
+                                                className={`w-14 h-14 rounded-2xl font-black text-lg transition-all ${assignSection === s ? 'bg-[#003B73] text-white shadow-lg scale-110' : 'bg-white text-gray-400 border border-gray-100 hover:border-[#003B73]/30'}`}
+                                            >
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 pt-4">
+                                    <button type="button" onClick={() => setSelectedSubjectId(null)} className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95">
+                                        Save Assignment
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

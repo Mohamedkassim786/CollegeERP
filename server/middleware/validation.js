@@ -17,6 +17,8 @@ const validateStudent = [
     body('year').isInt({ min: 1, max: 4 }),
     body('section').notEmpty().isString().isLength({ min: 1, max: 1 }),
     body('semester').isInt({ min: 1, max: 8 }),
+    body('regulation').optional({ nullable: true, checkFalsy: true }).isString().isLength({ min: 4, max: 10 }),
+    body('batch').optional({ nullable: true, checkFalsy: true }).isString().isLength({ min: 4, max: 20 }),
     validate
 ];
 

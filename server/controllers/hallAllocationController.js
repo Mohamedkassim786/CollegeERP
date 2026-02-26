@@ -1,182 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const PDFDocument = require('pdfkit');
-const { getDeptCriteria } = require('../utils/deptUtils');
-
-// CIA Seating: 2 students per bench, different subjects on same bench
-const calculateSeatingCIA = (students, halls) => {
-    // 1. Group students by subject
-    const subjectPools = {};
-    students.forEach(s => {
-        if (!subjectPools[s.currentSubjectId]) subjectPools[s.currentSubjectId] = [];
-        subjectPools[s.currentSubjectId].push(s);
-    });
-
-    const pools = Object.values(subjectPools).sort((a, b) => b.length - a.length);
-
-    // 2. Interleave subjects to ensure diversity
-    const interleaved = [];
-    let total = students.length;
-    while (interleaved.length < total) {
-        for (let i = 0; i < pools.length; i++) {
-            if (pools[i].length > 0) {
-                interleaved.push(pools[i].shift());
-            }
-        }
-    }
-
-    const allocations = [];
-    let studentIdx = 0;
-
-    for (const hall of halls) {
-        for (const col of hall.columns) {
-            const benchCount = col.benches || 0;
-            const benchData = col.benchData || [];
-
-            if (benchData.length === 0 && benchCount > 0) {
-                // Fallback for old halls: assumes all benches are 2-person
-                for (let b = 1; b <= benchCount; b++) {
-                    for (let pos = 1; pos <= 2; pos++) {
-                        if (studentIdx >= interleaved.length) break;
-                        const student = interleaved[studentIdx];
-                        if (pos === 2 && allocations.length > 0) {
-                            const prev = allocations[allocations.length - 1];
-                            if (prev.benchIndex === b && prev.columnLabel === col.label && prev.hallId === hall.id) {
-                                if (prev.subjectId === student.currentSubjectId) {
-                                    let swapIdx = studentIdx + 1;
-                                    while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === student.currentSubjectId) swapIdx++;
-                                    if (swapIdx < interleaved.length) [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
-                                }
-                            }
-                        }
-                        const currentStudent = interleaved[studentIdx];
-                        allocations.push({
-                            hallId: hall.id, studentId: currentStudent.id, subjectId: currentStudent.currentSubjectId,
-                            department: currentStudent.department, year: currentStudent.year,
-                            seatNumber: `${col.label}${b}${pos === 1 ? 'A' : 'B'}`,
-                            benchIndex: b, columnLabel: col.label
-                        });
-                        studentIdx++;
-                    }
-                    if (studentIdx >= interleaved.length) break;
-                }
-            } else {
-                const sortedBenches = [...benchData].sort((a, b) => a.benchNumber - b.benchNumber);
-                for (const bench of sortedBenches) {
-                    const b = bench.benchNumber;
-                    const capacity = bench.capacity;
-                    for (let pos = 1; pos <= capacity; pos++) {
-                        if (studentIdx >= interleaved.length) break;
-                        const student = interleaved[studentIdx];
-                        if (pos === 2 && allocations.length > 0) {
-                            const prev = allocations[allocations.length - 1];
-                            if (prev.benchIndex === b && prev.columnLabel === col.label && prev.hallId === hall.id) {
-                                if (prev.subjectId === student.currentSubjectId) {
-                                    let swapIdx = studentIdx + 1;
-                                    while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === student.currentSubjectId) swapIdx++;
-                                    if (swapIdx < interleaved.length) [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
-                                }
-                            }
-                        }
-                        const currentStudent = interleaved[studentIdx];
-                        allocations.push({
-                            hallId: hall.id, studentId: currentStudent.id, subjectId: currentStudent.currentSubjectId,
-                            department: currentStudent.department, year: currentStudent.year,
-                            seatNumber: `${col.label}${b}${capacity === 1 ? '' : (pos === 1 ? 'A' : 'B')}`,
-                            benchIndex: b, columnLabel: col.label
-                        });
-                        studentIdx++;
-                    }
-                    if (studentIdx >= interleaved.length) break;
-                }
-            }
-            if (studentIdx >= interleaved.length) break;
-        }
-        if (studentIdx >= interleaved.length) break;
-    }
-
-    return { allocations, remaining: interleaved.slice(studentIdx) };
-};
-
-// END_SEM Seating: 1 student per bench, alternate subjects vertically
-const calculateSeatingENDSEM = (students, halls) => {
-    const subjectPools = {};
-    students.forEach(s => {
-        if (!subjectPools[s.currentSubjectId]) subjectPools[s.currentSubjectId] = [];
-        subjectPools[s.currentSubjectId].push(s);
-    });
-
-    const pools = Object.values(subjectPools).sort((a, b) => b.length - a.length);
-
-    const interleaved = [];
-    let total = students.length;
-    while (interleaved.length < total) {
-        for (let i = 0; i < pools.length; i++) {
-            if (pools[i].length > 0) {
-                interleaved.push(pools[i].shift());
-            }
-        }
-    }
-
-    const allocations = [];
-    let studentIdx = 0;
-
-    for (const hall of halls) {
-        for (const col of hall.columns) {
-            let lastSubjectId = null;
-            const benchCount = col.benches || 0;
-            const benchData = col.benchData || [];
-
-            if (benchData.length === 0 && benchCount > 0) {
-                for (let b = 1; b <= benchCount; b++) {
-                    if (studentIdx >= interleaved.length) break;
-                    let student = interleaved[studentIdx];
-                    if (student.currentSubjectId === lastSubjectId) {
-                        let swapIdx = studentIdx + 1;
-                        while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === lastSubjectId) swapIdx++;
-                        if (swapIdx < interleaved.length) {
-                            [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
-                            student = interleaved[studentIdx];
-                        }
-                    }
-                    allocations.push({
-                        hallId: hall.id, studentId: student.id, subjectId: student.currentSubjectId,
-                        department: student.department, year: student.year,
-                        seatNumber: `${col.label}${b}`, benchIndex: b, columnLabel: col.label
-                    });
-                    lastSubjectId = student.currentSubjectId;
-                    studentIdx++;
-                }
-            } else {
-                const sortedBenches = [...benchData].sort((a, b) => a.benchNumber - b.benchNumber);
-                for (const bench of sortedBenches) {
-                    if (studentIdx >= interleaved.length) break;
-                    const b = bench.benchNumber;
-                    let student = interleaved[studentIdx];
-                    if (student.currentSubjectId === lastSubjectId) {
-                        let swapIdx = studentIdx + 1;
-                        while (swapIdx < interleaved.length && interleaved[swapIdx].currentSubjectId === lastSubjectId) swapIdx++;
-                        if (swapIdx < interleaved.length) {
-                            [interleaved[studentIdx], interleaved[swapIdx]] = [interleaved[swapIdx], interleaved[studentIdx]];
-                            student = interleaved[studentIdx];
-                        }
-                    }
-                    allocations.push({
-                        hallId: hall.id, studentId: student.id, subjectId: student.currentSubjectId,
-                        department: student.department, year: student.year,
-                        seatNumber: `${col.label}${b}`, benchIndex: b, columnLabel: col.label
-                    });
-                    lastSubjectId = student.currentSubjectId;
-                    studentIdx++;
-                }
-            }
-            if (studentIdx >= interleaved.length) break;
-        }
-        if (studentIdx >= interleaved.length) break;
-    }
-
-    return { allocations, remaining: interleaved.slice(studentIdx) };
-};
+const { calculateSeatingCIA, calculateSeatingENDSEM } = require('../services/seatingService');
 
 exports.getSessions = async (req, res) => {
     try {
@@ -285,7 +110,6 @@ exports.addHall = async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        console.error("Add Hall Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -301,7 +125,6 @@ exports.deleteHall = async (req, res) => {
 };
 
 exports.generateAllocations = async (req, res) => {
-    console.log("[API] Generate Allocations called - MODE UPGRADE");
     try {
         const { sessionId, hallIds } = req.body;
 
@@ -323,17 +146,38 @@ exports.generateAllocations = async (req, res) => {
         for (const sub of subjects) {
             const deptCriteria = await getDeptCriteria(sub.department);
 
-            console.log(`[DEBUG] Fetching students for ${sub.code} | Sem: ${sub.semester} | Dept Criteria:`, deptCriteria);
-
-            const studentList = await prisma.student.findMany({
+            // 1a. Fetch Regular Students
+            const regularStudents = await prisma.student.findMany({
                 where: {
                     ...deptCriteria,
                     semester: sub.semester
                 },
                 orderBy: { rollNo: 'asc' }
             });
-            studentList.forEach(s => s.currentSubjectId = sub.id);
-            allEligibleStudents = [...allEligibleStudents, ...studentList];
+            regularStudents.forEach(s => s.currentSubjectId = sub.id);
+            allEligibleStudents = [...allEligibleStudents, ...regularStudents];
+
+            // 1b. Fetch Arrear Students IF mode is END_SEM
+            if (session.examMode === 'END_SEM') {
+                const arrearAttempts = await prisma.arrearAttempt.findMany({
+                    where: {
+                        arrear: { subjectId: sub.id },
+                        resultStatus: null // Active attempt
+                    },
+                    include: {
+                        arrear: { include: { student: true } }
+                    }
+                });
+
+                const arrearStudents = arrearAttempts.map(attempt => {
+                    const s = attempt.arrear.student;
+                    s.currentSubjectId = sub.id;
+                    s.isArrear = true;
+                    return s;
+                });
+
+                allEligibleStudents = [...allEligibleStudents, ...arrearStudents];
+            }
         }
 
         const uniqueStudents = [];
@@ -344,8 +188,6 @@ exports.generateAllocations = async (req, res) => {
                 seenIds.add(s.id);
             }
         }
-
-        console.log(`[DEBUG] Total unique students found: ${uniqueStudents.length}`);
 
         if (uniqueStudents.length === 0) {
             return res.status(400).json({
@@ -404,7 +246,6 @@ exports.generateAllocations = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Allocation Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -454,7 +295,6 @@ exports.deleteSession = async (req, res) => {
 
         res.json({ message: "Exam session and its allocations deleted successfully" });
     } catch (error) {
-        console.error("Delete Session Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -496,7 +336,6 @@ exports.updateSessionSubjects = async (req, res) => {
 
         res.json(updatedSession);
     } catch (error) {
-        console.error("Update Session Subjects Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -713,7 +552,6 @@ exports.exportConsolidatedPlan = async (req, res) => {
 
         doc.end();
     } catch (error) {
-        console.error("PDF Export Error:", error);
         res.status(500).json({ message: error.message });
     }
 };

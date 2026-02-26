@@ -14,6 +14,8 @@ exports.generateGradeSheet = (res, data) => {
     doc.text(`Register Number: ${data.registerNumber}`);
     doc.text(`Department: ${data.department}`);
     doc.text(`Semester: ${data.semester}`);
+    doc.text(`Batch: ${data.batch || 'N/A'}`);
+    doc.text(`Regulation: ${data.regulation || '2021'}`);
     doc.moveDown();
 
     // Subject Table Header

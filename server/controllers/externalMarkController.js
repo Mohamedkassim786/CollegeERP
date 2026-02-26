@@ -79,7 +79,6 @@ exports.submitMarks = async (req, res) => {
                 if (isNaN(raw100)) continue; // Skip invalid entries
 
                 if (raw100 < 0 || raw100 > 100) {
-                    console.warn(`Invalid external mark: ${raw100} for dummy ${dummyNumber}`);
                     continue;
                 }
 
@@ -131,7 +130,6 @@ exports.submitMarks = async (req, res) => {
 
         res.json({ message: "Marks submitted successfully", count: submissions.length });
     } catch (error) {
-        console.error("Submit Marks Error:", error);
         res.status(500).json({ message: error.message });
     }
 };

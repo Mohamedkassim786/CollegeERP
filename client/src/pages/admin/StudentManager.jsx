@@ -4,6 +4,7 @@ import { Users, ChevronRight, GraduationCap, Plus, X, ArrowLeft, Trash2, Edit2, 
 import ExcelJS from 'exceljs';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { handleApiError } from '../../utils/errorHandler';
 
 const StudentManager = () => {
     const [selectedDept, setSelectedDept] = useState(null);
@@ -32,14 +33,16 @@ const StudentManager = () => {
         department: '',
         year: '',
         section: '',
-        semester: ''
+        semester: '',
+        regulation: '2021',
+        batch: ''
     });
 
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [bulkFile, setBulkFile] = useState(null);
     const [bulkUploading, setBulkUploading] = useState(false);
     const [bulkResult, setBulkResult] = useState(null);
-    const [bulkConfig, setBulkConfig] = useState({ year: 1, section: 'A', semester: 1, department: '' });
+    const [bulkConfig, setBulkConfig] = useState({ year: 1, section: 'A', semester: 1, department: '', regulation: '2021', batch: '' });
 
     useEffect(() => {
         fetchDepartments();
@@ -128,7 +131,7 @@ const StudentManager = () => {
             setEditingStudent(null);
             fetchStudents(selectedSection);
         } catch (err) {
-            alert('Error updating student: ' + (err.response?.data?.message || err.message));
+            handleApiError(err, 'Error updating student');
         }
     }
 
@@ -145,7 +148,9 @@ const StudentManager = () => {
                 department: '',
                 year: '',
                 section: '',
-                semester: ''
+                semester: '',
+                regulation: '2021',
+                batch: ''
             });
             if (
                 selectedDept === newStudent.department &&
@@ -155,7 +160,7 @@ const StudentManager = () => {
                 fetchStudents(selectedSection);
             }
         } catch (err) {
-            alert('Error adding student: ' + (err.response?.data?.message || err.message));
+            handleApiError(err, 'Error adding student');
         }
     }
 
@@ -177,7 +182,9 @@ const StudentManager = () => {
             { header: 'S.No', key: 'sno', width: 8 },
             { header: 'Student Name', key: 'name', width: 25 },
             { header: 'Roll Number', key: 'rollNo', width: 15 },
-            { header: 'Registration Number', key: 'registerNumber', width: 20 }
+            { header: 'Registration Number', key: 'registerNumber', width: 20 },
+            { header: 'Regulation', key: 'regulation', width: 15 },
+            { header: 'Batch', key: 'batch', width: 15 }
         ];
 
         // Sample Row
@@ -185,7 +192,9 @@ const StudentManager = () => {
             sno: 1,
             name: 'Sample Student 1',
             rollNo: 'E21CS001',
-            registerNumber: '812423103001'
+            registerNumber: '812423103001',
+            regulation: '2021',
+            batch: '2021-2025'
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -234,6 +243,8 @@ const StudentManager = () => {
                 const colB = (row.getCell(2).text || "").trim();
                 const colC = (row.getCell(3).text || "").trim();
                 const colD = (row.getCell(4).text || "").trim();
+                const colE = (row.getCell(5).text || "").trim();
+                const colF = (row.getCell(6).text || "").trim();
 
                 console.log(`[BulkDebug] Row ${rowNumber} RAW:`, JSON.stringify(values));
                 console.log(`[BulkDebug] Parsed: A="${colA}", B="${colB}", C="${colC}"`);
@@ -271,7 +282,9 @@ const StudentManager = () => {
                         department: currentDept || bulkConfig.department || selectedDept,
                         year: parseInt(bulkConfig.year),
                         section: bulkConfig.section,
-                        semester: parseInt(bulkConfig.semester)
+                        semester: parseInt(bulkConfig.semester),
+                        regulation: colE || bulkConfig.regulation || '2021',
+                        batch: colF || bulkConfig.batch || ''
                     });
                 }
             });
@@ -292,8 +305,8 @@ const StudentManager = () => {
     };
 
     return (
-        <div className="flex flex-col animate-fadeIn">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+        <div className="flex flex-col">
+            <div className="mb-8 p-4 bg-white rounded-3xl shadow-sm border border-gray-100 flex justify-between items-center">
                 <div>
                     <h1 className="text-4xl font-black text-[#003B73] tracking-tight">Student Management</h1>
                     <p className="text-gray-500 font-medium mt-1">Navigate and manage student records across all departments.</p>
@@ -462,6 +475,7 @@ const StudentManager = () => {
                                             <th className="px-8 py-6 text-left">Student Profile</th>
                                             <th className="px-8 py-6">Roll Number</th>
                                             <th className="px-8 py-6">Register Number</th>
+                                            <th className="px-8 py-6">Batch</th>
                                             <th className="px-8 py-6">Current Sem</th>
                                             <th className="px-8 py-6 text-right">Settings</th>
                                         </tr>
@@ -482,6 +496,9 @@ const StudentManager = () => {
                                                 </td>
                                                 <td className="px-8 py-6 font-mono font-bold text-gray-400 text-sm group-hover:text-gray-600">
                                                     {s.registerNumber || '-'}
+                                                </td>
+                                                <td className="px-8 py-6 font-bold text-emerald-600 text-sm">
+                                                    {s.batch || '-'}
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <span className="px-5 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs border border-indigo-100 shadow-sm">
@@ -631,6 +648,30 @@ const StudentManager = () => {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Regulation</label>
+                                    <select
+                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-black text-[#003B73] outline-none transition-all appearance-none cursor-pointer"
+                                        value={newStudent.regulation}
+                                        onChange={e => setNewStudent({ ...newStudent, regulation: e.target.value })}
+                                        required
+                                    >
+                                        <option value="2021">2021 Regulation</option>
+                                        <option value="2023">2023 Regulation</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Batch (e.g. 2021-25)</label>
+                                    <input
+                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
+                                        placeholder="2021-2025"
+                                        value={newStudent.batch}
+                                        onChange={e => setNewStudent({ ...newStudent, batch: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
                             <div className="flex gap-4 pt-6">
                                 <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95">
                                     Cancel
@@ -753,6 +794,30 @@ const StudentManager = () => {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Regulation</label>
+                                    <select
+                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-black text-[#003B73] outline-none transition-all appearance-none cursor-pointer"
+                                        value={editingStudent.regulation || '2021'}
+                                        onChange={e => setEditingStudent({ ...editingStudent, regulation: e.target.value })}
+                                        required
+                                    >
+                                        <option value="2021">2021 Regulation</option>
+                                        <option value="2023">2023 Regulation</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Batch</label>
+                                    <input
+                                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
+                                        value={editingStudent.batch || ''}
+                                        onChange={e => setEditingStudent({ ...editingStudent, batch: e.target.value })}
+                                        placeholder="e.g. 2021-2025"
+                                    />
+                                </div>
+                            </div>
+
                             <div className="flex gap-4 pt-6">
                                 <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95">
                                     Cancel
@@ -762,170 +827,192 @@ const StudentManager = () => {
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
+                    </div >
+                </div >
             )}
             {/* Bulk Upload Modal */}
-            {showBulkModal && (
-                <div className="fixed inset-0 bg-emerald-900/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-                    <div className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl border border-gray-100 overflow-hidden relative">
-                        {/* Status bar */}
-                        {bulkUploading && <div className="absolute top-0 left-0 h-1.5 bg-emerald-500 animate-pulse w-full"></div>}
+            {
+                showBulkModal && (
+                    <div className="fixed inset-0 bg-emerald-900/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+                        <div className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl border border-gray-100 overflow-hidden relative">
+                            {/* Status bar */}
+                            {bulkUploading && <div className="absolute top-0 left-0 h-1.5 bg-emerald-500 animate-pulse w-full"></div>}
 
-                        <div className="flex justify-between items-center mb-8">
-                            <div>
-                                <h3 className="text-3xl font-black text-emerald-900 tracking-tight">Bulk Student Upload</h3>
-                                <p className="text-gray-500 font-bold text-sm mt-1">Import multiple student records via Excel.</p>
-                            </div>
-                            <button onClick={() => { setShowBulkModal(false); setBulkResult(null); }} className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all">
-                                <X size={32} />
-                            </button>
-                        </div>
-
-                        <div className="space-y-8">
-                            {/* Template Download */}
-                            <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
-                                        <FileSpreadsheet size={24} />
-                                    </div>
-                                    <div>
-                                        <p className="font-black text-blue-900 text-sm">Need a template?</p>
-                                        <p className="text-xs text-blue-600 font-bold">Download our pre-formatted Excel file.</p>
-                                    </div>
+                            <div className="flex justify-between items-center mb-8">
+                                <div>
+                                    <h3 className="text-3xl font-black text-emerald-900 tracking-tight">Bulk Student Upload</h3>
+                                    <p className="text-gray-500 font-bold text-sm mt-1">Import multiple student records via Excel.</p>
                                 </div>
-                                <button
-                                    onClick={downloadTemplate}
-                                    className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                                >
-                                    Download Template
+                                <button onClick={() => { setShowBulkModal(false); setBulkResult(null); }} className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all">
+                                    <X size={32} />
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                                <div className="col-span-2">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Department</label>
-                                    <select
-                                        value={bulkConfig.department}
-                                        onChange={e => setBulkConfig({ ...bulkConfig, department: e.target.value })}
-                                        className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
+                            <div className="space-y-8">
+                                {/* Template Download */}
+                                <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                                            <FileSpreadsheet size={24} />
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-blue-900 text-sm">Need a template?</p>
+                                            <p className="text-xs text-blue-600 font-bold">Download our pre-formatted Excel file.</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={downloadTemplate}
+                                        className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
                                     >
-                                        <option value="">Auto-Detect</option>
-                                        {departments.map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
-                                    </select>
+                                        Download Template
+                                    </button>
                                 </div>
-                                <div className="col-span-2 md:col-span-1">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Year</label>
-                                    <select
-                                        value={bulkConfig.year}
-                                        onChange={e => setBulkConfig({ ...bulkConfig, year: e.target.value, semester: (e.target.value * 2 - 1) })}
-                                        className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
-                                    >
-                                        {[1, 2, 3, 4].map(y => <option key={y} value={y}>Year {y}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-span-2 md:col-span-1">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Section</label>
-                                    <select
-                                        value={bulkConfig.section}
-                                        onChange={e => setBulkConfig({ ...bulkConfig, section: e.target.value })}
-                                        className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
-                                    >
-                                        {['A', 'B', 'C'].map(s => <option key={s} value={s}>Section {s}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-span-2 md:col-span-1">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Semester</label>
-                                    <select
-                                        value={bulkConfig.semester}
-                                        onChange={e => setBulkConfig({ ...bulkConfig, semester: e.target.value })}
-                                        className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
-                                    >
-                                        {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>Sem {s}</option>)}
-                                    </select>
-                                </div>
-                            </div>
 
-                            {!bulkResult ? (
-                                <form onSubmit={handleBulkUpload} className="space-y-6">
-                                    <div className="group relative">
-                                        <input
-                                            type="file"
-                                            accept=".xlsx, .xls"
-                                            onChange={e => setBulkFile(e.target.files[0])}
-                                            className="hidden"
-                                            id="bulk-file-input"
-                                        />
-                                        <label
-                                            htmlFor="bulk-file-input"
-                                            className={`flex flex-col items-center justify-center w-full py-16 border-4 border-dashed rounded-[40px] cursor-pointer transition-all ${bulkFile ? 'border-emerald-200 bg-emerald-50' : 'border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30'}`}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                                    <div className="col-span-2">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Department</label>
+                                        <select
+                                            value={bulkConfig.department}
+                                            onChange={e => setBulkConfig({ ...bulkConfig, department: e.target.value })}
+                                            className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
                                         >
-                                            <Upload size={48} className={`mb-4 ${bulkFile ? 'text-emerald-500' : 'text-gray-300 group-hover:text-blue-400'}`} />
-                                            <p className={`font-black uppercase tracking-[0.2em] text-xs ${bulkFile ? 'text-emerald-600' : 'text-gray-400 group-hover:text-blue-900/40'}`}>
-                                                {bulkFile ? bulkFile.name : 'Select or Drop Excel File'}
-                                            </p>
-                                            {bulkFile && <p className="text-[10px] font-bold text-emerald-400 mt-2">{(bulkFile.size / 1024).toFixed(1)} KB ready for processing</p>}
-                                        </label>
+                                            <option value="">Auto-Detect</option>
+                                            {departments.map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
+                                        </select>
                                     </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={!bulkFile || bulkUploading}
-                                        className={`w-full py-6 rounded-[32px] font-black text-lg transition-all flex items-center justify-center gap-3 ${!bulkFile || bulkUploading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xl shadow-emerald-200 active:scale-[0.98]'}`}
-                                    >
-                                        {bulkUploading ? (
-                                            <>
-                                                <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                Processing Records...
-                                            </>
-                                        ) : (
-                                            <>Proceed with Import</>
-                                        )}
-                                    </button>
-                                </form>
-                            ) : (
-                                <div className="space-y-6 animate-fadeIn">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-8 bg-emerald-50 rounded-[32px] border border-emerald-100 text-center">
-                                            <p className="text-4xl font-black text-emerald-600 mb-2">{bulkResult.created}</p>
-                                            <p className="text-xs font-black text-emerald-900/40 uppercase tracking-widest">New Students</p>
-                                        </div>
-                                        <div className="p-8 bg-blue-50 rounded-[32px] border border-blue-100 text-center">
-                                            <p className="text-4xl font-black text-blue-600 mb-2">{bulkResult.updated}</p>
-                                            <p className="text-xs font-black text-blue-900/40 uppercase tracking-widest">Profiles Updated</p>
-                                        </div>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Year</label>
+                                        <select
+                                            value={bulkConfig.year}
+                                            onChange={e => setBulkConfig({ ...bulkConfig, year: e.target.value, semester: (e.target.value * 2 - 1) })}
+                                            className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
+                                        >
+                                            {[1, 2, 3, 4].map(y => <option key={y} value={y}>Year {y}</option>)}
+                                        </select>
                                     </div>
-
-                                    {bulkResult.errors && bulkResult.errors.length > 0 && (
-                                        <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
-                                            <div className="flex items-center gap-3 mb-4 text-amber-600">
-                                                <AlertCircle size={20} />
-                                                <p className="font-black text-sm uppercase tracking-widest">Issues Found ({bulkResult.errors.length})</p>
-                                            </div>
-                                            <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                                {bulkResult.errors.map((err, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-xs p-3 bg-white rounded-xl border border-amber-100/50">
-                                                        <span className="font-mono font-bold text-gray-400">{err.rollNo}</span>
-                                                        <span className="font-bold text-amber-700">{err.error}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <button
-                                        onClick={() => { setShowBulkModal(false); setBulkResult(null); setBulkFile(null); }}
-                                        className="w-full py-6 bg-emerald-900 text-white rounded-[32px] font-black text-lg hover:bg-[#003B73] transition-all flex items-center justify-center gap-3 shadow-xl"
-                                    >
-                                        <CheckCircle2 size={24} /> Done
-                                    </button>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Section</label>
+                                        <select
+                                            value={bulkConfig.section}
+                                            onChange={e => setBulkConfig({ ...bulkConfig, section: e.target.value })}
+                                            className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
+                                        >
+                                            {['A', 'B', 'C'].map(s => <option key={s} value={s}>Section {s}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Semester</label>
+                                        <select
+                                            value={bulkConfig.semester}
+                                            onChange={e => setBulkConfig({ ...bulkConfig, semester: e.target.value })}
+                                            className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
+                                        >
+                                            {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>Sem {s}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Regulation</label>
+                                        <select
+                                            value={bulkConfig.regulation}
+                                            onChange={e => setBulkConfig({ ...bulkConfig, regulation: e.target.value })}
+                                            className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
+                                        >
+                                            <option value="2021">2021</option>
+                                            <option value="2023">2023</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Default Batch</label>
+                                        <input
+                                            value={bulkConfig.batch}
+                                            onChange={e => setBulkConfig({ ...bulkConfig, batch: e.target.value })}
+                                            placeholder="e.g. 2021-2025"
+                                            className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
+                                        />
+                                    </div>
                                 </div>
-                            )}
+
+                                {!bulkResult ? (
+                                    <form onSubmit={handleBulkUpload} className="space-y-6">
+                                        <div className="group relative">
+                                            <input
+                                                type="file"
+                                                accept=".xlsx, .xls"
+                                                onChange={e => setBulkFile(e.target.files[0])}
+                                                className="hidden"
+                                                id="bulk-file-input"
+                                            />
+                                            <label
+                                                htmlFor="bulk-file-input"
+                                                className={`flex flex-col items-center justify-center w-full py-16 border-4 border-dashed rounded-[40px] cursor-pointer transition-all ${bulkFile ? 'border-emerald-200 bg-emerald-50' : 'border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30'}`}
+                                            >
+                                                <Upload size={48} className={`mb-4 ${bulkFile ? 'text-emerald-500' : 'text-gray-300 group-hover:text-blue-400'}`} />
+                                                <p className={`font-black uppercase tracking-[0.2em] text-xs ${bulkFile ? 'text-emerald-600' : 'text-gray-400 group-hover:text-blue-900/40'}`}>
+                                                    {bulkFile ? bulkFile.name : 'Select or Drop Excel File'}
+                                                </p>
+                                                {bulkFile && <p className="text-[10px] font-bold text-emerald-400 mt-2">{(bulkFile.size / 1024).toFixed(1)} KB ready for processing</p>}
+                                            </label>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={!bulkFile || bulkUploading}
+                                            className={`w-full py-6 rounded-[32px] font-black text-lg transition-all flex items-center justify-center gap-3 ${!bulkFile || bulkUploading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xl shadow-emerald-200 active:scale-[0.98]'}`}
+                                        >
+                                            {bulkUploading ? (
+                                                <>
+                                                    <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                    Processing Records...
+                                                </>
+                                            ) : (
+                                                <>Proceed with Import</>
+                                            )}
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-8 bg-emerald-50 rounded-[32px] border border-emerald-100 text-center">
+                                                <p className="text-4xl font-black text-emerald-600 mb-2">{bulkResult.created}</p>
+                                                <p className="text-xs font-black text-emerald-900/40 uppercase tracking-widest">New Students</p>
+                                            </div>
+                                            <div className="p-8 bg-blue-50 rounded-[32px] border border-blue-100 text-center">
+                                                <p className="text-4xl font-black text-blue-600 mb-2">{bulkResult.updated}</p>
+                                                <p className="text-xs font-black text-blue-900/40 uppercase tracking-widest">Profiles Updated</p>
+                                            </div>
+                                        </div>
+
+                                        {bulkResult.errors && bulkResult.errors.length > 0 && (
+                                            <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
+                                                <div className="flex items-center gap-3 mb-4 text-amber-600">
+                                                    <AlertCircle size={20} />
+                                                    <p className="font-black text-sm uppercase tracking-widest">Issues Found ({bulkResult.errors.length})</p>
+                                                </div>
+                                                <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                                                    {bulkResult.errors.map((err, idx) => (
+                                                        <div key={idx} className="flex justify-between items-center text-xs p-3 bg-white rounded-xl border border-amber-100/50">
+                                                            <span className="font-mono font-bold text-gray-400">{err.rollNo}</span>
+                                                            <span className="font-bold text-amber-700">{err.error}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={() => { setShowBulkModal(false); setBulkResult(null); setBulkFile(null); }}
+                                            className="w-full py-6 bg-emerald-900 text-white rounded-[32px] font-black text-lg hover:bg-[#003B73] transition-all flex items-center justify-center gap-3 shadow-xl"
+                                        >
+                                            <CheckCircle2 size={24} /> Done
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

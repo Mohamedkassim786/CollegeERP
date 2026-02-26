@@ -12,17 +12,25 @@ exports.getEndSemMarks = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const take = parseInt(limit);
 
-        // 1. Fetch students for the criteria with pagination
+        // 1. Fetch students for the criteria
+        // We include regular students in the current semester AND any students who have dummy mappings for this subject (Arrears)
         const deptFilter = await getDeptCriteria(department);
         const students = await prisma.student.findMany({
             where: {
-                ...deptFilter,
-                year: parseInt(year),
-                semester: parseInt(semester),
-                section
+                OR: [
+                    {
+                        ...deptFilter,
+                        year: parseInt(year),
+                        semester: parseInt(semester),
+                        section
+                    },
+                    {
+                        dummyMappings: {
+                            some: { subjectId: subIdInt }
+                        }
+                    }
+                ]
             },
-            skip,
-            take,
             include: {
                 marks: {
                     where: { subjectId: subIdInt },
@@ -163,6 +171,41 @@ exports.updateEndSemMarks = async (req, res) => {
                         attendanceSnapshot: attPercentage
                     }
                 });
+
+                // 🧱 ARREAR PROPAGATION (CRITICAL)
+                // Check if this student has an active Arrear record for this subject
+                const arrear = await tx.arrear.findUnique({
+                    where: { studentId_subjectId: { studentId: student.id, subjectId: subIdInt } }
+                });
+
+                if (arrear && !arrear.isCleared) {
+                    // Update the active attempt (the one with resultStatus: null)
+                    await tx.arrearAttempt.updateMany({
+                        where: {
+                            arrearId: arrear.id,
+                            resultStatus: null
+                        },
+                        data: {
+                            externalMarks: extRecord.rawExternal100,
+                            totalMarks,
+                            grade: finalGrade,
+                            resultStatus: finalResultStatus,
+                            semester: student.semester // record the sem they attempted in
+                        }
+                    });
+
+                    // If they passed, clear the parent Arrear record
+                    if (finalResultStatus === 'PASS') {
+                        await tx.arrear.update({
+                            where: { id: arrear.id },
+                            data: {
+                                isCleared: true,
+                                clearedInSem: student.semester
+                            }
+                        });
+                    }
+                }
+
                 count++;
             }
             return count;
@@ -179,15 +222,18 @@ exports.updateEndSemMarks = async (req, res) => {
 
 exports.calculateGPA = async (req, res) => {
     try {
-        const { studentId, semester, regulation = '2021' } = req.body;
+        const { studentId, semester } = req.body;
+        const student = await prisma.student.findUnique({ where: { id: parseInt(studentId) } });
+        if (!student) return res.status(404).json({ message: "Student not found" });
 
+        const regulation = student.regulation || '2021';
         const grades = await prisma.gradeSettings.findMany({ where: { regulation } });
         const marks = await prisma.marks.findMany({
             where: { studentId: parseInt(studentId) },
             include: { subject: true, endSemMarks: true }
         });
 
-        // Filter marks for current semester and previous semesters for CGPA
+        // Filter marks for current semester
         const currentSemMarks = marks.filter(m => m.subject.semester === parseInt(semester));
 
         let totalPoints = 0;
@@ -213,22 +259,56 @@ exports.calculateGPA = async (req, res) => {
 
         const gpa = totalCredits > 0 ? (totalPoints / totalCredits) : 0;
 
-        // CGPA calculation (all past semesters)
+        // CGPA calculation (all past semesters + cleared arrears)
         let cumulativePoints = 0;
         let cumulativeCredits = 0;
 
+        // Fetch all cleared arrears for this student
+        const clearedArrears = await prisma.arrear.findMany({
+            where: { studentId: parseInt(studentId), isCleared: true },
+            include: { subject: true }
+        });
+
+        // 1. Process standard marks (Regular attempts in current/past semesters)
         for (const m of marks) {
             if (m.subject.semester <= parseInt(semester)) {
+                // Check if this subject became an arrear and was cleared later
+                const isClearedArrear = clearedArrears.some(ar => ar.subjectId === m.subjectId);
+
                 const credits = m.subject.credits || 3;
                 if (m.endSemMarks && m.endSemMarks.resultStatus === 'PASS') {
                     const gradeInfo = grades.find(g => g.grade === m.endSemMarks.grade);
                     cumulativePoints += (gradeInfo ? gradeInfo.gradePoint : 0) * credits;
                     cumulativeCredits += credits;
+                } else if (isClearedArrear) {
+                    // If it was a fail but cleared later, we'll handle its PASS grade in the Arrear block below
+                    // BUT we still count the credits here to maintain the "attempt" record (optional depending on policy)
+                    // Standard: We only count the credits ONCE in the denominator.
+                    cumulativeCredits += credits;
                 } else {
+                    // Still a fail
                     cumulativeCredits += credits;
                 }
             }
         }
+
+        // 2. Process Arrear Points (Points earned in recovery)
+        for (const ar of clearedArrears) {
+            // Find the successful attempt
+            const attempt = await prisma.arrearAttempt.findFirst({
+                where: { arrearId: ar.id, resultStatus: 'PASS' },
+                orderBy: { id: 'desc' }
+            });
+
+            if (attempt) {
+                const credits = ar.subject.credits || 3;
+                const gradeInfo = grades.find(g => g.grade === attempt.grade);
+                cumulativePoints += (gradeInfo ? gradeInfo.gradePoint : 0) * credits;
+                // Note: We don't increment cumulativeCredits here because the subject's base credits 
+                // were already added in the denominator during the regular marks loop above.
+            }
+        }
+
         const cgpa = cumulativeCredits > 0 ? (cumulativePoints / cumulativeCredits) : 0;
 
         await prisma.semesterResult.upsert({

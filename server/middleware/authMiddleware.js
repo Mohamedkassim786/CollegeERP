@@ -38,6 +38,13 @@ const isFaculty = (req, res, next) => {
     return res.status(403).json({ message: 'Require Faculty Role' });
 };
 
+const isHod = (req, res, next) => {
+    if (req.user && (req.user.role === 'HOD' || req.user.role === 'ADMIN')) {
+        return next();
+    }
+    return res.status(403).json({ message: 'Require HOD Role' });
+};
+
 const isExternalStaff = (req, res, next) => {
     if (req.user && (req.user.role === 'EXTERNAL_STAFF' || req.user.role === 'ADMIN')) {
         return next();
@@ -45,4 +52,4 @@ const isExternalStaff = (req, res, next) => {
     return res.status(403).json({ message: 'Require External Staff Role' });
 };
 
-module.exports = { verifyToken, isAdmin, isFaculty, isExternalStaff };
+module.exports = { verifyToken, isAdmin, isFaculty, isExternalStaff, isHod };
