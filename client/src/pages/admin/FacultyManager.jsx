@@ -403,7 +403,7 @@ const FacultyManager = () => {
                                     onChange={e => setFilterDept(e.target.value)}
                                 >
                                     <option value="">All Depts</option>
-                                    {(Array.isArray(departments) ? departments : []).map(d => <option key={d.id} value={d.code || d.name}>{d.name}</option>)}
+                                    {(Array.isArray(departments) ? departments : []).map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
                                 </select>
                             </div>
                         </div>

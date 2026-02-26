@@ -25,7 +25,7 @@ const AdminMarksApproval = () => {
     const fetchDepartments = async () => {
         try {
             const res = await api.get('/admin/departments');
-            setDepartments(res.data.map(d => d.code || d.name));
+            setDepartments(res.data);
         } catch (err) {
             console.error("Failed to fetch departments");
         }
@@ -141,7 +141,16 @@ const AdminMarksApproval = () => {
 
     // Filter Logic
     const filteredSubjects = allSubjects.filter(subject => {
-        if (filterDept && subject.department !== filterDept) return false;
+        if (filterDept) {
+            // Find selected department object
+            const selectedDeptObj = departments.find(d => (d.code || d.name) === filterDept);
+            if (selectedDeptObj) {
+                const names = [selectedDeptObj.name, selectedDeptObj.code].filter(Boolean);
+                if (!names.includes(subject.department)) return false;
+            } else if (subject.department !== filterDept) {
+                return false;
+            }
+        }
         if (filterSemester && subject.semester !== parseInt(filterSemester)) return false;
 
         // Filter based on Selected Exam Status
@@ -432,8 +441,8 @@ const AdminMarksApproval = () => {
                             className="bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold text-[#003B73] focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                         >
                             <option value="">All Departments</option>
-                            {departments.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
+                            {departments.map(d => (
+                                <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>
                             ))}
                         </select>
 

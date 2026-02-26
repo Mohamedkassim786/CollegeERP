@@ -405,7 +405,7 @@ const StudentManager = () => {
                                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
                                     <GraduationCap className="w-8 h-8 text-[#003B73] group-hover:text-white" />
                                 </div>
-                                <h3 className="text-2xl font-black text-[#003B73] group-hover:text-white transition-colors">{dept.name}</h3>
+                                <h3 className="text-2xl font-black text-[#003B73] group-hover:text-white transition-colors">{dept.code || dept.name}</h3>
                                 <p className="text-xs font-black text-blue-400 group-hover:text-blue-100 mt-2 uppercase tracking-widest">Explore Dept</p>
                             </div>
                         ))}
@@ -811,7 +811,7 @@ const StudentManager = () => {
                                         className="w-full p-3 bg-white border border-gray-200 rounded-xl font-bold text-sm outline-none"
                                     >
                                         <option value="">Auto-Detect</option>
-                                        {departments.map(d => <option key={d.id} value={d.code || d.name}>{d.name}</option>)}
+                                        {departments.map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
                                     </select>
                                 </div>
                                 <div className="col-span-2 md:col-span-1">

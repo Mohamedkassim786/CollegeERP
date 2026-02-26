@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const PDFDocument = require('pdfkit');
+const { getDeptCriteria } = require('../utils/deptUtils');
 
 // CIA Seating: 2 students per bench, different subjects on same bench
 const calculateSeatingCIA = (students, halls) => {
@@ -274,20 +275,15 @@ exports.generateAllocations = async (req, res) => {
             where: { id: { in: subjectIds } }
         });
 
-        // NEW: Fetch all departments to handle Name vs Code mismatch
-        const allDepts = await prisma.department.findMany();
-
         let allEligibleStudents = [];
         for (const sub of subjects) {
-            // Check if sub.department matches a code or name in our official list
-            const deptMatch = allDepts.find(d => d.code === sub.department || d.name === sub.department);
-            const searchDept = deptMatch ? (deptMatch.code || deptMatch.name) : sub.department;
+            const deptCriteria = await getDeptCriteria(sub.department);
 
-            console.log(`[DEBUG] Fetching students for ${sub.code} | Sem: ${sub.semester} | Dept Search: ${searchDept}`);
+            console.log(`[DEBUG] Fetching students for ${sub.code} | Sem: ${sub.semester} | Dept Criteria:`, deptCriteria);
 
             const studentList = await prisma.student.findMany({
                 where: {
-                    department: searchDept || undefined,
+                    ...deptCriteria,
                     semester: sub.semester
                 },
                 orderBy: { rollNo: 'asc' }
@@ -379,7 +375,7 @@ exports.getSessionAllocations = async (req, res) => {
                 subject: true,
                 hall: true
             },
-            orderBy: [{ hallId: 'asc' }, { rowNumber: 'asc' }, { columnNumber: 'asc' }]
+            orderBy: [{ hallId: 'asc' }, { columnLabel: 'asc' }, { benchIndex: 'asc' }]
         });
         res.json(allocations);
     } catch (error) {

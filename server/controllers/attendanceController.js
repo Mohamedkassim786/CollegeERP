@@ -1,42 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
-// Helper: Get robust department filter (matches Name OR Code)
-const getDeptCriteria = async (deptString) => {
-    if (!deptString) {
-        return {
-            OR: [
-                { department: null },
-                { department: '' },
-                { department: 'First Year (General)' },
-                { department: 'GEN' }
-            ]
-        };
-    }
-
-    const trimmed = deptString.trim();
-    if (trimmed === 'GEN' || trimmed === 'First Year (General)') {
-        return {
-            OR: [
-                { department: 'First Year (General)' },
-                { department: 'GEN' },
-                { department: null },
-                { department: '' }
-            ]
-        };
-    }
-
-    const deptDef = await prisma.department.findFirst({
-        where: { OR: [{ name: trimmed }, { code: trimmed }] }
-    });
-
-    if (deptDef) {
-        const criteria = [deptDef.name, deptDef.code].filter(Boolean).map(s => s.trim());
-        return { department: { in: criteria } };
-    }
-
-    return { department: trimmed };
-};
+const { getDeptCriteria } = require('../utils/deptUtils');
 
 // --- Faculty Actions ---
 

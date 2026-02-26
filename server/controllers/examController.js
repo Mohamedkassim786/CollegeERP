@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const pdfService = require('../services/pdfService');
+const { getDeptCriteria } = require('../utils/deptUtils');
 
 // --- End Semester Mark Entry ---
 
@@ -12,9 +13,10 @@ exports.getEndSemMarks = async (req, res) => {
         const take = parseInt(limit);
 
         // 1. Fetch students for the criteria with pagination
+        const deptFilter = await getDeptCriteria(department);
         const students = await prisma.student.findMany({
             where: {
-                department,
+                ...deptFilter,
                 year: parseInt(year),
                 semester: parseInt(semester),
                 section
@@ -267,14 +269,13 @@ exports.getFacultyResults = async (req, res) => {
         const { department, year, semester, section, subjectId } = req.query;
 
         // 1. Check if Results are Published
-        const control = await prisma.semesterControl.findUnique({
+        const deptFilter = await getDeptCriteria(department);
+        const control = await prisma.semesterControl.findFirst({
             where: {
-                department_year_semester_section: {
-                    department,
-                    year: parseInt(year),
-                    semester: parseInt(semester),
-                    section
-                }
+                ...deptFilter,
+                year: parseInt(year),
+                semester: parseInt(semester),
+                section
             }
         });
 
@@ -285,7 +286,7 @@ exports.getFacultyResults = async (req, res) => {
         // 2. Fetch marks (Read-only)
         const students = await prisma.student.findMany({
             where: {
-                department,
+                ...deptFilter,
                 year: parseInt(year),
                 semester: parseInt(semester),
                 section
@@ -316,10 +317,16 @@ exports.toggleSemesterControl = async (req, res) => {
         const updateData = {};
         updateData[field] = value;
 
+        // Find official department definition to ensure unique key consistency
+        const deptDef = await prisma.department.findFirst({
+            where: { OR: [{ name: department }, { code: department }] }
+        });
+        const officialDept = deptDef ? deptDef.name : department;
+
         const control = await prisma.semesterControl.upsert({
             where: {
                 department_year_semester_section: {
-                    department,
+                    department: officialDept,
                     year: parseInt(year),
                     semester: parseInt(semester),
                     section
@@ -327,7 +334,7 @@ exports.toggleSemesterControl = async (req, res) => {
             },
             update: updateData,
             create: {
-                department,
+                department: officialDept,
                 year: parseInt(year),
                 semester: parseInt(semester),
                 section,
@@ -337,9 +344,10 @@ exports.toggleSemesterControl = async (req, res) => {
 
         // 🧱 FIX ATTENDANCE SNAPSHOT ISSUE (CRITICAL)
         if (field === 'isPublished' && value === true) {
+            const deptFilter = await getDeptCriteria(officialDept);
             const students = await prisma.student.findMany({
                 where: {
-                    department,
+                    ...deptFilter,
                     year: parseInt(year),
                     semester: parseInt(semester),
                     section
@@ -380,15 +388,14 @@ exports.toggleSemesterControl = async (req, res) => {
 exports.getSemesterControl = async (req, res) => {
     try {
         const { department, year, semester, section } = req.query;
+        const deptFilter = await getDeptCriteria(department);
 
-        const control = await prisma.semesterControl.findUnique({
+        const control = await prisma.semesterControl.findFirst({
             where: {
-                department_year_semester_section: {
-                    department,
-                    year: parseInt(year),
-                    semester: parseInt(semester),
-                    section
-                }
+                ...deptFilter,
+                year: parseInt(year),
+                semester: parseInt(semester),
+                section
             }
         });
 

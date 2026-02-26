@@ -164,7 +164,7 @@ const SubjectManager = () => {
                         >
                             <option value="">All Departments</option>
                             <option value="COMMON">First Year (Common)</option>
-                            {(Array.isArray(departments) ? departments : []).map(d => <option key={d.id} value={d.code || d.name}>{d.name}</option>)}
+                            {(Array.isArray(departments) ? departments : []).map(d => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
                         </select>
                     </div>
                 </div>
