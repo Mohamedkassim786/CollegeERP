@@ -632,7 +632,8 @@ exports.exportConsolidatedPlan = async (req, res) => {
         };
 
         const drawTableHeader = (y) => {
-            doc.rect(colX.sno, y, colX.end - colX.sno, 30).fill('#f0f0f0').stroke('#000000');
+            doc.rect(colX.sno, y, colX.end - colX.sno, 30).fill('#f0f0f0');
+            doc.rect(colX.sno, y, colX.end - colX.sno, 30).stroke();
             doc.fill('#000000').font('Helvetica-Bold').fontSize(10);
 
             Object.values(colX).forEach(x => {
@@ -660,8 +661,8 @@ exports.exportConsolidatedPlan = async (req, res) => {
             depts.forEach(d => {
                 const ranges = getRegisterRanges(d.students);
                 d.rangesText = ranges;
-                const textHeight = doc.font('Helvetica').fontSize(10).heightOfString(ranges, { width: colW.reg - 8 });
-                d.rowHeight = Math.max(25, textHeight + 12);
+                const textHeight = doc.font('Helvetica').fontSize(12).heightOfString(ranges, { width: colW.reg - 8 });
+                d.rowHeight = Math.max(30, textHeight + 15);
             });
 
             const hallHeight = depts.reduce((sum, d) => sum + d.rowHeight, 0);
@@ -684,10 +685,11 @@ exports.exportConsolidatedPlan = async (req, res) => {
                 doc.text(semText, colX.sem, rowY + (d.rowHeight / 2) - 4, { width: colW.sem, align: 'center' });
 
                 doc.rect(colX.dept, rowY, colW.dept, d.rowHeight).stroke();
-                doc.text(d.dept, colX.dept, rowY + (d.rowHeight / 2) - 4, { width: colW.dept, align: 'center' });
+                doc.fontSize(12).font('Helvetica-Bold').text(d.dept, colX.dept, rowY + (d.rowHeight / 2) - 6, { width: colW.dept, align: 'center' });
 
                 doc.rect(colX.reg, rowY, colW.reg, d.rowHeight).stroke();
-                const textH = doc.heightOfString(d.rangesText, { width: colW.reg - 8 });
+                doc.font('Helvetica');
+                const textH = doc.fontSize(12).heightOfString(d.rangesText, { width: colW.reg - 8 });
                 doc.text(d.rangesText, colX.reg + 4, rowY + (d.rowHeight / 2) - (textH / 2), { width: colW.reg - 8, align: 'left', lineGap: 1 });
 
                 doc.rect(colX.str, rowY, colW.str, d.rowHeight).stroke();
@@ -700,7 +702,7 @@ exports.exportConsolidatedPlan = async (req, res) => {
             doc.font('Helvetica').fontSize(10).text(sNo.toString(), colX.sno, hallStartY + (hallHeight / 2) - 4, { width: colW.sno, align: 'center' });
 
             doc.rect(colX.hall, hallStartY, colW.hall, hallHeight).stroke();
-            doc.fontSize(10).text(hall.name, colX.hall, hallStartY + (hallHeight / 2) - 4, { width: colW.hall, align: 'center' });
+            doc.fontSize(14).font('Helvetica-Bold').text(hall.name, colX.hall, hallStartY + (hallHeight / 2) - 7, { width: colW.hall, align: 'center' });
 
             doc.rect(colX.total, hallStartY, colW.total, hallHeight).stroke();
             doc.fontSize(10).text(hall.totalStrength.toString(), colX.total, hallStartY + (hallHeight / 2) - 4, { width: colW.total, align: 'center' });
@@ -747,6 +749,8 @@ exports.exportSeatingGrid = async (req, res) => {
         doc.pipe(res);
 
         const halls = Array.from(new Set(allocations.map(a => a.hallId)));
+        const allDepts = [...new Set(allocations.map(a => a.department))].sort();
+        const shadedDepts = allDepts.filter((_, i) => i % 2 !== 0);
 
         // A4 Landscape available width with 30px margins = 841.89 - 60 = ~780
         const availableWidth = 780;
@@ -793,7 +797,7 @@ exports.exportSeatingGrid = async (req, res) => {
                 }
 
                 doc.rect(currentX + seatW, headerY1, stuW * 2, 15).stroke();
-                doc.fontSize(11).font('Helvetica-Bold').text(label, currentX + seatW, headerY1 + 2, { width: stuW * 2, align: 'center' });
+                doc.fontSize(13).font('Helvetica-Bold').text(label, currentX + seatW, headerY1 + 1, { width: stuW * 2, align: 'center' });
 
                 const benchAllocations = hallAllocations.filter(a => a.columnLabel === label);
                 const leftStus = benchAllocations.filter(a => a.seatNumber.endsWith('A') || a.seatNumber === a.columnLabel + a.benchIndex);
@@ -802,7 +806,8 @@ exports.exportSeatingGrid = async (req, res) => {
                 const getHeaderStr = (stus) => {
                     const unique = [...new Set(stus.map(s => {
                         let dept = deptMap[s.department] || s.department;
-                        return `${getRomanNumeral(s.year)} ${dept}`;
+                        let subCode = s.subject?.code ? ` (${s.subject.code})` : "";
+                        return `${getRomanNumeral(s.year)} ${dept}${subCode}`;
                     }))];
                     return unique.join(' /\n');
                 };
@@ -813,13 +818,13 @@ exports.exportSeatingGrid = async (req, res) => {
                 if (session.examMode === 'CIA') {
                     doc.rect(currentX + seatW, headerY2, stuW, headerCellH).stroke();
                     doc.rect(currentX + seatW + stuW, headerY2, stuW, headerCellH).stroke();
-                    const leftH = doc.fontSize(7).font('Helvetica-Bold').heightOfString(leftStr, { width: stuW - 2 });
-                    const rightH = doc.fontSize(7).font('Helvetica-Bold').heightOfString(rightStr, { width: stuW - 2 });
+                    const leftH = doc.fontSize(10).font('Helvetica-Bold').heightOfString(leftStr, { width: stuW - 2 });
+                    const rightH = doc.fontSize(10).font('Helvetica-Bold').heightOfString(rightStr, { width: stuW - 2 });
                     doc.text(leftStr, currentX + seatW + 1, headerY2 + (headerCellH / 2) - (leftH / 2), { width: stuW - 2, align: 'center', lineGap: 1 });
                     doc.text(rightStr, currentX + seatW + stuW + 1, headerY2 + (headerCellH / 2) - (rightH / 2), { width: stuW - 2, align: 'center', lineGap: 1 });
                 } else {
                     doc.rect(currentX + seatW, headerY2, stuW * 2, headerCellH).stroke();
-                    const leftH = doc.fontSize(9).font('Helvetica-Bold').heightOfString(leftStr, { width: stuW * 2 - 2 });
+                    const leftH = doc.fontSize(11).font('Helvetica-Bold').heightOfString(leftStr, { width: stuW * 2 - 2 });
                     doc.text(leftStr, currentX + seatW + 1, headerY2 + (headerCellH / 2) - (leftH / 2), { width: stuW * 2 - 2, align: 'center', lineGap: 1 });
                 }
 
@@ -843,42 +848,66 @@ exports.exportSeatingGrid = async (req, res) => {
 
                     if (session.examMode === 'CIA') {
                         if (capacity === 1) {
-                            doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
                             const stu = benchStus[0];
                             if (stu) {
+                                if (shadedDepts.includes(stu.department)) {
+                                    doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).fill('#f2f2f2');
+                                }
+                                doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
+                                doc.fill('#000000');
                                 const text = stu.student.registerNumber || stu.student.rollNo;
-                                const textFontSize = text && text.length > 8 ? 10 : 12;
+                                const textFontSize = text && text.length > 8 ? 12 : 14;
                                 const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(text, { width: stuW * 2, lineBreak: false });
                                 doc.text(text, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW * 2, align: 'center', lineBreak: false });
+                            } else {
+                                doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
                             }
                         } else {
-                            doc.rect(currentX + seatW, currentY, stuW, seatCellH).stroke();
-                            doc.rect(currentX + seatW + stuW, currentY, stuW, seatCellH).stroke();
-
                             const leftStu = benchStus.find(a => a.seatNumber.endsWith('A'));
                             const rightStu = benchStus.find(a => a.seatNumber.endsWith('B'));
 
                             if (leftStu) {
+                                if (shadedDepts.includes(leftStu.department)) {
+                                    doc.rect(currentX + seatW, currentY, stuW, seatCellH).fill('#f2f2f2');
+                                }
+                                doc.rect(currentX + seatW, currentY, stuW, seatCellH).stroke();
+                                doc.fill('#000000');
                                 const leftText = leftStu.student.registerNumber || leftStu.student.rollNo;
-                                const textFontSize = leftText && leftText.length > 8 ? 9 : 10;
+                                const textFontSize = leftText && leftText.length > 8 ? 11 : 12;
                                 const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(leftText, { width: stuW, lineBreak: false });
                                 doc.text(leftText, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW, align: 'center', lineBreak: false });
+                            } else {
+                                doc.rect(currentX + seatW, currentY, stuW, seatCellH).stroke();
                             }
+
                             if (rightStu) {
+                                if (shadedDepts.includes(rightStu.department)) {
+                                    doc.rect(currentX + seatW + stuW, currentY, stuW, seatCellH).fill('#f2f2f2');
+                                }
+                                doc.rect(currentX + seatW + stuW, currentY, stuW, seatCellH).stroke();
+                                doc.fill('#000000');
                                 const rightText = rightStu.student.registerNumber || rightStu.student.rollNo;
-                                const textFontSize = rightText && rightText.length > 8 ? 9 : 10;
+                                const textFontSize = rightText && rightText.length > 8 ? 11 : 12;
                                 const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(rightText, { width: stuW, lineBreak: false });
                                 doc.text(rightText, currentX + seatW + stuW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW, align: 'center', lineBreak: false });
+                            } else {
+                                doc.rect(currentX + seatW + stuW, currentY, stuW, seatCellH).stroke();
                             }
                         }
                     } else {
-                        doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
                         const stu = benchStus[0];
                         if (stu) {
+                            if (shadedDepts.includes(stu.department)) {
+                                doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).fill('#f2f2f2');
+                            }
+                            doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
+                            doc.fill('#000000');
                             const text = stu.student.registerNumber || stu.student.rollNo;
-                            const textFontSize = text && text.length > 8 ? 13 : 15;
-                            const textH = doc.fontSize(textFontSize).font('Helvetica-Bold').heightOfString(text, { width: stuW * 2, lineBreak: false });
+                            const textFontSize = text && text.length > 8 ? 16 : 18;
+                            const textH = doc.fontSize(textFontSize).font('Helvetica').heightOfString(text, { width: stuW * 2, lineBreak: false });
                             doc.text(text, currentX + seatW, currentY + (seatCellH / 2) - (textH / 2), { width: stuW * 2, align: 'center', lineBreak: false });
+                        } else {
+                            doc.rect(currentX + seatW, currentY, stuW * 2, seatCellH).stroke();
                         }
                     }
 
@@ -892,8 +921,8 @@ exports.exportSeatingGrid = async (req, res) => {
                 const deptStats = {};
                 hallAllocations.forEach(a => {
                     let dept = deptMap[a.department] || a.department;
-
-                    const key = `${getRomanNumeral(a.year)} ${dept}`;
+                    let subCode = a.subject?.code ? ` (${a.subject.code})` : "";
+                    const key = `${getRomanNumeral(a.year)} ${dept}${subCode}`;
                     deptStats[key] = (deptStats[key] || 0) + 1;
                 });
 
@@ -903,7 +932,13 @@ exports.exportSeatingGrid = async (req, res) => {
                 const statH = Object.keys(deptStats).some(k => k.length > 10) ? 30 : 20;
 
                 keys.forEach(k => {
+                    const isShaded = shadedDepts.some(sd => k.includes(sd));
+                    if (isShaded) {
+                        doc.rect(statX, summaryY, statW, statH).fill('#f2f2f2');
+                        doc.rect(statX, summaryY + statH, statW, 20).fill('#f2f2f2');
+                    }
                     doc.rect(statX, summaryY, statW, statH).stroke();
+                    doc.fill('#000000');
                     const th = doc.fontSize(9).font('Helvetica-Bold').heightOfString(k, { width: statW - 4 });
                     doc.text(k, statX + 2, summaryY + (statH / 2) - (th / 2), { width: statW - 4, align: 'center' });
                     doc.rect(statX, summaryY + statH, statW, 20).stroke();

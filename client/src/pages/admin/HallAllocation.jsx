@@ -177,6 +177,17 @@ const HallAllocation = () => {
         }
     };
 
+    const handleDeleteHall = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this hall? This will remove all its column and bench configurations.')) return;
+        try {
+            await api.delete(`admin/hall-allocation/halls/${id}`);
+            toast.success('Hall deleted successfully');
+            fetchInitialData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete hall');
+        }
+    };
+
     const handleExportPDF = async () => {
         if (!selectedSession) return;
         try {
@@ -550,7 +561,19 @@ const HallAllocation = () => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            {isSelected && <CheckCircle2 size={24} className="text-emerald-500" />}
+                                            <div className="flex items-center gap-4">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteHall(hall.id);
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="Delete Hall"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                                {isSelected && <CheckCircle2 size={24} className="text-emerald-500" />}
+                                            </div>
                                         </div>
                                     );
                                 })}
