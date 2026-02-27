@@ -8,12 +8,17 @@ const { getDeptCriteria } = require('../utils/deptUtils');
 const getStudentsForAttendance = async (req, res) => {
     const { subjectId, section, date } = req.query;
     try {
-        if (!subjectId || !section) return res.status(400).json({ message: 'Subject ID and Section are required' });
+        const facultyId = parseInt(req.user.id);
+        // Try to find the specific assignment for this faculty to get the correct department(s)
+        const assignment = await prisma.facultyAssignment.findFirst({
+            where: { facultyId, subjectId: parseInt(subjectId), section }
+        });
 
         const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
 
-        const deptCriteria = await getDeptCriteria(subject.department);
+        // Use assignment department if available (handles MECH, CIVIL etc), fallback to subject department
+        const deptCriteria = await getDeptCriteria(assignment?.department || subject.department);
 
         const students = await prisma.student.findMany({
             where: {
@@ -96,7 +101,7 @@ const getAttendanceReport = async (req, res) => {
             }
 
             if (assignment) {
-                const deptFilter = await getDeptCriteria(assignment.subject.department);
+                const deptFilter = await getDeptCriteria(assignment.department || assignment.subject.department);
                 Object.assign(where, deptFilter);
                 where.semester = assignment.subject.semester;
                 where.section = assignment.section;

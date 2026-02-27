@@ -69,8 +69,10 @@
 
   /* Premium Input Fields */
   .input-field {
-    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white;
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003B73]/50 focus:border-[#003B73] transition-all duration-200 bg-white text-gray-800 font-medium;
   }
+
+
 
   /* Glass Card Effect */
   .glass-card {

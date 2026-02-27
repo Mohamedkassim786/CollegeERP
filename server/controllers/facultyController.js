@@ -73,15 +73,21 @@ const getAssignedSubjects = async (req, res) => {
 const getClassDetails = async (req, res) => {
     const { subjectId } = req.params;
     const facultyId = parseInt(req.user.id);
+    const { section, department } = req.query;
     try {
         const assignment = await prisma.facultyAssignment.findFirst({
-            where: { subjectId: parseInt(subjectId), facultyId },
+            where: {
+                subjectId: parseInt(subjectId),
+                facultyId,
+                ...(section && { section }),
+                ...(department && { department })
+            },
             include: { subject: true }
         });
 
         if (!assignment) return res.status(403).json({ message: 'Not authorized for this class' });
 
-        const deptCriteria = await getDeptCriteria(assignment.department || assignment.subject.department);
+        const deptCriteria = await getDeptCriteria(department || assignment.department || assignment.subject.department);
 
         const studentCount = await prisma.student.count({
             where: {
@@ -127,21 +133,27 @@ const getClassDetails = async (req, res) => {
 const getClassStudents = async (req, res) => {
     const { subjectId } = req.params;
     const facultyId = parseInt(req.user.id);
+    const { section, department } = req.query;
     try {
         const assignment = await prisma.facultyAssignment.findFirst({
-            where: { subjectId: parseInt(subjectId), facultyId },
+            where: {
+                subjectId: parseInt(subjectId),
+                facultyId,
+                ...(section && { section }),
+                ...(department && { department })
+            },
             include: { subject: true }
         });
 
         if (!assignment) return res.status(403).json({ message: 'Not authorized' });
 
-        const deptCriteria = await getDeptCriteria(assignment.department || assignment.subject.department);
+        const deptCriteria = await getDeptCriteria(department || assignment.department || assignment.subject.department);
 
         const students = await prisma.student.findMany({
             where: {
                 ...deptCriteria,
                 semester: assignment.subject.semester,
-                section: assignment.section
+                section: section || assignment.section
             },
             include: {
                 marks: { where: { subjectId: parseInt(subjectId) } },

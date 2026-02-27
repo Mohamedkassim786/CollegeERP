@@ -242,3 +242,29 @@ exports.saveMarks = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+exports.approveMarks = async (req, res) => {
+    try {
+        const { semester, subjectId } = req.body;
+        const subIdInt = parseInt(subjectId);
+
+        await prisma.$transaction(async (tx) => {
+            // Mark the actual dummy records as approved
+            const updated = await tx.externalMark.updateMany({
+                where: { subjectId: subIdInt },
+                data: { isApproved: true }
+            });
+
+            // We also want to stamp the mappings so the front-end knows they were approved
+            await tx.subjectDummyMapping.updateMany({
+                where: { subjectId: subIdInt, semester: parseInt(semester) },
+                data: { mappingLocked: true } // Ensure it's locked too
+            });
+        });
+
+        res.json({ message: "External marks approved successfully for result generation." });
+    } catch (error) {
+        console.error("Approval Error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};

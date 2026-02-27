@@ -8,5 +8,6 @@ router.get('/mapping', verifyToken, isAdmin, dummyController.getMapping);
 router.post('/lock', verifyToken, isAdmin, dummyController.lockMapping);
 router.post('/unlock', verifyToken, isAdmin, dummyController.unlockMapping);
 router.post('/save', verifyToken, isAdmin, dummyController.saveMarks);
+router.post('/approve', verifyToken, isAdmin, dummyController.approveMarks);
 
 module.exports = router;

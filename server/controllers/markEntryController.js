@@ -80,11 +80,64 @@ const getPendingMarks = async (req, res) => {
 
 const getAllSubjectMarksStatus = async (req, res) => {
     try {
-        const allMarks = await prisma.marks.findMany({
-            include: { subject: true, student: true }
+        const subjects = await prisma.subject.findMany({
+            include: {
+                marks: true,
+                facultyAssignments: {
+                    include: {
+                        faculty: true
+                    }
+                }
+            }
         });
-        // Aggregation logic from adminController
-        res.json(allMarks); // Simplified for now, will refine if needed
+
+        const statusReport = subjects.map(subject => {
+            const marks = subject.marks || [];
+
+            // Extract Actual Faculty
+            let facultyNames = "Not Assigned";
+            if (subject.facultyAssignments && subject.facultyAssignments.length > 0) {
+                facultyNames = subject.facultyAssignments
+                    .filter(fa => fa.faculty)
+                    .map(fa => fa.faculty.fullName || fa.faculty.username)
+                    .join(", ");
+            }
+
+            // CIA 1 stats
+            const pending_cia1 = marks.filter(m => !m.isApproved_cia1 && !m.isLocked_cia1).length;
+            const approved_cia1 = marks.filter(m => m.isApproved_cia1 && !m.isLocked_cia1).length;
+            const locked_cia1 = marks.filter(m => m.isLocked_cia1).length;
+
+            // CIA 2 stats
+            const pending_cia2 = marks.filter(m => !m.isApproved_cia2 && !m.isLocked_cia2).length;
+            const approved_cia2 = marks.filter(m => m.isApproved_cia2 && !m.isLocked_cia2).length;
+            const locked_cia2 = marks.filter(m => m.isLocked_cia2).length;
+
+            // CIA 3 stats
+            const pending_cia3 = marks.filter(m => !m.isApproved_cia3 && !m.isLocked_cia3).length;
+            const approved_cia3 = marks.filter(m => m.isApproved_cia3 && !m.isLocked_cia3).length;
+            const locked_cia3 = marks.filter(m => m.isLocked_cia3).length;
+
+            // Final Internal stats
+            const pending_internal = marks.filter(m => !m.isApproved && !m.isLocked).length;
+            const approved_internal = marks.filter(m => m.isApproved && !m.isLocked).length;
+            const locked_internal = marks.filter(m => m.isLocked).length;
+
+            return {
+                subjectId: subject.id,
+                subjectCode: subject.code,
+                subjectName: subject.name,
+                semester: subject.semester,
+                department: subject.department,
+                faculty: facultyNames,
+                pending_cia1, approved_cia1, locked_cia1,
+                pending_cia2, approved_cia2, locked_cia2,
+                pending_cia3, approved_cia3, locked_cia3,
+                pending_internal, approved_internal, locked_internal
+            };
+        });
+
+        res.json(statusReport);
     } catch (error) {
         handleError(res, error, "Error fetching status");
     }

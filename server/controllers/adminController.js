@@ -50,7 +50,21 @@ const deleteFaculty = async (req, res) => {
 
 const getTimetable = async (req, res) => {
     try {
+        const { department, year, semester, section } = req.query;
+        console.log(`[TT_v2.1] Fetching: ${department} Y${year} S${semester} Sec${section}`);
+
+        // Strict filtering: if any context is missing, return empty to prevent data leakage
+        if (!department || !year || !semester || !section) {
+            return res.json([]);
+        }
+
         const timetable = await prisma.timetable.findMany({
+            where: {
+                department: department,
+                year: parseInt(year),
+                semester: parseInt(semester),
+                section: section
+            },
             include: { subject: true, faculty: true }
         });
         res.json(timetable);
@@ -60,16 +74,51 @@ const getTimetable = async (req, res) => {
 };
 
 const saveTimetable = async (req, res) => {
-    const { entries } = req.body;
+    const { entries, department, year, semester, section } = req.body;
+    console.log(`[Timetable] Saving: ${department} Y${year} S${semester} Sec${section} - ${entries?.length || 0} entries`);
     try {
-        await prisma.$transaction(
-            entries.map(e => prisma.timetable.upsert({
-                where: { id: e.id || -1 },
-                update: e,
-                create: e
-            }))
-        );
-        res.json({ message: "Timetable saved" });
+        if (!department || !year || !semester || !section) {
+            return res.status(400).json({ message: "Missing filter context for saving timetable" });
+        }
+
+        const yr = parseInt(year);
+        const sem = parseInt(semester);
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete ALL existing entries for this specific combination
+            // This ensures "deleted" cells in UI are actually removed from DB
+            await tx.timetable.deleteMany({
+                where: {
+                    department,
+                    year: yr,
+                    semester: sem,
+                    section
+                }
+            });
+
+            // 2. Insert new entries
+            if (entries.length > 0) {
+                await tx.timetable.createMany({
+                    data: entries.map(e => ({
+                        department,
+                        year: yr,
+                        semester: sem,
+                        section,
+                        day: e.day,
+                        period: e.period,
+                        duration: e.duration || 1,
+                        type: e.type,
+                        subjectName: e.subjectName,
+                        facultyName: e.facultyName,
+                        room: e.room,
+                        subjectId: e.subjectId,
+                        facultyId: e.facultyId
+                    }))
+                });
+            }
+        });
+
+        res.json({ message: "Timetable updated successfully" });
     } catch (error) {
         handleError(res, error, "Error saving timetable");
     }

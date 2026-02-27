@@ -44,7 +44,7 @@ exports.getEndSemMarks = async (req, res) => {
 
         // 2. Fetch external marks for this subject
         const externalMarks = await prisma.externalMark.findMany({
-            where: { subjectId: subIdInt }
+            where: { subjectId: subIdInt, isApproved: true }
         });
 
         const extMarksMap = {};
@@ -64,13 +64,15 @@ exports.getEndSemMarks = async (req, res) => {
                 ? Math.round(ciaRecord.internal * 0.4)
                 : 0;
 
-            const external60 = extRecord.convertedExternal60 ? Math.round(extRecord.convertedExternal60) : 0;
-            const total100 = internal40 + external60;
+            const isAbsent = dummyMapping.isAbsent || false;
+            const external60 = isAbsent ? 'AB' : (extRecord.convertedExternal60 ? Math.round(extRecord.convertedExternal60) : 0);
+            const total100 = isAbsent ? 'AB' : (internal40 + (typeof external60 === 'number' ? external60 : 0));
 
             return {
                 id: student.id,
                 name: student.name,
                 registerNumber: student.registerNumber,
+                rollNo: student.rollNo,
                 internal40,
                 external60,
                 total100,
@@ -109,7 +111,7 @@ exports.updateEndSemMarks = async (req, res) => {
             });
 
             const externalMarks = await tx.externalMark.findMany({
-                where: { subjectId: subIdInt }
+                where: { subjectId: subIdInt, isApproved: true }
             });
 
             const extMarksMap = {};
@@ -123,29 +125,46 @@ exports.updateEndSemMarks = async (req, res) => {
             for (const student of students) {
                 const ciaRecord = student.marks[0];
                 const dummyMapping = student.dummyMappings[0];
+                // Wait for strict match on dummy mapping OR absence.
+                if (!ciaRecord || !dummyMapping) continue;
+
                 const extRecord = extMarksMap[dummyMapping.dummyNumber];
 
-                if (!ciaRecord || !extRecord) continue;
+                // If they are not absent, but no external mark is found (meaning it's not approved or not entered yet), skip them
+                if (!dummyMapping.isAbsent && !extRecord) continue;
 
                 // 🧱 IDEMPOTENCY & LOCK CHECK
                 if (ciaRecord.endSemMarks?.isLocked || ciaRecord.endSemMarks?.isPublished) {
                     continue; // Skip locked/published results
                 }
 
-                // 🧱 ROUNDING BIAS FIX (No intermediate rounding)
+                // 🧱 ROUNDING BIAS FIX & ABSENTEE LOGIC
                 const internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal * 0.4 : 0;
-                const externalVal = extRecord.convertedExternal60 || 0;
+                let externalVal = 0;
+                let rawExternal100 = 0;
+                let finalResultStatus = 'FAIL';
+                let finalGrade = 'RA';
+
+                if (dummyMapping.isAbsent) {
+                    externalVal = 0;
+                    rawExternal100 = 0;
+                    finalResultStatus = 'FAIL';
+                    finalGrade = 'AB'; // Special absentee grade
+                } else if (extRecord) {
+                    externalVal = extRecord.convertedExternal60 || 0;
+                    rawExternal100 = extRecord.rawExternal100 || 0;
+
+                    const totalMarks = Math.round(internalVal + externalVal);
+                    const isExternalPass = rawExternal100 >= 50;
+
+                    const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
+                        || { grade: 'RA', resultStatus: 'FAIL' };
+
+                    finalResultStatus = (matchedGrade.resultStatus === 'PASS' && isExternalPass) ? 'PASS' : 'FAIL';
+                    finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
+                }
+
                 const totalMarks = Math.round(internalVal + externalVal);
-
-                // 🧱 EXTERNAL PASS RULE (Check raw 100)
-                const isExternalPass = extRecord.rawExternal100 >= 50;
-
-                // Find grade
-                const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
-                    || { grade: 'RA', resultStatus: 'FAIL' };
-
-                let finalResultStatus = (matchedGrade.resultStatus === 'PASS' && isExternalPass) ? 'PASS' : 'FAIL';
-                let finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
 
                 // 🧱 ATTENDANCE SNAPSHOT
                 // Calculate current attendance percentage

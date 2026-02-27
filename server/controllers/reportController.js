@@ -14,11 +14,189 @@ const getDashboardStats = async (req, res) => {
             prisma.department.count()
         ]);
 
+        // 1. Department Data
+        const departments = await prisma.department.findMany({ select: { name: true, code: true } });
+
+        const studentsPerDept = await prisma.student.groupBy({
+            by: ['department'],
+            _count: { id: true }
+        });
+        const facultyPerDept = await prisma.user.groupBy({
+            by: ['department'],
+            where: { role: 'FACULTY' },
+            _count: { id: true }
+        });
+
+        const departmentData = departments.map(d => {
+            const matchKey = d.code || d.name; // Use code first if available
+            const students = studentsPerDept.find(s => s.department === matchKey)?._count.id || 0;
+            const faculty = facultyPerDept.find(f => f.department === matchKey)?._count.id || 0;
+            return { dept: d.name, students, faculty };
+        });
+
+        // 2. Average Attendance
+        const totalAttendance = await prisma.studentAttendance.count();
+        const presentCount = await prisma.studentAttendance.count({
+            where: { status: { in: ['PRESENT', 'OD'] } }
+        });
+        const avgAttendance = totalAttendance > 0
+            ? Math.round((presentCount / totalAttendance) * 100)
+            : 0;
+
+        // 3. Performance Trend (Monthly average of internal marks)
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const d = new Date();
+        const performanceTrendMapp = {};
+
+        for (let i = 5; i >= 0; i--) {
+            let m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+            let mName = monthNames[m.getMonth()];
+            performanceTrendMapp[mName] = { month: mName, total: 0, count: 0, target: 80 };
+        }
+
+        const allMarks = await prisma.marks.findMany({
+            select: { internal: true, updatedAt: true },
+            where: { internal: { not: null } }
+        });
+
+        allMarks.forEach(m => {
+            const mName = monthNames[m.updatedAt.getMonth()];
+            if (performanceTrendMapp[mName]) {
+                performanceTrendMapp[mName].total += m.internal;
+                performanceTrendMapp[mName].count += 1;
+            }
+        });
+
+        const performanceTrend = Object.values(performanceTrendMapp).map(p => {
+            const avg = p.count > 0 ? (p.total / p.count) * 2 : 0; // Assuming internal marks are mostly out of 50, scale to 100 for percentage
+            return {
+                month: p.month,
+                average: Math.round(avg),
+                target: p.target
+            };
+        });
+
+        // 4. Marks Distribution (Real CGPA values)
+        const results = await prisma.semesterResult.findMany({ select: { cgpa: true } });
+        let marksDistribution = [
+            { range: '9-10 CGPA', count: 0, color: '#10b981' },
+            { range: '8-9 CGPA', count: 0, color: '#3b82f6' },
+            { range: '7-8 CGPA', count: 0, color: '#f59e0b' },
+            { range: '< 7 CGPA', count: 0, color: '#ef4444' }
+        ];
+        if (results.length > 0) {
+            results.forEach(r => {
+                if (r.cgpa >= 9) marksDistribution[0].count++;
+                else if (r.cgpa >= 8) marksDistribution[1].count++;
+                else if (r.cgpa >= 7) marksDistribution[2].count++;
+                else marksDistribution[3].count++;
+            });
+        }
+
+        // 5. Weekly Attendance Rate
+        const recentDates = await prisma.studentAttendance.groupBy({
+            by: ['date'],
+            _count: { id: true },
+            orderBy: { date: 'desc' },
+            take: 5
+        });
+        let attendanceData = [];
+        if (recentDates.length > 0) {
+            const chronologicalDates = [...recentDates].reverse();
+            for (const d of chronologicalDates) {
+                const dayStat = await prisma.studentAttendance.count({
+                    where: { date: d.date, status: { in: ['PRESENT', 'OD'] } }
+                });
+                const rate = Math.round((dayStat / d._count.id) * 100);
+                const dayObj = new Date(d.date);
+                const dayName = isNaN(dayObj.getTime()) ? d.date.substring(0, 3) : dayObj.toLocaleDateString('en-US', { weekday: 'short' });
+                attendanceData.push({ day: dayName, rate });
+            }
+        } else {
+            // Emtpy data points if no attendance historically
+            const last5Days = [];
+            const dt = new Date();
+            for (let i = 4; i >= 0; i--) {
+                const dDate = new Date(dt.getTime() - (i * 24 * 60 * 60 * 1000));
+                last5Days.push({
+                    day: dDate.toLocaleDateString('en-US', { weekday: 'short' }),
+                    rate: 0
+                });
+            }
+            attendanceData = last5Days;
+        }
+
+        // 6. Recent Activities
+        const recentActivityLogs = await prisma.activityLog.findMany({
+            take: 4,
+            orderBy: { timestamp: 'desc' },
+            include: { performer: { select: { fullName: true, username: true, role: true } } }
+        });
+
+        let recentActivities = recentActivityLogs.map(log => {
+            const timeDiff = Math.floor((new Date() - new Date(log.timestamp)) / 60000); // in minutes
+            let timeStr = `${timeDiff} mins ago`;
+            if (timeDiff > 60 && timeDiff < 1440) timeStr = `${Math.floor(timeDiff / 60)} hours ago`;
+            else if (timeDiff >= 1440) timeStr = `${Math.floor(timeDiff / 1440)} days ago`;
+
+            // Assign color based on action keywords
+            let type = 'info';
+            const actionLower = log.action.toLowerCase();
+            if (actionLower.includes('added') || actionLower.includes('created') || actionLower.includes('approved')) type = 'success';
+            if (actionLower.includes('deleted') || actionLower.includes('removed') || actionLower.includes('failed')) type = 'warning';
+
+            return {
+                action: log.action,
+                user: log.performer?.fullName || log.performer?.username || 'Unknown User',
+                time: timeStr,
+                type
+            };
+        });
+
+        if (recentActivities.length === 0) {
+            recentActivities = [
+                { action: 'System starting up', user: 'System', time: 'Just now', type: 'info' }
+            ];
+        }
+
+        // 7. Upcoming Events
+        const futureAnnouncements = await prisma.announcement.findMany({
+            take: 3,
+            orderBy: { createdAt: 'desc' }
+        });
+
+        let upcomingEvents = futureAnnouncements.map(event => {
+            let type = 'info';
+            const titleLower = event.title.toLowerCase();
+            if (titleLower.includes('exam') || titleLower.includes('test')) type = 'exam';
+            if (titleLower.includes('workshop') || titleLower.includes('training')) type = 'workshop';
+            if (titleLower.includes('event') || titleLower.includes('holiday')) type = 'event';
+
+            return {
+                title: event.title,
+                date: new Date(event.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                type
+            };
+        });
+
+        if (upcomingEvents.length === 0) {
+            upcomingEvents = [
+                { title: 'No upcoming events', date: '-', type: 'info' }
+            ];
+        }
+
         res.json({
             students: studentCount,
             faculty: facultyCount,
             subjects: subjectCount,
-            departments: deptCount
+            departments: deptCount,
+            avgAttendance,
+            departmentData,
+            performanceTrend,
+            marksDistribution,
+            attendanceData,
+            recentActivities,
+            upcomingEvents
         });
     } catch (error) {
         handleError(res, error, "Error fetching dashboard stats");
