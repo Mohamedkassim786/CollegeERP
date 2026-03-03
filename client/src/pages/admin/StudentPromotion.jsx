@@ -23,6 +23,7 @@ const StudentPromotion = () => {
   // Source Filter State
   const [sourceYear, setSourceYear] = useState("1");
   const [sourceDept, setSourceDept] = useState("");
+  const [sourceSem, setSourceSem] = useState("1");
   const [sourceSection, setSourceSection] = useState("All");
 
   // Promotion Config (Target)
@@ -31,23 +32,37 @@ const StudentPromotion = () => {
   const [promoYear, setPromoYear] = useState("2");
   const [promoSem, setPromoSem] = useState("3");
 
+  // First Year Short Code State
+  const [firstYearCode] = useState(() => {
+    return localStorage.getItem('firstYearCode') || "GEN1";
+  });
+
   useEffect(() => {
     fetchDepartments();
   }, []);
 
+  // Update target defaults ONLY when sourceYear changes
+  useEffect(() => {
+    const isFirstYear = sourceYear === "1";
+    if (isFirstYear) {
+      setPromoYear("1");
+      setPromoSem("2");
+    } else {
+      const nextYear = Math.min(parseInt(sourceYear) + 1, 4);
+      setPromoYear(nextYear.toString());
+      setPromoSem((nextYear * 2 - 1).toString());
+    }
+  }, [sourceYear]);
+
   useEffect(() => {
     fetchStudents();
-    // Auto-update target defaults when source year changes
-    const nextYear = Math.min(parseInt(sourceYear) + 1, 4);
-    setPromoYear(nextYear.toString());
-    setPromoSem((nextYear * 2 - 1).toString());
 
-    // Match sourceDept (which effectively uses code) to the full name for promoDept
+    // Match sourceDept to promoDept
     const matchedDept = departments.find(
-      (d) => (d.code || d.name) === sourceDept,
+      (d) => (d.code === sourceDept || d.name === sourceDept),
     );
-    setPromoDept(matchedDept?.name || "");
-  }, [sourceYear, sourceDept, sourceSection, departments]);
+    if (matchedDept) setPromoDept(matchedDept.code || matchedDept.name);
+  }, [sourceYear, sourceDept, sourceSem, sourceSection, departments]);
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -57,19 +72,23 @@ const StudentPromotion = () => {
 
       const filtered = allStudents.filter((s) => {
         const yearMatch = s.year === parseInt(sourceYear);
-        const deptMatch =
-          sourceDept === "" || sourceDept === "GEN"
-            ? s.department === null ||
-            s.department === "" ||
-            s.department?.toLowerCase() === "first year" ||
-            s.department === "GEN"
-            : s.department === sourceDept ||
-            s.department ===
-            departments.find((d) => d.code === sourceDept)?.name;
-        const sectionMatch =
-          sourceSection === "All" ? true : s.section === sourceSection;
 
-        return yearMatch && deptMatch && sectionMatch;
+        let deptMatch = false;
+        if (sourceYear === "1") {
+          // For Year 1, we match all students in the common pool
+          deptMatch = true;
+        } else if (!sourceDept) {
+          deptMatch = true;
+        } else {
+          // Otherwise, match exact department
+          deptMatch = s.departmentId === departments.find(d => d.code === sourceDept || d.name === sourceDept)?.id ||
+            s.department === sourceDept;
+        }
+
+        const sectionMatch = sourceSection === "All" ? true : s.section === sourceSection;
+        const semMatch = s.currentSemester === parseInt(sourceSem);
+
+        return yearMatch && deptMatch && sectionMatch && semMatch;
       });
 
       setStudents(filtered);
@@ -239,7 +258,7 @@ const StudentPromotion = () => {
                   value={sourceYear}
                   onChange={(e) => setSourceYear(e.target.value)}
                 >
-                  {[1, 2, 3, 4].map((y) => (
+                  {["1", "2", "3", "4"].map((y) => (
                     <option key={y} value={y}>
                       Year {y}
                     </option>
@@ -256,20 +275,49 @@ const StudentPromotion = () => {
                   value={sourceDept}
                   onChange={(e) => setSourceDept(e.target.value)}
                 >
-                  <option value="GEN">GENERAL (1st Year)</option>
-                  {departments
-                    .filter((d) => d.name?.toLowerCase() !== "first year")
-                    .map((d) => (
-                      <option key={d.id} value={d.code || d.name}>
-                        {d.code || d.name}
-                      </option>
-                    ))}
+                  {String(sourceYear) === "1" ? (
+                    <option value="GEN">{firstYearCode} (First Year)</option>
+                  ) : (
+                    <>
+                      <option value="">-- ALL DEPTS --</option>
+                      {departments
+                        .filter((d) => {
+                          const isGen = d.code === "GEN" || d.code === "GEN1" || d.name?.toLowerCase() === "first year";
+                          return !isGen;
+                        })
+                        .map((d) => (
+                          <option key={d.id} value={d.code || d.name}>
+                            {d.code || d.name}
+                          </option>
+                        ))}
+                    </>
+                  )}
                 </CustomSelect>
               </div>
 
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">
-                  Target Section
+                  Source Semester
+                </label>
+                <CustomSelect
+                  className="w-full"
+                  value={sourceSem}
+                  onChange={(e) => setSourceSem(e.target.value)}
+                >
+                  {[
+                    (parseInt(sourceYear) * 2 - 1).toString(),
+                    (parseInt(sourceYear) * 2).toString(),
+                  ].map((s) => (
+                    <option key={s} value={s}>
+                      Semester {s}
+                    </option>
+                  ))}
+                </CustomSelect>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">
+                  Source Section
                 </label>
                 <CustomSelect
                   className="w-full"
@@ -282,9 +330,8 @@ const StudentPromotion = () => {
                       .find(
                         (d) =>
                           (d.code || d.name) ===
-                          (sourceYear === "1" &&
-                            (!sourceDept || sourceDept === "GEN")
-                            ? "GEN"
+                          (String(sourceYear) === "1"
+                            ? departments.find(d => d.name?.toLowerCase() === "first year" || d.code === "GEN")?.code || "GEN"
                             : sourceDept),
                       )
                       ?.sections?.split(",") || ["A", "B", "C"]
@@ -545,12 +592,23 @@ const StudentPromotion = () => {
                   value={promoDept}
                   onChange={(e) => setPromoDept(e.target.value)}
                 >
-                  <option value="">-- SELECT SECTOR --</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.code || d.name}>
-                      {d.code || d.name}
-                    </option>
-                  ))}
+                  {promoYear === "1" ? (
+                    <option value="GEN">{firstYearCode} (First Year)</option>
+                  ) : (
+                    <>
+                      <option value="">-- SELECT SECTOR --</option>
+                      {departments
+                        .filter((d) => {
+                          const isGen = d.code === "GEN" || d.code === "GEN1" || d.name?.toLowerCase() === "first year";
+                          return !isGen;
+                        })
+                        .map((d) => (
+                          <option key={d.id} value={d.code || d.name}>
+                            {d.code || d.name}
+                          </option>
+                        ))}
+                    </>
+                  )}
                 </CustomSelect>
               </div>
 
@@ -608,11 +666,19 @@ const StudentPromotion = () => {
                   value={promoSem}
                   onChange={(e) => setPromoSem(e.target.value)}
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                    <option key={s} value={s}>
-                      Semester {s}
-                    </option>
-                  ))}
+                  {promoYear === "1" ? (
+                    [1, 2].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))
+                  ) : (
+                    [3, 4, 5, 6, 7, 8].map((s) => (
+                      <option key={s} value={s}>
+                        Semester {s}
+                      </option>
+                    ))
+                  )}
                 </CustomSelect>
               </div>
 

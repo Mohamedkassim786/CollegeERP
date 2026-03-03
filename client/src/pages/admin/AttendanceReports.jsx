@@ -17,6 +17,7 @@ const AttendanceReports = () => {
   const [departments, setDepartments] = useState([]);
   const [department, setDepartment] = useState("");
   const [year, setYear] = useState("1");
+  const [semester, setSemester] = useState("1");
   const [section, setSection] = useState("A");
   const [fromDate, setFromDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
@@ -49,7 +50,7 @@ const AttendanceReports = () => {
     setLoading(true);
     try {
       const res = await api.get("/admin/attendance/report", {
-        params: { department, year, section, fromDate, toDate },
+        params: { department, year, semester, section, fromDate, toDate },
       });
       setReportData(res.data.students || []);
     } catch (err) {
@@ -106,7 +107,7 @@ const AttendanceReports = () => {
     setExporting(true);
     try {
       const response = await api.get("/admin/attendance/export-excel", {
-        params: { department, year, section, fromDate, toDate },
+        params: { department, year, semester, section, fromDate, toDate },
         responseType: "blob",
       });
 
@@ -167,25 +168,27 @@ const AttendanceReports = () => {
         {/* Visual Background Accent */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#003B73]/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8 relative z-10">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
-              Institutional Department
-            </label>
-            <div className="relative group">
-              <CustomSelect
-                className="w-full"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-              >
-                {departments.map((d) => (
-                  <option key={d.id} value={d.code || d.name}>
-                    {d.code || d.name}
-                  </option>
-                ))}
-              </CustomSelect>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 relative z-10">
+          {Number(year) !== 1 && (
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
+                Institutional Department
+              </label>
+              <div className="relative group">
+                <CustomSelect
+                  className="w-full"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                >
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.code || d.name}>
+                      {d.code || d.name}
+                    </option>
+                  ))}
+                </CustomSelect>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-3">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
@@ -196,10 +199,30 @@ const AttendanceReports = () => {
               value={year}
               onChange={(e) => setYear(e.target.value)}
             >
-              {[1, 2, 3, 4].map((y) => (
+              {["1", "2", "3", "4"].map((y) => (
                 <option key={y} value={y}>
                   {y}
-                  {y === 1 ? "st" : y === 2 ? "nd" : y === 3 ? "rd" : "th"} Year
+                  {y === "1" ? "st" : y === "2" ? "nd" : y === "3" ? "rd" : "th"} Year
+                </option>
+              ))}
+            </CustomSelect>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
+              Semester
+            </label>
+            <CustomSelect
+              className="w-full"
+              value={semester}
+              onChange={(e) => setSemester(e.target.value)}
+            >
+              {[
+                (parseInt(year) * 2 - 1).toString(),
+                (parseInt(year) * 2).toString(),
+              ].map((s) => (
+                <option key={s} value={s}>
+                  Semester {s}
                 </option>
               ))}
             </CustomSelect>

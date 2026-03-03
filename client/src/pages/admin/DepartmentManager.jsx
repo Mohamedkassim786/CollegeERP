@@ -240,7 +240,7 @@ const DepartmentManager = () => {
                         </p>
                       </div>
                       <p className="font-extrabold text-lg text-gray-800 tracking-tight">
-                        {dept.name?.toLowerCase() === "first year"
+                        {dept.name?.toLowerCase() === "first year" || dept.code === "GEN1" || dept.code === "GEN"
                           ? "1"
                           : dept.years || "2,3,4"}
                       </p>

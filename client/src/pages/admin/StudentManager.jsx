@@ -21,13 +21,16 @@ import toast from "react-hot-toast";
 import { handleApiError } from "../../utils/errorHandler";
 
 const StudentManager = () => {
+  const [selectedCategory, setSelectedCategory] = useState(null); // 'FIRST_YEAR' | 'DEPARTMENTS'
   const [selectedDept, setSelectedDept] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
+  const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
   const [studentsList, setStudentsList] = useState([]);
 
-  // Dynamic Departments
+  // Dynamic Departments & Sections
   const [departments, setDepartments] = useState([]);
+  const [dbSections, setDbSections] = useState([]);
   const [loadingDepts, setLoadingDepts] = useState(false);
 
   // UI States
@@ -65,6 +68,18 @@ const StudentManager = () => {
     batch: "",
   });
 
+  // First Year Short Code State
+  const [firstYearCode, setFirstYearCode] = useState(() => {
+    return localStorage.getItem('firstYearCode') || "GEN1";
+  });
+  const [isEditingFirstYearCode, setIsEditingFirstYearCode] = useState(false);
+  const [tempFirstYearCode, setTempFirstYearCode] = useState(firstYearCode);
+
+  // Add Section State
+  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
+  const [addingSection, setAddingSection] = useState(false);
+
   useEffect(() => {
     fetchDepartments();
     if (location.state?.openAddModal) {
@@ -75,12 +90,12 @@ const StudentManager = () => {
   const fetchDepartments = async () => {
     setLoadingDepts(true);
     try {
-      const res = await api.get("/admin/departments");
-      if (res.data.length > 0) {
-        setDepartments(res.data);
-      } else {
-        setDepartments([]);
-      }
+      const [deptRes, secRes] = await Promise.all([
+        api.get("/admin/departments"),
+        api.get("/admin/sections")
+      ]);
+      setDepartments(Array.isArray(deptRes.data) ? deptRes.data : []);
+      setDbSections(Array.isArray(secRes.data) ? secRes.data : []);
     } catch (err) {
       console.error("Failed to fetch departments");
     } finally {
@@ -88,46 +103,81 @@ const StudentManager = () => {
     }
   };
 
+  const handleSaveFirstYearCode = (e) => {
+    e.stopPropagation();
+    if (tempFirstYearCode.trim() !== "") {
+      setFirstYearCode(tempFirstYearCode);
+      localStorage.setItem('firstYearCode', tempFirstYearCode);
+    }
+    setIsEditingFirstYearCode(false);
+  };
+
+  const handleCreateSection = async (e) => {
+    e.preventDefault();
+    if (!newSectionName.trim()) return;
+    setAddingSection(true);
+    try {
+      await api.post('/admin/sections', {
+        name: newSectionName.toUpperCase(),
+        semester: selectedSemester,
+        type: "COMMON",
+        departmentId: null
+      });
+      toast.success("Section added successfully!");
+      setShowAddSectionModal(false);
+      setNewSectionName("");
+      fetchDepartments(); // Refresh DB Sections
+    } catch (err) {
+      handleApiError(err, "Failed to create section");
+    } finally {
+      setAddingSection(false);
+    }
+  };
+
   const fetchStudents = async (section) => {
     setSelectedSection(section);
     setLoading(true);
     try {
-      const res = await api.get("/admin/students");
-      const allStudents = Array.isArray(res.data) ? res.data : [];
+      let queryParams = "";
 
-      // Find the short code for the currently selected department name
-      const matchingDept = departments.find((d) => d.name === selectedDept);
-      const deptCodeToMatch = matchingDept
-        ? matchingDept.code || matchingDept.name
-        : selectedDept;
-
-      const filtered = allStudents.filter((s) => {
-        const yearMatch = s.year === parseInt(selectedYear);
-        const sectionMatch = s.section === section;
-
-        if (selectedDept?.toLowerCase() === "first year") {
-          return (
-            yearMatch &&
-            sectionMatch &&
-            (s.department === null ||
-              s.department === "" ||
-              s.department?.toLowerCase() === "first year" ||
-              s.department === "GEN")
-          );
+      if (selectedSemester <= 2 && selectedSemester) {
+        const sectionObj = dbSections.find(s => s.name === section && s.semester === selectedSemester && s.type === "COMMON");
+        if (sectionObj) {
+          queryParams = `?semester=${selectedSemester}&sectionId=${sectionObj.id}`;
         }
+      } else {
+        const matchingDept = departments.find(d => d.name === selectedDept || d.code === selectedDept);
+        if (matchingDept) {
+          const targetSemester = selectedYear * 2 - 1; // Base semester for the year
+          const sectionObj = dbSections.find(s => s.name === section && s.semester >= targetSemester && s.semester <= targetSemester + 1 && s.departmentId === matchingDept.id);
+          if (sectionObj) {
+            queryParams = `?semester=${sectionObj.semester}&departmentId=${matchingDept.id}&sectionId=${sectionObj.id}`;
+          }
+        }
+      }
 
-        const isCSAlias = (matchingDept?.name === 'Computer Science' || matchingDept?.code === 'CSE') &&
-          (s.department === 'Computer Science and Engineering' || s.department === 'CSE' || s.department === 'Computer Science');
+      // Support legacy string filtering if DB structure isn't perfect yet
+      const res = await api.get(`/admin/students${queryParams}`);
+      let allStudents = Array.isArray(res.data) ? res.data : [];
 
-        return (
-          yearMatch &&
-          sectionMatch &&
-          (s.department === deptCodeToMatch || s.department === matchingDept?.name || isCSAlias ||
-            (matchingDept && s.department?.toLowerCase().includes(matchingDept.code?.toLowerCase()))) &&
-          s.year > 1
-        );
-      });
-      setStudentsList(filtered);
+      if (!queryParams) {
+        const filtered = allStudents.filter((s) => {
+          const yearMatch = !selectedYear || String(s.year) === String(selectedYear);
+          const sectionMatch = !section || s.section === section;
+
+          const matchingDept = departments.find(d => d.code === selectedDept || d.name === selectedDept);
+          const deptMatch = matchingDept && (
+            s.departmentId === matchingDept.id ||
+            s.department === matchingDept.code ||
+            s.department === matchingDept.name
+          );
+
+          return yearMatch && sectionMatch && deptMatch;
+        });
+        setStudentsList(filtered);
+      } else {
+        setStudentsList(allStudents);
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to fetch students");
@@ -137,15 +187,23 @@ const StudentManager = () => {
   };
 
   const resetSelection = (level) => {
+    if (level === -1) {
+      setSelectedCategory(null);
+      setSelectedDept(null);
+      setSelectedYear(null);
+      setSelectedSemester(null);
+      setSelectedSection(null);
+    }
     if (level === 0) {
       setSelectedDept(null);
       setSelectedYear(null);
+      setSelectedSemester(null);
       setSelectedSection(null);
     }
     if (level === 1) {
       setSelectedYear(null);
       setSelectedSection(null);
-      if (selectedDept?.toLowerCase() === "first year") setSelectedYear(1);
+      setSelectedSemester(null);
     }
     if (level === 2) {
       setSelectedSection(null);
@@ -155,15 +213,14 @@ const StudentManager = () => {
   const handleBack = () => {
     if (selectedSection) {
       setSelectedSection(null);
-    } else if (selectedYear) {
-      if (selectedDept?.toLowerCase() === "first year") {
-        setSelectedYear(null);
-        setSelectedDept(null);
-      } else {
-        setSelectedYear(null);
-      }
+    } else if (selectedYear || selectedSemester) {
+      setSelectedYear(null);
+      setSelectedSemester(null);
+      setSelectedDept(null);
     } else if (selectedDept) {
       setSelectedDept(null);
+    } else if (selectedCategory) {
+      setSelectedCategory(null);
     }
   };
 
@@ -280,7 +337,8 @@ const StudentManager = () => {
 
     try {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(bulkFile);
+      const buffer = await bulkFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
 
       // Find first non-empty worksheet
       const worksheet =
@@ -372,12 +430,18 @@ const StudentManager = () => {
 
       const res = await api.post("/admin/students/bulk", { students });
       setBulkResult(res.data);
-      toast.success(`Processed ${students.length} records`);
+      if (res.data?.errors && res.data.errors.length > 0) {
+        toast.error(`Imported with ${res.data.errors.length} errors. Check console.`);
+        console.table(res.data.errors);
+      } else {
+        toast.success(`Processed ${students.length} records successfully`);
+      }
 
       if (selectedSection) fetchStudents(selectedSection);
     } catch (err) {
       console.error("Bulk Upload Error:", err);
-      toast.error(err.message || "Failed to process bulk upload");
+      const msg = err.response?.data?.message || err.message || "Failed to process bulk upload";
+      toast.error(msg);
     } finally {
       setBulkUploading(false);
     }
@@ -395,34 +459,43 @@ const StudentManager = () => {
           </p>
         </div>
 
-        <div className="flex gap-4">
-          <button
-            onClick={() => setShowBulkModal(true)}
-            className="px-6 py-4 bg-emerald-50 text-emerald-600 rounded-[24px] font-black hover:bg-emerald-100 transition-all flex items-center gap-2 border border-emerald-100"
-          >
-            <Upload size={20} /> Bulk Upload
-          </button>
-          <button
-            onClick={() => {
-              const isGeneral = selectedDept?.toLowerCase() === "first year";
-              setNewStudent({
-                ...newStudent,
-                department: isGeneral ? "" : selectedDept || "",
-                year: selectedYear || (isGeneral ? "1" : ""),
-                section: selectedSection || "",
-                semester: selectedYear
-                  ? (selectedYear * 2 - 1).toString()
-                  : isGeneral
-                    ? "1"
-                    : "",
-              });
-              setShowCreateModal(true);
-            }}
-            className="px-8 py-4 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all flex items-center gap-2 transform active:scale-95"
-          >
-            <Plus size={22} strokeWidth={3} /> Register Student
-          </button>
-        </div>
+        {selectedCategory && (
+          <div className="flex gap-4">
+            <button
+              onClick={() => {
+                setBulkFile(null);
+                const isFirstYear = selectedCategory === 'FIRST_YEAR';
+                setBulkConfig({
+                  ...bulkConfig,
+                  year: selectedYear || (isFirstYear ? 1 : 2),
+                  semester: selectedSemester || (isFirstYear ? 1 : 3),
+                  department: selectedDept || "",
+                  section: selectedSection || "A"
+                });
+                setShowBulkModal(true);
+              }}
+              className="px-6 py-4 bg-emerald-50 text-emerald-600 rounded-[24px] font-black hover:bg-emerald-100 transition-all flex items-center gap-2 border border-emerald-100"
+            >
+              <Upload size={20} /> Bulk Upload
+            </button>
+            <button
+              onClick={() => {
+                const isFirstYear = selectedCategory === 'FIRST_YEAR';
+                setNewStudent({
+                  ...newStudent,
+                  department: selectedDept || "",
+                  year: selectedYear || (isFirstYear ? "1" : ""),
+                  section: selectedSection || "",
+                  semester: (selectedSemester !== null && selectedSemester !== undefined) ? String(selectedSemester) : (selectedYear ? String(selectedYear * 2 - 1) : (isFirstYear ? "1" : "")),
+                });
+                setShowCreateModal(true);
+              }}
+              className="px-8 py-4 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all flex items-center gap-2 transform active:scale-95"
+            >
+              <Plus size={22} strokeWidth={3} /> Register Student
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white p-10 rounded-[40px] shadow-xl border border-gray-100 min-h-[650px] transition-all relative overflow-hidden">
@@ -443,35 +516,51 @@ const StudentManager = () => {
 
           <div className="flex items-center gap-3 text-sm overflow-x-auto no-scrollbar">
             <button
-              onClick={() => resetSelection(0)}
-              className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] ${!selectedDept ? "bg-[#003B73] text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
+              onClick={() => resetSelection(-1)}
+              className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] ${!selectedCategory ? "bg-[#003B73] text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
             >
-              Departments
+              Categories
             </button>
 
-            {selectedDept && (
+            {selectedCategory && (
               <>
-                <ChevronRight
-                  size={16}
-                  className="text-gray-300 flex-shrink-0"
-                />
+                <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
                 <button
-                  onClick={() => resetSelection(1)}
-                  className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedYear ? "bg-indigo-600 text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
+                  onClick={() => resetSelection(0)}
+                  className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedDept && !selectedSemester ? "bg-[#003B73] text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
                 >
-                  {selectedDept?.toLowerCase() === "first year"
-                    ? (departments.find(d => d.name?.toLowerCase() === "first year")?.code || "GEN")
-                    : selectedDept}
+                  {selectedCategory === 'FIRST_YEAR' ? 'FIRST YEAR' : 'DEPARTMENTS'}
                 </button>
               </>
             )}
 
-            {selectedYear && selectedDept?.toLowerCase() !== "first year" && (
+            {selectedSemester <= 2 && selectedSemester && !selectedDept && (
               <>
-                <ChevronRight
-                  size={16}
-                  className="text-gray-300 flex-shrink-0"
-                />
+                <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
+                <button
+                  onClick={() => resetSelection(1)}
+                  className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedSection ? "bg-purple-600 text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
+                >
+                  Semester {selectedSemester} (First Year)
+                </button>
+              </>
+            )}
+
+            {selectedDept && (
+              <>
+                <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
+                <button
+                  onClick={() => resetSelection(1)}
+                  className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedYear ? "bg-indigo-600 text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
+                >
+                  {departments.find(d => d.code === selectedDept || d.name === selectedDept)?.code || selectedDept}
+                </button>
+              </>
+            )}
+
+            {selectedYear && selectedDept && (
+              <>
+                <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
                 <button
                   onClick={() => resetSelection(2)}
                   className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedSection ? "bg-emerald-600 text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
@@ -495,33 +584,101 @@ const StudentManager = () => {
           </div>
         </div>
 
-        {/* Level 1: Dept */}
-        {!selectedDept && (
+        {/* Level 0: Categories (First Year vs Departments) */}
+        {!selectedCategory && !selectedDept && !selectedSemester && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
             <div
               onClick={() => {
-                setSelectedDept("First Year");
-                setSelectedYear(1);
+                if (!isEditingFirstYearCode) setSelectedCategory('FIRST_YEAR');
               }}
-              className="group p-10 bg-purple-50/50 hover:bg-purple-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-purple-100 hover:shadow-2xl hover:shadow-purple-200 flex flex-col items-center justify-center text-center"
+              className="group p-10 bg-purple-50/50 hover:bg-purple-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-purple-100 hover:shadow-2xl hover:shadow-purple-200 flex flex-col items-center justify-center text-center relative"
             >
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
                 <Users className="w-8 h-8 text-purple-600 group-hover:text-white" />
               </div>
               <h3 className="text-2xl font-black text-purple-900 group-hover:text-white transition-colors">
-                {departments.find((d) => d.name?.toLowerCase() === "first year")?.code || "GEN"}
+                FIRST YEAR
               </h3>
-              <p className="text-xs font-black text-purple-400 group-hover:text-purple-100 mt-2 uppercase tracking-widest">
-                Unassigned Pool
-              </p>
+
+              {isEditingFirstYearCode ? (
+                <div className="mt-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                  <input
+                    autoFocus
+                    className="px-3 py-1.5 text-xs font-black text-purple-900 text-center rounded-lg border border-purple-300 w-24 outline-none"
+                    value={tempFirstYearCode}
+                    onChange={e => setTempFirstYearCode(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveFirstYearCode(e)}
+                  />
+                  <button onClick={handleSaveFirstYearCode} className="p-1.5 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 shadow-sm">
+                    <CheckCircle2 size={16} />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setIsEditingFirstYearCode(false); }} className="p-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 shadow-sm">
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 flex items-center justify-center gap-2 group-hover:text-purple-100">
+                  <p className="text-xs font-black text-purple-500 group-hover:text-purple-100 uppercase tracking-widest bg-white/50 group-hover:bg-black/10 px-3 py-1 rounded-md">
+                    CODE: {firstYearCode}
+                  </p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setTempFirstYearCode(firstYearCode); setIsEditingFirstYearCode(true); }}
+                    className="p-1 text-purple-400 hover:text-white transition-colors"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                </div>
+              )}
             </div>
 
+            <div
+              onClick={() => setSelectedCategory('DEPARTMENTS')}
+              className="group p-10 bg-blue-50/50 hover:bg-[#003B73] rounded-[32px] cursor-pointer transition-all duration-500 border border-blue-100 hover:shadow-2xl hover:shadow-blue-200 flex flex-col items-center justify-center text-center"
+            >
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                <GraduationCap className="w-8 h-8 text-[#003B73] group-hover:text-white" />
+              </div>
+              <h3 className="text-2xl font-black text-[#003B73] group-hover:text-white transition-colors">
+                DEPARTMENTS
+              </h3>
+              <p className="text-xs font-black text-blue-400 group-hover:text-blue-100 mt-2 uppercase tracking-widest">
+                Manage Departments
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Level 1: Sub-Categories */}
+        {selectedCategory === 'FIRST_YEAR' && !selectedSemester && !selectedSection && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
+            {[1, 2].map(sem => (
+              <div
+                key={`sem-${sem}`}
+                onClick={() => setSelectedSemester(sem)}
+                className="group p-10 bg-purple-50/50 hover:bg-purple-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-purple-100 hover:shadow-2xl hover:shadow-purple-200 flex flex-col items-center justify-center text-center"
+              >
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                  <Users className="w-8 h-8 text-purple-600 group-hover:text-white" />
+                </div>
+                <h3 className="text-2xl font-black text-purple-900 group-hover:text-white transition-colors">
+                  Semester {sem}
+                </h3>
+                <p className="text-xs font-black text-purple-400 group-hover:text-purple-100 mt-2 uppercase tracking-widest">
+                  First Year Pool
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {selectedCategory === 'DEPARTMENTS' && !selectedDept && !selectedSection && !selectedYear && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
             {(Array.isArray(departments) ? departments : [])
-              .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
+              .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== "GEN1" && d.code !== "GEN")
               .map((dept) => (
                 <div
                   key={dept.id}
-                  onClick={() => setSelectedDept(dept.name)}
+                  onClick={() => setSelectedDept(dept.code || dept.name)}
                   className="group p-10 bg-blue-50/50 hover:bg-[#003B73] rounded-[32px] cursor-pointer transition-all duration-500 border border-blue-100 hover:shadow-2xl hover:shadow-blue-200 flex flex-col items-center justify-center text-center"
                 >
                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
@@ -545,7 +702,7 @@ const StudentManager = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
               {(
                 departments
-                  .find((d) => d.name === selectedDept)
+                  .find((d) => d.code === selectedDept || d.name === selectedDept)
                   ?.years?.split(",")
                   .map((y) => parseInt(y)) || [2, 3, 4]
               ).map((year) => (
@@ -568,22 +725,14 @@ const StudentManager = () => {
             </div>
           )}
 
-        {/* Level 3: Section */}
-        {selectedDept && selectedYear && !selectedSection && (
+        {/* Level 3: Section (For Semester 1 & 2) */}
+        {selectedSemester <= 2 && selectedSemester && !selectedSection && !selectedDept && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
             {(
-              departments
-                .find(
-                  (d) =>
-                    d.name ===
-                    (selectedYear === 1
-                      ? "First Year"
-                      : selectedDept),
-                )
-                ?.sections?.split(",") || ["A", "B", "C"]
-            ).map((sec) => (
+              dbSections.filter(s => s.semester === selectedSemester && s.type === "COMMON").map(s => s.name)
+            ).filter((v, i, a) => a.indexOf(v) === i).map((sec) => (
               <div
-                key={sec}
+                key={`common-${sec}`}
                 onClick={() => fetchStudents(sec)}
                 className="group p-10 bg-emerald-50/50 hover:bg-emerald-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-emerald-100 hover:shadow-2xl hover:shadow-emerald-200 flex flex-col items-center justify-center text-center"
               >
@@ -598,6 +747,75 @@ const StudentManager = () => {
                 </p>
               </div>
             ))}
+
+            {/* Add Section Button */}
+            <div
+              onClick={() => setShowAddSectionModal(true)}
+              className="group p-10 bg-emerald-50/30 hover:bg-emerald-100 border-2 border-dashed border-emerald-200 hover:border-emerald-400 rounded-[32px] cursor-pointer transition-all duration-500 flex flex-col items-center justify-center text-center"
+            >
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-[0_4px_20px_-4px_rgba(52,211,153,0.3)] group-hover:scale-110 transition-all duration-500 mb-6 group-hover:bg-emerald-500 group-hover:text-white">
+                <Plus className="w-8 h-8 text-emerald-500 group-hover:text-white" />
+              </div>
+              <h3 className="text-xl font-black text-emerald-700 transition-colors">
+                Add Section
+              </h3>
+              <p className="text-[10px] font-black text-emerald-500 mt-2 uppercase tracking-widest">
+                Create New Cohort
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Level 3: Section (For Higher Years) */}
+        {selectedDept && selectedYear && !selectedSection && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
+            {(
+              dbSections.filter(s => {
+                const deptObj = departments.find(d => d.name === selectedDept || d.code === selectedDept);
+                const targetSem = selectedYear * 2 - 1;
+                return s.departmentId === deptObj?.id && (s.semester === targetSem || s.semester === targetSem + 1);
+              }).map(s => s.name)
+            ).filter((v, i, a) => a.indexOf(v) === i).length > 0 ? (
+              dbSections.filter(s => {
+                const deptObj = departments.find(d => d.name === selectedDept || d.code === selectedDept);
+                const targetSem = selectedYear * 2 - 1;
+                return s.departmentId === deptObj?.id && (s.semester === targetSem || s.semester === targetSem + 1);
+              }).map(s => s.name).filter((v, i, a) => a.indexOf(v) === i).map((sec) => (
+                <div
+                  key={`dept-${sec}`}
+                  onClick={() => fetchStudents(sec)}
+                  className="group p-10 bg-emerald-50/50 hover:bg-emerald-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-emerald-100 hover:shadow-2xl hover:shadow-emerald-200 flex flex-col items-center justify-center text-center"
+                >
+                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                    <Users className="w-8 h-8 text-emerald-600 group-hover:text-white" />
+                  </div>
+                  <h3 className="text-2xl font-black text-emerald-900 group-hover:text-white uppercase transition-colors">
+                    Section {sec}
+                  </h3>
+                  <p className="text-xs font-black text-emerald-500 group-hover:text-emerald-100 mt-2 uppercase tracking-widest">
+                    View Roster
+                  </p>
+                </div>
+              ))
+            ) : (
+              ["A", "B", "C"].map((sec) => (
+                <div
+                  key={`fallback-${sec}`}
+                  onClick={() => fetchStudents(sec)}
+                  className="group p-10 bg-emerald-50/50 hover:bg-emerald-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-emerald-100 hover:shadow-2xl hover:shadow-emerald-200 flex flex-col items-center justify-center text-center"
+                >
+                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                    <Users className="w-8 h-8 text-emerald-600 group-hover:text-white" />
+                  </div>
+                  <h3 className="text-2xl font-black text-emerald-900 group-hover:text-white uppercase transition-colors">
+                    Section {sec}
+                  </h3>
+                  <p className="text-xs font-black text-emerald-500 group-hover:text-emerald-100 mt-2 uppercase tracking-widest">
+                    View Roster
+                  </p>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -700,775 +918,833 @@ const StudentManager = () => {
       </div>
 
       {/* Add Student Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-          <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
-                  New Student
-                </h3>
-                <p className="text-gray-500 font-bold text-sm mt-1">
-                  Register a new profile to the system.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
-              >
-                <X size={32} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateStudent} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {
+        showCreateModal && (
+          <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
+              <div className="flex justify-between items-center mb-10">
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Roll Number (Primary)
-                  </label>
-                  <input
-                    className="input-field w-full font-mono"
-                    placeholder="E123456"
-                    value={newStudent.rollNo}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, rollNo: e.target.value })
-                    }
-                    required
-                  />
+                  <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
+                    New Student
+                  </h3>
+                  <p className="text-gray-500 font-bold text-sm mt-1">
+                    Register a new profile to the system.
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Register Number (Optional)
-                  </label>
-                  <input
-                    className="input-field w-full font-mono"
-                    placeholder="2021CSE001"
-                    value={newStudent.registerNumber}
-                    onChange={(e) =>
-                      setNewStudent({
-                        ...newStudent,
-                        registerNumber: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Full Name
-                  </label>
-                  <input
-                    className="input-field w-full"
-                    placeholder="John Doe"
-                    value={newStudent.name}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Department
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={newStudent.year === "1" ? "" : newStudent.department}
-                    onChange={(e) =>
-                      setNewStudent({
-                        ...newStudent,
-                        department: e.target.value,
-                      })
-                    }
-                    required={newStudent.year !== "1"}
-                    disabled={newStudent.year === "1"}
-                  >
-                    <option value="">
-                      {newStudent.year === "1"
-                        ? "Common (First Year)"
-                        : "Select Dept"}
-                    </option>
-                    {departments
-                      .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
-                      .map((d) => (
-                        <option key={d.id} value={d.code || d.name}>
-                          {d.code || d.name}
-                        </option>
-                      ))}
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Academic Year
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={newStudent.year}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, year: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="">Select Year</option>
-                    {(newStudent.department
-                      ? departments
-                        .find((d) => d.name === newStudent.department)
-                        ?.years?.split(",") || ["2", "3", "4"]
-                      : ["1", "2", "3", "4"]
-                    ).map((y) => (
-                      <option key={y} value={y}>
-                        {y} Year
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Section
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={newStudent.section}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, section: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="">Select Section</option>
-                    {(
-                      departments
-                        .find(
-                          (d) =>
-                            d.name ===
-                            (newStudent.year === "1"
-                              ? "First Year"
-                              : newStudent.department),
-                        )
-                        ?.sections?.split(",") || ["A", "B", "C"]
-                    ).map((s) => (
-                      <option key={s} value={s}>
-                        Section {s}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Semester
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={newStudent.semester}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, semester: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="">Select Sem</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                      <option key={s} value={s}>
-                        Sem {s}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Regulation
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={newStudent.regulation}
-                    onChange={(e) =>
-                      setNewStudent({
-                        ...newStudent,
-                        regulation: e.target.value,
-                      })
-                    }
-                    required
-                  >
-                    <option value="2021">2021 Regulation</option>
-                    <option value="2023">2023 Regulation</option>
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Batch (e.g. 2021-25)
-                  </label>
-                  <input
-                    className="input-field w-full"
-                    placeholder="2021-2025"
-                    value={newStudent.batch}
-                    onChange={(e) =>
-                      setNewStudent({ ...newStudent, batch: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-6">
                 <button
-                  type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
+                  className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
-                >
-                  Finalize Entry
+                  <X size={32} />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Edit Student Modal */}
-      {showEditModal && editingStudent && (
-        <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-          <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
-                  Edit Profile
-                </h3>
-                <p className="text-gray-500 font-bold text-sm mt-1">
-                  Updating records for {editingStudent.name}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
-              >
-                <X size={32} />
-              </button>
-            </div>
-
-            <form onSubmit={handleEditStudent} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Roll Number
-                  </label>
-                  <input
-                    className="input-field w-full font-mono"
-                    value={editingStudent.rollNo}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        rollNo: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Register Number
-                  </label>
-                  <input
-                    className="input-field w-full font-mono"
-                    value={editingStudent.registerNumber || ""}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        registerNumber: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Full Name
-                  </label>
-                  <input
-                    className="input-field w-full"
-                    value={editingStudent.name}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        name: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Department
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={
-                      parseInt(editingStudent.year) === 1
-                        ? ""
-                        : editingStudent.department || ""
-                    }
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        department: e.target.value,
-                      })
-                    }
-                    required={parseInt(editingStudent.year) !== 1}
-                    disabled={parseInt(editingStudent.year) === 1}
-                  >
-                    <option value="">
-                      {parseInt(editingStudent.year) === 1
-                        ? "Common (First Year)"
-                        : "Select Dept"}
-                    </option>
-                    {departments
-                      .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
-                      .map((d) => (
-                        <option key={d.id} value={d.code || d.name}>
-                          {d.code || d.name}
-                        </option>
-                      ))}
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Academic Year
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={editingStudent.year}
-                    onChange={(e) => {
-                      const year = parseInt(e.target.value);
-                      setEditingStudent({
-                        ...editingStudent,
-                        year: year,
-                        department:
-                          year === 1 ? null : editingStudent.department,
-                      });
-                    }}
-                    required
-                  >
-                    {(editingStudent.department
-                      ? departments
-                        .find((d) => d.name === editingStudent.department)
-                        ?.years?.split(",") || ["2", "3", "4"]
-                      : ["1", "2", "3", "4"]
-                    ).map((y) => (
-                      <option key={y} value={y}>
-                        {y} Year
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Section
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={editingStudent.section}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        section: e.target.value,
-                      })
-                    }
-                    required
-                  >
-                    {(
-                      departments
-                        .find(
-                          (d) =>
-                            d.name ===
-                            (parseInt(editingStudent.year) === 1
-                              ? "First Year"
-                              : editingStudent.department),
-                        )
-                        ?.sections?.split(",") || ["A", "B", "C"]
-                    ).map((s) => (
-                      <option key={s} value={s}>
-                        Section {s}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Semester
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={editingStudent.semester}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        semester: parseInt(e.target.value),
-                      })
-                    }
-                    required
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                      <option key={s} value={s}>
-                        Sem {s}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Regulation
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={editingStudent.regulation || "2021"}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        regulation: e.target.value,
-                      })
-                    }
-                    required
-                  >
-                    <option value="2021">2021 Regulation</option>
-                    <option value="2023">2023 Regulation</option>
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Batch
-                  </label>
-                  <input
-                    className="input-field w-full"
-                    value={editingStudent.batch || ""}
-                    onChange={(e) =>
-                      setEditingStudent({
-                        ...editingStudent,
-                        batch: e.target.value,
-                      })
-                    }
-                    placeholder="e.g. 2021-2025"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
-                >
-                  Update Record
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Bulk Upload Modal */}
-      {showBulkModal && (
-        <div className="fixed inset-0 bg-emerald-900/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-          <div className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl border border-gray-100 relative">
-            {/* Status bar */}
-            {bulkUploading && (
-              <div className="absolute top-0 left-0 h-1.5 bg-emerald-500 animate-pulse w-full"></div>
-            )}
-
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h3 className="text-3xl font-black text-emerald-900 tracking-tight">
-                  Bulk Student Upload
-                </h3>
-                <p className="text-gray-500 font-bold text-sm mt-1">
-                  Import multiple student records via Excel.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowBulkModal(false);
-                  setBulkResult(null);
-                }}
-                className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
-              >
-                <X size={32} />
-              </button>
-            </div>
-
-            <div className="space-y-8">
-              {/* Template Download */}
-              <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
-                    <FileSpreadsheet size={24} />
+              <form onSubmit={handleCreateStudent} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Roll Number (Primary)
+                    </label>
+                    <input
+                      className="input-field w-full font-mono"
+                      placeholder="E123456"
+                      value={newStudent.rollNo}
+                      onChange={(e) =>
+                        setNewStudent({ ...newStudent, rollNo: e.target.value })
+                      }
+                      required
+                    />
                   </div>
                   <div>
-                    <p className="font-black text-blue-900 text-sm">
-                      Need a template?
-                    </p>
-                    <p className="text-xs text-blue-600 font-bold">
-                      Download our pre-formatted Excel file.
-                    </p>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Register Number (Optional)
+                    </label>
+                    <input
+                      className="input-field w-full font-mono"
+                      placeholder="2021CSE001"
+                      value={newStudent.registerNumber}
+                      onChange={(e) =>
+                        setNewStudent({
+                          ...newStudent,
+                          registerNumber: e.target.value,
+                        })
+                      }
+                    />
                   </div>
                 </div>
+                <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Full Name
+                    </label>
+                    <input
+                      className="input-field w-full"
+                      placeholder="John Doe"
+                      value={newStudent.name}
+                      onChange={(e) =>
+                        setNewStudent({ ...newStudent, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Department
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={newStudent.department}
+                      onChange={(e) =>
+                        setNewStudent({
+                          ...newStudent,
+                          department: e.target.value,
+                        })
+                      }
+                      required
+                    >
+                      <option value="">Select Dept</option>
+                      {departments
+                        .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
+                        .map((d) => (
+                          <option key={d.id} value={d.code || d.name}>
+                            {d.code || d.name}
+                          </option>
+                        ))}
+                    </CustomSelect>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Academic Year
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={newStudent.year}
+                      onChange={(e) =>
+                        setNewStudent({ ...newStudent, year: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Select Year</option>
+                      {selectedCategory === 'FIRST_YEAR' ? (
+                        <option value="1">1st Year</option>
+                      ) : (
+                        ["2", "3", "4"].map((y) => (
+                          <option key={y} value={y}>
+                            {y} Year
+                          </option>
+                        ))
+                      )}
+                    </CustomSelect>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Section
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={newStudent.section}
+                      onChange={(e) =>
+                        setNewStudent({ ...newStudent, section: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Select Section</option>
+                      {/* For Year 1, show COMMON sections. For 2+, show departmental sections. */}
+                      {(newStudent.year === "1"
+                        ? dbSections.filter(s => s.semester === (parseInt(newStudent.semester) || 1) && s.type === "COMMON").map(s => s.name)
+                        : departments
+                          .find(d => d.code === newStudent.department)
+                          ?.sections?.split(",") || ["A", "B", "C"]
+                      ).filter((v, i, a) => a.indexOf(v) === i).map((s) => (
+                        <option key={s} value={s}>
+                          Section {s}
+                        </option>
+                      ))}
+                    </CustomSelect>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Semester
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={newStudent.semester}
+                      onChange={(e) =>
+                        setNewStudent({ ...newStudent, semester: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Select Sem</option>
+                      {selectedCategory === 'FIRST_YEAR' ? (
+                        [1, 2].map((s) => (
+                          <option key={s} value={s}>
+                            Sem {s}
+                          </option>
+                        ))
+                      ) : (
+                        [3, 4, 5, 6, 7, 8].map((s) => (
+                          <option key={s} value={s}>
+                            Sem {s}
+                          </option>
+                        ))
+                      )}
+                    </CustomSelect>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Regulation
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={newStudent.regulation}
+                      onChange={(e) =>
+                        setNewStudent({
+                          ...newStudent,
+                          regulation: e.target.value,
+                        })
+                      }
+                      required
+                    >
+                      <option value="2021">2021 Regulation</option>
+                      <option value="2023">2023 Regulation</option>
+                    </CustomSelect>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Batch (e.g. 2021-25)
+                    </label>
+                    <input
+                      className="input-field w-full"
+                      placeholder="2021-2025"
+                      value={newStudent.batch}
+                      onChange={(e) =>
+                        setNewStudent({ ...newStudent, batch: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
+                  >
+                    Finalize Entry
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Edit Student Modal */}
+      {
+        showEditModal && editingStudent && (
+          <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
+              <div className="flex justify-between items-center mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
+                    Edit Profile
+                  </h3>
+                  <p className="text-gray-500 font-bold text-sm mt-1">
+                    Updating records for {editingStudent.name}
+                  </p>
+                </div>
                 <button
-                  onClick={downloadTemplate}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  onClick={() => setShowEditModal(false)}
+                  className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
                 >
-                  Download Template
+                  <X size={32} />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                    Department
-                  </label>
-                  <CustomSelect
-                    value={bulkConfig.department}
-                    onChange={(e) =>
-                      setBulkConfig({
-                        ...bulkConfig,
-                        department: e.target.value,
-                      })
-                    }
-                    className="w-full"
-                  >
-                    <option value="">Auto-Detect</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.code || d.name}>
-                        {d.code || d.name}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                    Year
-                  </label>
-                  <CustomSelect
-                    value={bulkConfig.year}
-                    onChange={(e) =>
-                      setBulkConfig({
-                        ...bulkConfig,
-                        year: e.target.value,
-                        semester: e.target.value * 2 - 1,
-                      })
-                    }
-                    className="w-full"
-                  >
-                    {[1, 2, 3, 4].map((y) => (
-                      <option key={y} value={y}>
-                        Year {y}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                    Section
-                  </label>
-                  <CustomSelect
-                    value={bulkConfig.section}
-                    onChange={(e) =>
-                      setBulkConfig({ ...bulkConfig, section: e.target.value })
-                    }
-                    className="w-full"
-                  >
-                    {["A", "B", "C"].map((s) => (
-                      <option key={s} value={s}>
-                        Section {s}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                    Semester
-                  </label>
-                  <CustomSelect
-                    value={bulkConfig.semester}
-                    onChange={(e) =>
-                      setBulkConfig({ ...bulkConfig, semester: e.target.value })
-                    }
-                    className="w-full"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                      <option key={s} value={s}>
-                        Sem {s}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                    Regulation
-                  </label>
-                  <CustomSelect
-                    value={bulkConfig.regulation}
-                    onChange={(e) =>
-                      setBulkConfig({
-                        ...bulkConfig,
-                        regulation: e.target.value,
-                      })
-                    }
-                    className="w-full"
-                  >
-                    <option value="2021">2021</option>
-                    <option value="2023">2023</option>
-                  </CustomSelect>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                    Default Batch
-                  </label>
-                  <input
-                    value={bulkConfig.batch}
-                    onChange={(e) =>
-                      setBulkConfig({ ...bulkConfig, batch: e.target.value })
-                    }
-                    placeholder="e.g. 2021-2025"
-                    className="input-field w-full"
-                  />
-                </div>
-              </div>
-
-              {!bulkResult ? (
-                <form onSubmit={handleBulkUpload} className="space-y-6">
-                  <div className="group relative">
-                    <input
-                      type="file"
-                      accept=".xlsx, .xls"
-                      onChange={(e) => setBulkFile(e.target.files[0])}
-                      className="hidden"
-                      id="bulk-file-input"
-                    />
-                    <label
-                      htmlFor="bulk-file-input"
-                      className={`flex flex-col items-center justify-center w-full py-16 border-4 border-dashed rounded-[40px] cursor-pointer transition-all ${bulkFile ? "border-emerald-200 bg-emerald-50" : "border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30"}`}
-                    >
-                      <Upload
-                        size={48}
-                        className={`mb-4 ${bulkFile ? "text-emerald-500" : "text-gray-300 group-hover:text-blue-400"}`}
-                      />
-                      <p
-                        className={`font-black uppercase tracking-[0.2em] text-xs ${bulkFile ? "text-emerald-600" : "text-gray-400 group-hover:text-blue-900/40"}`}
-                      >
-                        {bulkFile ? bulkFile.name : "Select or Drop Excel File"}
-                      </p>
-                      {bulkFile && (
-                        <p className="text-[10px] font-bold text-emerald-400 mt-2">
-                          {(bulkFile.size / 1024).toFixed(1)} KB ready for
-                          processing
-                        </p>
-                      )}
+              <form onSubmit={handleEditStudent} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Roll Number
                     </label>
+                    <input
+                      className="input-field w-full font-mono"
+                      value={editingStudent.rollNo}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          rollNo: e.target.value,
+                        })
+                      }
+                      required
+                    />
                   </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Register Number
+                    </label>
+                    <input
+                      className="input-field w-full font-mono"
+                      value={editingStudent.registerNumber || ""}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          registerNumber: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Full Name
+                    </label>
+                    <input
+                      className="input-field w-full"
+                      value={editingStudent.name}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          name: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Department
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={editingStudent.department || ""}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          department: e.target.value,
+                        })
+                      }
+                      required
+                    >
+                      <option value="">Select Dept</option>
+                      {departments
+                        .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
+                        .map((d) => (
+                          <option key={d.id} value={d.code || d.name}>
+                            {d.code || d.name}
+                          </option>
+                        ))}
+                    </CustomSelect>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Academic Year
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={editingStudent.year}
+                      onChange={(e) => {
+                        const year = parseInt(e.target.value);
+                        setEditingStudent({
+                          ...editingStudent,
+                          year: year,
+                        });
+                      }}
+                      required
+                    >
+                      {selectedCategory === 'FIRST_YEAR' ? (
+                        <option value="1">1st Year</option>
+                      ) : (
+                        ["2", "3", "4"].map((y) => (
+                          <option key={y} value={y}>
+                            {y} Year
+                          </option>
+                        ))
+                      )}
+                    </CustomSelect>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Section
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={editingStudent.section}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          section: e.target.value,
+                        })
+                      }
+                      required
+                    >
+                      <option value="">Select Section</option>
+                      {/* For Year 1, show COMMON sections. For 2+, show departmental sections. */}
+                      {(parseInt(editingStudent.year) === 1
+                        ? dbSections.filter(s => s.semester === (parseInt(editingStudent.semester) || 1) && s.type === "COMMON").map(s => s.name)
+                        : departments
+                          .find(d => d.code === editingStudent.department)
+                          ?.sections?.split(",") || ["A", "B", "C"]
+                      ).filter((v, i, a) => a.indexOf(v) === i).map((s) => (
+                        <option key={s} value={s}>
+                          Section {s}
+                        </option>
+                      ))}
+                    </CustomSelect>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Semester
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={editingStudent.semester}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          semester: parseInt(e.target.value),
+                        })
+                      }
+                      required
+                    >
+                      {selectedCategory === 'FIRST_YEAR' ? (
+                        [1, 2].map((s) => (
+                          <option key={s} value={s}>
+                            Sem {s}
+                          </option>
+                        ))
+                      ) : (
+                        [3, 4, 5, 6, 7, 8].map((s) => (
+                          <option key={s} value={s}>
+                            Sem {s}
+                          </option>
+                        ))
+                      )}
+                    </CustomSelect>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Regulation
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={editingStudent.regulation || "2021"}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          regulation: e.target.value,
+                        })
+                      }
+                      required
+                    >
+                      <option value="2021">2021 Regulation</option>
+                      <option value="2023">2023 Regulation</option>
+                    </CustomSelect>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Batch
+                    </label>
+                    <input
+                      className="input-field w-full"
+                      value={editingStudent.batch || ""}
+                      onChange={(e) =>
+                        setEditingStudent({
+                          ...editingStudent,
+                          batch: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. 2021-2025"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
+                  >
+                    Cancel
+                  </button>
                   <button
                     type="submit"
-                    disabled={!bulkFile || bulkUploading}
-                    className={`w-full py-6 rounded-[32px] font-black text-lg transition-all flex items-center justify-center gap-3 ${!bulkFile || bulkUploading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xl shadow-emerald-200 active:scale-[0.98]"}`}
+                    className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
                   >
-                    {bulkUploading ? (
-                      <>
-                        <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        Processing Records...
-                      </>
-                    ) : (
-                      <>Proceed with Import</>
-                    )}
+                    Update Record
                   </button>
-                </form>
-              ) : (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-8 bg-emerald-50 rounded-[32px] border border-emerald-100 text-center">
-                      <p className="text-4xl font-black text-emerald-600 mb-2">
-                        {bulkResult.created}
-                      </p>
-                      <p className="text-xs font-black text-emerald-900/40 uppercase tracking-widest">
-                        New Students
-                      </p>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+      {/* Bulk Upload Modal */}
+      {
+        showBulkModal && (
+          <div className="fixed inset-0 bg-emerald-900/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl border border-gray-100 relative">
+              {/* Status bar */}
+              {bulkUploading && (
+                <div className="absolute top-0 left-0 h-1.5 bg-emerald-500 animate-pulse w-full"></div>
+              )}
+
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className="text-3xl font-black text-emerald-900 tracking-tight">
+                    Bulk Student Upload
+                  </h3>
+                  <p className="text-gray-500 font-bold text-sm mt-1">
+                    Import multiple student records via Excel.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowBulkModal(false);
+                    setBulkResult(null);
+                  }}
+                  className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
+                >
+                  <X size={32} />
+                </button>
+              </div>
+
+              <div className="space-y-8">
+                {/* Template Download */}
+                <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                      <FileSpreadsheet size={24} />
                     </div>
-                    <div className="p-8 bg-blue-50 rounded-[32px] border border-blue-100 text-center">
-                      <p className="text-4xl font-black text-blue-600 mb-2">
-                        {bulkResult.updated}
+                    <div>
+                      <p className="font-black text-blue-900 text-sm">
+                        Need a template?
                       </p>
-                      <p className="text-xs font-black text-blue-900/40 uppercase tracking-widest">
-                        Profiles Updated
+                      <p className="text-xs text-blue-600 font-bold">
+                        Download our pre-formatted Excel file.
                       </p>
                     </div>
                   </div>
-
-                  {bulkResult.errors && bulkResult.errors.length > 0 && (
-                    <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
-                      <div className="flex items-center gap-3 mb-4 text-amber-600">
-                        <AlertCircle size={20} />
-                        <p className="font-black text-sm uppercase tracking-widest">
-                          Issues Found ({bulkResult.errors.length})
-                        </p>
-                      </div>
-                      <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                        {bulkResult.errors.map((err, idx) => (
-                          <div
-                            key={idx}
-                            className="flex justify-between items-center text-xs p-3 bg-white rounded-xl border border-amber-100/50"
-                          >
-                            <span className="font-mono font-bold text-gray-400">
-                              {err.rollNo}
-                            </span>
-                            <span className="font-bold text-amber-700">
-                              {err.error}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   <button
-                    onClick={() => {
-                      setShowBulkModal(false);
-                      setBulkResult(null);
-                      setBulkFile(null);
-                    }}
-                    className="w-full py-6 bg-emerald-900 text-white rounded-[32px] font-black text-lg hover:bg-[#003B73] transition-all flex items-center justify-center gap-3 shadow-xl"
+                    onClick={downloadTemplate}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
                   >
-                    <CheckCircle2 size={24} /> Done
+                    Download Template
                   </button>
                 </div>
-              )}
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                      Department
+                    </label>
+                    <CustomSelect
+                      value={bulkConfig.department}
+                      onChange={(e) =>
+                        setBulkConfig({
+                          ...bulkConfig,
+                          department: e.target.value,
+                        })
+                      }
+                      className="w-full"
+                    >
+                      <option value="">Auto-Detect</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.code || d.name}>
+                          {d.code || d.name}
+                        </option>
+                      ))}
+                    </CustomSelect>
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                      Year
+                    </label>
+                    <CustomSelect
+                      value={bulkConfig.year}
+                      onChange={(e) =>
+                        setBulkConfig({
+                          ...bulkConfig,
+                          year: e.target.value,
+                          semester: selectedCategory === 'FIRST_YEAR' ? 1 : (e.target.value * 2 - 1),
+                        })
+                      }
+                      className="w-full"
+                    >
+                      {selectedCategory === 'FIRST_YEAR' ? (
+                        <option value="1">Year 1</option>
+                      ) : (
+                        [2, 3, 4].map((y) => (
+                          <option key={y} value={y}>
+                            Year {y}
+                          </option>
+                        ))
+                      )}
+                    </CustomSelect>
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                      Section
+                    </label>
+                    <CustomSelect
+                      value={bulkConfig.section}
+                      onChange={(e) =>
+                        setBulkConfig({ ...bulkConfig, section: e.target.value })
+                      }
+                      className="w-full"
+                    >
+                      <option value="">Select Section</option>
+                      {(parseInt(bulkConfig.year) === 1
+                        ? dbSections.filter(s => s.semester === (parseInt(bulkConfig.semester) || 1) && s.type === "COMMON").map(s => s.name)
+                        : departments
+                          .find(d => d.code === bulkConfig.department || d.name === bulkConfig.department)
+                          ?.sections?.split(",") || ["A", "B", "C"]
+                      ).filter((v, i, a) => v && a.indexOf(v) === i).map((s) => (
+                        <option key={s} value={s}>
+                          Section {s}
+                        </option>
+                      ))}
+                    </CustomSelect>
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                      Semester
+                    </label>
+                    <CustomSelect
+                      value={bulkConfig.semester}
+                      onChange={(e) =>
+                        setBulkConfig({ ...bulkConfig, semester: e.target.value })
+                      }
+                      className="w-full"
+                    >
+                      {selectedCategory === 'FIRST_YEAR' ? (
+                        [1, 2].map((s) => (
+                          <option key={s} value={s}>
+                            Sem {s}
+                          </option>
+                        ))
+                      ) : (
+                        [3, 4, 5, 6, 7, 8].map((s) => (
+                          <option key={s} value={s}>
+                            Sem {s}
+                          </option>
+                        ))
+                      )}
+                    </CustomSelect>
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                      Regulation
+                    </label>
+                    <CustomSelect
+                      value={bulkConfig.regulation}
+                      onChange={(e) =>
+                        setBulkConfig({
+                          ...bulkConfig,
+                          regulation: e.target.value,
+                        })
+                      }
+                      className="w-full"
+                    >
+                      <option value="2021">2021</option>
+                      <option value="2023">2023</option>
+                    </CustomSelect>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                      Default Batch
+                    </label>
+                    <input
+                      value={bulkConfig.batch}
+                      onChange={(e) =>
+                        setBulkConfig({ ...bulkConfig, batch: e.target.value })
+                      }
+                      placeholder="e.g. 2021-2025"
+                      className="input-field w-full"
+                    />
+                  </div>
+                </div>
+
+                {!bulkResult ? (
+                  <form onSubmit={handleBulkUpload} className="space-y-6">
+                    <div className="group relative">
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls"
+                        onChange={(e) => setBulkFile(e.target.files[0])}
+                        className="hidden"
+                        id="bulk-file-input"
+                      />
+                      <label
+                        htmlFor="bulk-file-input"
+                        className={`flex flex-col items-center justify-center w-full py-16 border-4 border-dashed rounded-[40px] cursor-pointer transition-all ${bulkFile ? "border-emerald-200 bg-emerald-50" : "border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30"}`}
+                      >
+                        <Upload
+                          size={48}
+                          className={`mb-4 ${bulkFile ? "text-emerald-500" : "text-gray-300 group-hover:text-blue-400"}`}
+                        />
+                        <p
+                          className={`font-black uppercase tracking-[0.2em] text-xs ${bulkFile ? "text-emerald-600" : "text-gray-400 group-hover:text-blue-900/40"}`}
+                        >
+                          {bulkFile ? bulkFile.name : "Select or Drop Excel File"}
+                        </p>
+                        {bulkFile && (
+                          <p className="text-[10px] font-bold text-emerald-400 mt-2">
+                            {(bulkFile.size / 1024).toFixed(1)} KB ready for
+                            processing
+                          </p>
+                        )}
+                      </label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={!bulkFile || bulkUploading}
+                      className={`w-full py-6 rounded-[32px] font-black text-lg transition-all flex items-center justify-center gap-3 ${!bulkFile || bulkUploading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xl shadow-emerald-200 active:scale-[0.98]"}`}
+                    >
+                      {bulkUploading ? (
+                        <>
+                          <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Processing Records...
+                        </>
+                      ) : (
+                        <>Proceed with Import</>
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-6 animate-fadeIn">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-8 bg-emerald-50 rounded-[32px] border border-emerald-100 text-center">
+                        <p className="text-4xl font-black text-emerald-600 mb-2">
+                          {bulkResult.created}
+                        </p>
+                        <p className="text-xs font-black text-emerald-900/40 uppercase tracking-widest">
+                          New Students
+                        </p>
+                      </div>
+                      <div className="p-8 bg-blue-50 rounded-[32px] border border-blue-100 text-center">
+                        <p className="text-4xl font-black text-blue-600 mb-2">
+                          {bulkResult.updated}
+                        </p>
+                        <p className="text-xs font-black text-blue-900/40 uppercase tracking-widest">
+                          Profiles Updated
+                        </p>
+                      </div>
+                    </div>
+
+                    {bulkResult.errors && bulkResult.errors.length > 0 && (
+                      <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
+                        <div className="flex items-center gap-3 mb-4 text-amber-600">
+                          <AlertCircle size={20} />
+                          <p className="font-black text-sm uppercase tracking-widest">
+                            Issues Found ({bulkResult.errors.length})
+                          </p>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                          {bulkResult.errors.map((err, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center text-xs p-3 bg-white rounded-xl border border-amber-100/50"
+                            >
+                              <span className="font-mono font-bold text-gray-400">
+                                {err.rollNo}
+                              </span>
+                              <span className="font-bold text-amber-700">
+                                {err.error}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setShowBulkModal(false);
+                        setBulkResult(null);
+                        setBulkFile(null);
+                      }}
+                      className="w-full py-6 bg-emerald-900 text-white rounded-[32px] font-black text-lg hover:bg-[#003B73] transition-all flex items-center justify-center gap-3 shadow-xl"
+                    >
+                      <CheckCircle2 size={24} /> Done
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+      {/* Add Section Modal */}
+      {
+        showAddSectionModal && (
+          <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-sm shadow-2xl border border-gray-100 text-center">
+              <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Plus className="w-10 h-10 text-emerald-500" />
+              </div>
+              <h3 className="text-2xl font-black text-[#003B73] mb-2">New Section</h3>
+              <p className="text-gray-500 font-bold text-sm mb-6">Semester {selectedSemester} (First Year)</p>
+
+              <form onSubmit={handleCreateSection}>
+                <input
+                  autoFocus
+                  className="input-field w-full text-center text-xl uppercase font-black tracking-widest mb-6"
+                  placeholder="e.g. A"
+                  maxLength={2}
+                  value={newSectionName}
+                  onChange={e => setNewSectionName(e.target.value.toUpperCase())}
+                  required
+                />
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSectionModal(false)}
+                    className="flex-1 px-6 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase text-sm hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addingSection || !newSectionName.trim()}
+                    className="flex-1 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase text-sm shadow-xl hover:bg-emerald-600 hover:-translate-y-1 transition-all disabled:opacity-50"
+                  >
+                    {addingSection ? "Adding..." : "Add"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   );
 };
 

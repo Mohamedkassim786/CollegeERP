@@ -14,12 +14,89 @@ const getDepartments = async (req, res) => {
                 });
                 if (hod) hodName = hod.fullName;
             }
-            // Stats logic can be moved here too if needed
-            return { ...dept, hodName };
+
+            // Calculate stats
+            const [facultyCount, studentCount, subjectCount] = await Promise.all([
+                prisma.user.count({
+                    where: {
+                        role: 'FACULTY',
+                        OR: [
+                            { department: dept.code },
+                            { department: dept.name }
+                        ]
+                    }
+                }),
+                prisma.student.count({
+                    where: {
+                        OR: [
+                            { departmentId: dept.id },
+                            { department: dept.code },
+                            { department: dept.name }
+                        ]
+                    }
+                }),
+                prisma.subject.count({
+                    where: {
+                        OR: [
+                            { department: dept.code },
+                            { department: dept.name }
+                        ]
+                    }
+                })
+            ]);
+
+            return {
+                ...dept,
+                hodName,
+                stats: {
+                    faculty: facultyCount,
+                    students: studentCount,
+                    subjects: subjectCount
+                }
+            };
         }));
         res.json(enriched);
     } catch (error) {
         handleError(res, error, "Error fetching departments");
+    }
+};
+
+const getSections = async (req, res) => {
+    try {
+        const sections = await prisma.section.findMany({
+            include: { department: true }
+        });
+        res.json(sections);
+    } catch (error) {
+        handleError(res, error, "Error fetching sections");
+    }
+};
+
+const createSection = async (req, res) => {
+    const { name, semester, type, departmentId, academicYearId } = req.body;
+    try {
+        let activeAcademicYearId = academicYearId;
+        if (!activeAcademicYearId) {
+            const defaultYear = await prisma.academicYear.findFirst({
+                where: { isActive: true }
+            });
+            if (defaultYear) {
+                activeAcademicYearId = defaultYear.id;
+            }
+        }
+
+        const section = await prisma.section.create({
+            data: {
+                name,
+                semester: parseInt(semester),
+                type,
+                departmentId: departmentId ? parseInt(departmentId) : null,
+                academicYearId: activeAcademicYearId
+            }
+        });
+        res.status(201).json(section);
+    } catch (error) {
+        handleError(res, error, "Error creating section");
     }
 };
 
@@ -73,6 +150,8 @@ const deleteDepartment = async (req, res) => {
 
 module.exports = {
     getDepartments,
+    getSections,
+    createSection,
     createDepartment,
     updateDepartment,
     deleteDepartment

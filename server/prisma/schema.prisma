@@ -8,32 +8,32 @@ datasource db {
 }
 
 model User {
-  id                  Int                 @id @default(autoincrement())
-  username            String              @unique
-  password            String
-  role                String
-  fullName            String?
-  email               String?             @unique
-  phoneNumber         String?
-  department          String?
-  designation         String?
-  lastPasswordChange  DateTime?           @default(now())
-  isDisabled          Boolean             @default(false)
-  forcePasswordChange Boolean             @default(false)
-  lastLogin           DateTime?
-  createdAt           DateTime            @default(now())
-  activityPerformed   ActivityLog[]       @relation("PerformedBy")
-  announcements       Announcement[]      @relation("PostedBy")
-  externalStaffTasks  ExternalMarkAssignment[] @relation("ExternalStaffAssignments")
-  facultyAbsences     FacultyAbsence[]
-  marksApproved       Marks[]             @relation("MarksApprover")
-  materials           Material[]          @relation("Instructor")
-  takenAttendance     StudentAttendance[]
-  substitutions       Substitution[]
-  timetables          Timetable[]
-  externalMarksSubmitted ExternalMark[] @relation("ExternalEvaluator")
-  examSessions        ExamSession[]   @relation("CreatedSessions")
-  facultyAssignments  FacultyAssignment[] @relation("FacultyToAssignment")
+  id                     Int                      @id @default(autoincrement())
+  username               String                   @unique
+  password               String
+  role                   String
+  fullName               String?
+  email                  String?                  @unique
+  phoneNumber            String?
+  department             String?
+  designation            String?
+  lastPasswordChange     DateTime?                @default(now())
+  isDisabled             Boolean                  @default(false)
+  forcePasswordChange    Boolean                  @default(false)
+  lastLogin              DateTime?
+  createdAt              DateTime                 @default(now())
+  activityPerformed      ActivityLog[]            @relation("PerformedBy")
+  announcements          Announcement[]           @relation("PostedBy")
+  externalStaffTasks     ExternalMarkAssignment[] @relation("ExternalStaffAssignments")
+  facultyAbsences        FacultyAbsence[]
+  marksApproved          Marks[]                  @relation("MarksApprover")
+  materials              Material[]               @relation("Instructor")
+  takenAttendance        StudentAttendance[]
+  substitutions          Substitution[]
+  timetables             Timetable[]
+  externalMarksSubmitted ExternalMark[]           @relation("ExternalEvaluator")
+  examSessions           ExamSession[]            @relation("CreatedSessions")
+  facultyAssignments     FacultyAssignment[]      @relation("FacultyToAssignment")
 }
 
 model ActivityLog {
@@ -55,30 +55,72 @@ model Department {
   years     String   @default("2,3,4")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Phase 2 Relational Structure
+  sectionRefs Section[]
+  students    Student[]
+}
+
+model AcademicYear {
+  id        Int     @id @default(autoincrement())
+  year      String
+  isActive  Boolean @default(false)
+
+  sections Section[]
+  students Student[]
+}
+
+model Section {
+  id             Int    @id @default(autoincrement())
+  name           String // e.g., "A", "B", "C"
+  semester       Int
+  type           String // "COMMON" | "DEPARTMENT"
+  departmentId   Int? // Nullable for "COMMON"
+  academicYearId Int
+
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  students     Student[]
+
+  @@unique([name, semester, departmentId, academicYearId])
+  @@index([semester, type])
 }
 
 model Student {
-  id             Int                 @id @default(autoincrement())
-  rollNo         String              @unique
-  registerNumber String?             @unique
-  name           String
-  department     String?
-  year           Int
-  section        String
-  semester       Int
-  regulation     String?             @default("2021")
-  batch          String?
-  createdAt      DateTime            @default(now())
-  arrears        Arrear[]
-  marks          Marks[]
-  results        SemesterResult[]
-  attendance     StudentAttendance[]
-  dummyMappings  SubjectDummyMapping[]
+  id              Int                   @id @default(autoincrement())
+  rollNo          String                @unique
+  registerNumber  String?               @unique
+  name            String
+  department      String?
+  year            Int
+  section         String
+  semester        Int
+  regulation      String?               @default("2021")
+  batch           String?
+  createdAt       DateTime              @default(now())
+  arrears         Arrear[]
+  marks           Marks[]
+  results         SemesterResult[]
+  attendance      StudentAttendance[]
+  dummyMappings   SubjectDummyMapping[]
   hallAllocations HallAllocation[]
 
-  @@index([department, year, section, semester]) // New: High-speed roster lookups
-}
+  // Phase 2 Relational Fields (Nullable for migration phase)
+  departmentId    Int?
+  sectionId       Int?
+  currentSemester Int?
+  academicYearId  Int?
+  batchYear       String?
+  status          String @default("ACTIVE")
 
+  departmentRef Department?   @relation(fields: [departmentId], references: [id])
+  sectionRef    Section?      @relation(fields: [sectionId], references: [id])
+  academicYear  AcademicYear? @relation(fields: [academicYearId], references: [id])
+
+  @@index([department, year, section, semester]) // Legacy
+  @@index([departmentId, currentSemester])
+  @@index([sectionId])
+}
 
 model Timetable {
   id            Int            @id @default(autoincrement())
@@ -104,14 +146,14 @@ model Timetable {
 }
 
 model Subject {
-  id                 Int                 @id @default(autoincrement())
-  code               String              @unique
+  id                 Int                      @id @default(autoincrement())
+  code               String                   @unique
   name               String
   shortName          String?
   department         String?
   semester           Int
-  credits            Int                 @default(3)
-  type               String              @default("DEPARTMENT")
+  credits            Int                      @default(3)
+  type               String                   @default("DEPARTMENT")
   arrears            Arrear[]
   externalStaffTasks ExternalMarkAssignment[]
   facultyAssignments FacultyAssignment[]
@@ -120,9 +162,9 @@ model Subject {
   attendance         StudentAttendance[]
   timetables         Timetable[]
   dummyMappings      SubjectDummyMapping[]
-  externalMarks     ExternalMark[]
-  examSessionLinks  ExamSessionSubjects[]
-  hallAllocations   HallAllocation[]
+  externalMarks      ExternalMark[]
+  examSessionLinks   ExamSessionSubjects[]
+  hallAllocations    HallAllocation[]
 }
 
 model Announcement {
@@ -200,14 +242,14 @@ model Marks {
 }
 
 model EndSemMarks {
-  id            Int      @id @default(autoincrement())
-  marksId       Int      @unique
-  externalMarks Float?
-  totalMarks    Float?
-  grade         String?
-  resultStatus  String?
-  isPublished   Boolean  @default(false)
-  isLocked      Boolean  @default(false)
+  id                 Int      @id @default(autoincrement())
+  marksId            Int      @unique
+  externalMarks      Float?
+  totalMarks         Float?
+  grade              String?
+  resultStatus       String?
+  isPublished        Boolean  @default(false)
+  isLocked           Boolean  @default(false)
   attendanceSnapshot Float?
   updatedAt          DateTime @updatedAt
   marks              Marks    @relation(fields: [marksId], references: [id])
@@ -295,15 +337,15 @@ model ArrearAttempt {
 }
 
 model ExternalMarkAssignment {
-  id               Int      @id @default(autoincrement())
-  staffId          Int
-  subjectId        Int
-  deadline         DateTime
-  status           String   @default("PENDING")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  subject          Subject  @relation(fields: [subjectId], references: [id])
-  staff            User     @relation("ExternalStaffAssignments", fields: [staffId], references: [id])
+  id        Int      @id @default(autoincrement())
+  staffId   Int
+  subjectId Int
+  deadline  DateTime
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  staff     User     @relation("ExternalStaffAssignments", fields: [staffId], references: [id])
 }
 
 model FacultyAbsence {
@@ -394,88 +436,88 @@ model ExternalMark {
 }
 
 model ExamSession {
-  id          Int      @id @default(autoincrement())
-  examName    String
-  examDate    DateTime
-  session     String   // "FN" or "AN"
-  examMode    String   @default("CIA")
-  isLocked    Boolean  @default(false)
-  createdBy   Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  examName  String
+  examDate  DateTime
+  session   String // "FN" or "AN"
+  examMode  String   @default("CIA")
+  isLocked  Boolean  @default(false)
+  createdBy Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  author      User     @relation("CreatedSessions", fields: [createdBy], references: [id])
+  author      User                  @relation("CreatedSessions", fields: [createdBy], references: [id])
   subjects    ExamSessionSubjects[]
   allocations HallAllocation[]
 }
 
 model ExamSessionSubjects {
-  id            Int      @id @default(autoincrement())
+  id            Int @id @default(autoincrement())
   examSessionId Int
   subjectId     Int
 
-  examSession   ExamSession @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
-  subject       Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  examSession ExamSession @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  subject     Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@unique([examSessionId, subjectId])
 }
 
 model Hall {
-  id             Int      @id @default(autoincrement())
-  hallName       String
-  blockName      String
-  totalRows      Int?     // Legacy (moving to columns)
-  benchesPerRow  Int?     // Legacy (moving to columns)
-  totalBenches   Int      @default(0)
-  capacityCIA    Int      @default(0)
-  capacityEND    Int      @default(0)
-  capacity       Int?     // Legacy
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  hallName      String
+  blockName     String
+  totalRows     Int? // Legacy (moving to columns)
+  benchesPerRow Int? // Legacy (moving to columns)
+  totalBenches  Int      @default(0)
+  capacityCIA   Int      @default(0)
+  capacityEND   Int      @default(0)
+  capacity      Int? // Legacy
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  columns        HallColumn[]
-  allocations    HallAllocation[]
+  columns     HallColumn[]
+  allocations HallAllocation[]
 }
 
 model HallColumn {
-  id        Int       @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
   hallId    Int
   label     String
-  benches   Int       // Number of benches (legacy/cache)
-  hall      Hall      @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  benches   Int // Number of benches (legacy/cache)
+  hall      Hall        @relation(fields: [hallId], references: [id], onDelete: Cascade)
   benchData HallBench[]
 }
 
 model HallBench {
-  id           Int        @id @default(autoincrement())
-  columnId     Int
-  benchNumber  Int        // 1, 2, 3...
-  capacity     Int        @default(2) // 1 or 2
-  column       HallColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  id          Int        @id @default(autoincrement())
+  columnId    Int
+  benchNumber Int // 1, 2, 3...
+  capacity    Int        @default(2) // 1 or 2
+  column      HallColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
 
   @@unique([columnId, benchNumber])
 }
 
 model HallAllocation {
-  id               Int      @id @default(autoincrement())
-  examSessionId    Int
-  hallId           Int
-  studentId        Int
-  subjectId        Int
-  department       String
-  year             Int
-  seatNumber       String
-  rowNumber        Int?     // Make optional for column-based flexibility
-  columnNumber     Int?     // Make optional for column-based flexibility
-  benchIndex       Int?     // New: position in column (1, 2, 3...)
-  columnLabel      String?  // New: A, B, C...
-  createdAt        DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  examSessionId Int
+  hallId        Int
+  studentId     Int
+  subjectId     Int
+  department    String
+  year          Int
+  seatNumber    String
+  rowNumber     Int? // Make optional for column-based flexibility
+  columnNumber  Int? // Make optional for column-based flexibility
+  benchIndex    Int? // New: position in column (1, 2, 3...)
+  columnLabel   String? // New: A, B, C...
+  createdAt     DateTime @default(now())
 
-  examSession      ExamSession @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
-  hall             Hall        @relation(fields: [hallId], references: [id], onDelete: Cascade)
-  student          Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subject          Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  examSession ExamSession @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  hall        Hall        @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject     Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@unique([examSessionId, studentId])
   @@unique([examSessionId, hallId, seatNumber])

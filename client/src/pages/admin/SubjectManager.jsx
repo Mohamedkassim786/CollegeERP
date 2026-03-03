@@ -216,11 +216,20 @@ const SubjectManager = () => {
             >
               <option value="">All Departments</option>
               <option value="COMMON">First Year (Common)</option>
-              {(Array.isArray(departments) ? departments : []).map((d) => (
-                <option key={d.id} value={d.code || d.name}>
-                  {d.code || d.name}
-                </option>
-              ))}
+              {(() => {
+                const fyDept = departments.find(d => d.name?.toLowerCase() === "first year");
+                if (fyDept) {
+                  return <option value={fyDept.code || fyDept.name}>FIRST YEAR ({fyDept.code || fyDept.name})</option>;
+                }
+                return null;
+              })()}
+              {(Array.isArray(departments) ? departments : [])
+                .filter(d => d.name?.toLowerCase() !== "first year")
+                .map((d) => (
+                  <option key={d.id} value={d.code || d.name}>
+                    {d.code || d.name}
+                  </option>
+                ))}
             </CustomSelect>
           </div>
         </div>
@@ -522,36 +531,38 @@ const SubjectManager = () => {
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2 p-2 bg-gray-50 border-2 border-transparent focus-within:border-[#003B73] rounded-3xl min-h-[64px] transition-all">
-                      {(Array.isArray(departments) ? departments : []).map(
-                        (d) => {
-                          const deptCode = d.code || d.name;
-                          const isSelected =
-                            newSubject.departments.includes(deptCode);
+                      {(Array.isArray(departments) ? departments : [])
+                        .filter(d => d.name?.toLowerCase() !== "first year")
+                        .map(
+                          (d) => {
+                            const deptCode = d.code || d.name;
+                            const isSelected =
+                              newSubject.departments.includes(deptCode);
 
-                          return (
-                            <button
-                              key={d.id}
-                              type="button"
-                              onClick={() => {
-                                setNewSubject((prev) => ({
-                                  ...prev,
-                                  departments: isSelected
-                                    ? prev.departments.filter(
-                                      (code) => code !== deptCode,
-                                    )
-                                    : [...prev.departments, deptCode],
-                                }));
-                              }}
-                              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isSelected
-                                ? "bg-[#003B73] text-white shadow-md scale-105"
-                                : "bg-white text-gray-500 border border-gray-200 hover:border-[#003B73]/50"
-                                }`}
-                            >
-                              {deptCode}
-                            </button>
-                          );
-                        },
-                      )}
+                            return (
+                              <button
+                                key={d.id}
+                                type="button"
+                                onClick={() => {
+                                  setNewSubject((prev) => ({
+                                    ...prev,
+                                    departments: isSelected
+                                      ? prev.departments.filter(
+                                        (code) => code !== deptCode,
+                                      )
+                                      : [...prev.departments, deptCode],
+                                  }));
+                                }}
+                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isSelected
+                                  ? "bg-[#003B73] text-white shadow-md scale-105"
+                                  : "bg-white text-gray-500 border border-gray-200 hover:border-[#003B73]/50"
+                                  }`}
+                              >
+                                {deptCode}
+                              </button>
+                            );
+                          },
+                        )}
                     </div>
                   )}
                 </div>

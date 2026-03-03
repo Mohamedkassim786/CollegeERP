@@ -105,7 +105,7 @@ const TimetableManager = () => {
     const departmentData = departments.find(
       (d) => (d.code || d.name) === department,
     );
-    const isGeneral = departmentData?.name.toLowerCase() === "first year";
+    const isGeneral = departmentData?.name?.toLowerCase() === "first year" || departmentData?.code === "GEN1" || departmentData?.code === "GEN";
 
     if (isGeneral) {
       validSems = ["1", "2"];
@@ -124,7 +124,7 @@ const TimetableManager = () => {
       (d) => (d.code || d.name) === department,
     );
     if (departmentData) {
-      const isGeneral = departmentData.name?.toLowerCase() === "first year";
+      const isGeneral = departmentData?.name?.toLowerCase() === "first year" || departmentData?.code === "GEN1" || departmentData?.code === "GEN";
       const currentSemesterInt = parseInt(semester);
       const isSemSpecific = isGeneral
         ? [1, 2].includes(currentSemesterInt)
@@ -585,17 +585,25 @@ const TimetableManager = () => {
   );
 
   const availableSubjects = subjects.filter((s) => {
-    // Strict department match for Department-specific subjects
+    // 1. Semester Match is mandatory
+    if (parseInt(s.semester) !== parseInt(semester)) return false;
 
-    if (s.semester !== parseInt(semester)) return false;
+    // 2. Year 1 (Common) vs Departmental (Year 2+) separation
+    const isYear1 = (year === "1");
 
-    if (s.type === "COMMON") return true;
+    if (isYear1) {
+      // For Year 1, only show COMMON subjects
+      return s.type === "COMMON";
+    } else {
+      // For Year 2+, show subjects belonging to this department
+      // (and NOT common subjects which are purely for Year 1)
+      if (s.type === "COMMON") return false;
 
-    // Match against Code OR Name (handle legacy data or mismatch)
-    return (
-      s.department === department ||
-      (currentDept && s.department === currentDept.name)
-    );
+      return (
+        s.department === department ||
+        (currentDept && s.department === currentDept.name)
+      );
+    }
   });
 
   return (
@@ -646,24 +654,26 @@ const TimetableManager = () => {
 
         <div className="flex flex-col lg:flex-row items-end gap-8 relative z-10">
           <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
-                Department
-              </label>
-              <div className="relative group">
-                <CustomSelect
-                  className="w-full"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                >
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.code || d.name}>
-                      {d.code || d.name}
-                    </option>
-                  ))}
-                </CustomSelect>
+            {String(year) !== "1" && (
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
+                  Department
+                </label>
+                <div className="relative group">
+                  <CustomSelect
+                    className="w-full"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                  >
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.code || d.name}>
+                        {d.code || d.name}
+                      </option>
+                    ))}
+                  </CustomSelect>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-3">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
@@ -706,8 +716,8 @@ const TimetableManager = () => {
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
                 >
-                  {(department?.toLowerCase() === "first year" ||
-                    currentDept?.name.toLowerCase() === "first year"
+                  {(department?.toLowerCase() === "first year" || department === "GEN1" || department === "GEN" ||
+                    currentDept?.name?.toLowerCase() === "first year"
                     ? ["1", "2"]
                     : [
                       (parseInt(year) * 2 - 1).toString(),

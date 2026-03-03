@@ -25,7 +25,7 @@ const {
     getDashboardStats, exportAttendanceExcel
 } = require('../controllers/reportController');
 const {
-    getDepartments, createDepartment, updateDepartment, deleteDepartment
+    getDepartments, getSections, createSection, createDepartment, updateDepartment, deleteDepartment
 } = require('../controllers/departmentController');
 const { getAttendanceReport } = require('../controllers/attendanceController');
 const { verifyToken, isAdmin, isHod } = require('../middleware/authMiddleware');
@@ -48,6 +48,8 @@ router.post('/faculty', isAdmin, validateFaculty, createFaculty);
 router.delete('/faculty/:id', isAdmin, deleteFaculty);
 
 router.get('/departments', isHod, getDepartments);
+router.get('/sections', isHod, getSections);
+router.post('/sections', isHod, createSection);
 router.post('/departments', isAdmin, createDepartment);
 router.put('/departments/:id', isAdmin, updateDepartment);
 router.delete('/departments/:id', isAdmin, deleteDepartment);

@@ -11,7 +11,7 @@ const validate = (req, res, next) => {
 // Student validation
 const validateStudent = [
     body('rollNo').notEmpty().isString().trim().matches(/^[A-Z][0-9]+$/).withMessage('Roll Number must match format (e.g., E123456)'),
-    body('registerNumber').optional({ nullable: true, checkFalsy: true }).isString().trim().matches(/^\d{10,12}$/).withMessage('Register Number must be 10-12 digits'),
+    body('registerNumber').optional({ nullable: true, checkFalsy: true }).isString().trim().matches(/^\d{9,12}$/).withMessage('Register Number must be 9-12 digits'),
     body('name').notEmpty().isString().trim().isLength({ min: 2, max: 100 }),
     body('department').optional({ nullable: true, checkFalsy: true }).isString(),
     body('year').isInt({ min: 1, max: 4 }),

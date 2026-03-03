@@ -185,11 +185,20 @@ const CourseManager = () => {
             >
               <option value="">All Departments</option>
               <option value="COMMON">First Year (Common)</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.code || d.name}>
-                  {d.name}
-                </option>
-              ))}
+              {(() => {
+                const fyDept = departments.find(d => d.name?.toLowerCase() === "first year");
+                if (fyDept) {
+                  return <option value={fyDept.code || fyDept.name}>FIRST YEAR ({fyDept.code || fyDept.name})</option>;
+                }
+                return null;
+              })()}
+              {departments
+                .filter(d => d.name?.toLowerCase() !== "first year")
+                .map((d) => (
+                  <option key={d.id} value={d.code || d.name}>
+                    {d.name}
+                  </option>
+                ))}
             </CustomSelect>
           </div>
         </div>
@@ -451,11 +460,13 @@ const CourseManager = () => {
                     <option value="">
                       {newCourse.type === "COMMON" ? "N/A" : "Select Dept"}
                     </option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.code || d.name}>
-                        {d.name}
-                      </option>
-                    ))}
+                    {departments
+                      .filter(d => d.name?.toLowerCase() !== "first year")
+                      .map((d) => (
+                        <option key={d.id} value={d.code || d.name}>
+                          {d.name}
+                        </option>
+                      ))}
                   </CustomSelect>
                 </div>
               </div>
@@ -531,12 +542,14 @@ const CourseManager = () => {
                     const sub = subjectList.find(
                       (s) => s.id === selectedSubjectId,
                     );
+                    const fyDept = departments.find(d => d.name?.toLowerCase() === "first year");
+                    const fyCode = fyDept ? (fyDept.code || fyDept.name) : "GEN";
                     const targetDept =
                       sub?.type === "COMMON"
-                        ? "First Year"
+                        ? fyCode
                         : sub?.department;
                     const sectionList = departments
-                      .find((d) => d.name === targetDept)
+                      .find((d) => d.code === targetDept || d.code === fyCode || d.name?.toLowerCase() === "first year")
                       ?.sections?.split(",") || ["A", "B", "C", "D"];
                     return sectionList.map((s) => (
                       <button
