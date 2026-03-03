@@ -42,28 +42,45 @@ const EndSemMarksEntry = () => {
         try {
             const deptsRes = await api.get("/admin/departments");
             setDepartments(deptsRes.data);
-            const subsRes = await api.get("/admin/subjects");
-            setSubjects(subsRes.data);
         } catch (error) {
             toast.error("Failed to load initial data");
         }
     };
 
+    // Fetch subjects whenever semester changes
+    useEffect(() => {
+        const fetchSubjects = async () => {
+            if (!filters.semester) return;
+            try {
+                const res = await api.get(`/admin/subjects?semester=${filters.semester}`);
+                setSubjects(res.data);
+            } catch (error) {
+                toast.error("Failed to load subjects");
+            }
+        };
+        fetchSubjects();
+    }, [filters.semester]);
+
     const handleSearch = async () => {
+        const isYear1 = parseInt(filters.semester) <= 2;
         if (
-            !filters.department ||
             !filters.semester ||
             !filters.section ||
-            !filters.subjectId
+            !filters.subjectId ||
+            (!isYear1 && !filters.department)
         ) {
             toast.error("Please fill all filters");
             return;
         }
 
+        // For Year 1, override department to GEN
+        const searchParams = { ...filters };
+        if (isYear1) searchParams.department = "GEN";
+
         setLoading(true);
         try {
-            const res = await api.get("/exam/end-sem-marks", { params: filters });
-            setStudents(res.data); // This now returns consolidated objects
+            const res = await api.get("/exam/end-sem-marks", { params: searchParams });
+            setStudents(res.data);
         } catch (error) {
             toast.error("Failed to load results");
         } finally {
@@ -121,8 +138,13 @@ const EndSemMarksEntry = () => {
         saveAs(new Blob([buffer]), `Consolidated_Results_${filters.section}.xlsx`);
     };
 
+    const isYear1 = parseInt(filters.semester) <= 2;
+
     const filteredSubjects = subjects.filter((s) => {
-        return s.semester === parseInt(filters.semester);
+        if (parseInt(s.semester) !== parseInt(filters.semester)) return false;
+        if (isYear1) return s.type === 'COMMON' || !s.department;
+        if (!filters.department) return true;
+        return s.department === filters.department || s.type === 'COMMON';
     });
 
     return (
@@ -157,25 +179,27 @@ const EndSemMarksEntry = () => {
             {/* Filter Card */}
             <div className="bg-white p-8 rounded-[32px] shadow-xl shadow-blue-900/5 border border-gray-100 mb-10">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-                    <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-                            Department
-                        </label>
-                        <CustomSelect
-                            className="w-full"
-                            value={filters.department}
-                            onChange={(e) =>
-                                setFilters({ ...filters, department: e.target.value })
-                            }
-                        >
-                            <option value="">Select...</option>
-                            {departments.map((d) => (
-                                <option key={d.id} value={d.code || d.name}>
-                                    {d.code || d.name}
-                                </option>
-                            ))}
-                        </CustomSelect>
-                    </div>
+                    {!isYear1 && (
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
+                                Department
+                            </label>
+                            <CustomSelect
+                                className="w-full"
+                                value={filters.department}
+                                onChange={(e) =>
+                                    setFilters({ ...filters, department: e.target.value, subjectId: "" })
+                                }
+                            >
+                                <option value="">Select...</option>
+                                {departments.map((d) => (
+                                    <option key={d.id} value={d.code || d.name}>
+                                        {d.code || d.name}
+                                    </option>
+                                ))}
+                            </CustomSelect>
+                        </div>
+                    )}
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
                             Semester
@@ -190,6 +214,8 @@ const EndSemMarksEntry = () => {
                                     ...filters,
                                     semester: e.target.value,
                                     year: year.toString(),
+                                    subjectId: "",       // reset subject on semester change
+                                    department: "",     // reset dept on semester change
                                 });
                             }}
                         >

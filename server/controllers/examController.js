@@ -175,7 +175,7 @@ exports.updateEndSemMarks = async (req, res) => {
                 await tx.endSemMarks.upsert({
                     where: { marksId: ciaRecord.id },
                     update: {
-                        externalMarks: extRecord.rawExternal100,
+                        externalMarks: dummyMapping.isAbsent ? 0 : (extRecord?.rawExternal100 || 0),
                         totalMarks,
                         grade: finalGrade,
                         resultStatus: finalResultStatus,
@@ -183,7 +183,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     },
                     create: {
                         marksId: ciaRecord.id,
-                        externalMarks: extRecord.rawExternal100,
+                        externalMarks: dummyMapping.isAbsent ? 0 : (extRecord?.rawExternal100 || 0),
                         totalMarks,
                         grade: finalGrade,
                         resultStatus: finalResultStatus,

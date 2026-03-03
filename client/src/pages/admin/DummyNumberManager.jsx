@@ -60,13 +60,14 @@ const DummyNumberManager = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
 
     if (name === "semester") {
-      fetchSubjects(value);
-      // Reset subject when semester changes
-      setFilters((prev) => ({ ...prev, subjectId: "" }));
+      // Combine into single setState to avoid race condition
+      setFilters({ semester: value, subjectId: "" });
       setMappings([]);
+      fetchSubjects(value);
+    } else {
+      setFilters((prev) => ({ ...prev, [name]: value }));
     }
   };
 

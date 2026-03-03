@@ -92,6 +92,24 @@ const ExamControlCenter = () => {
       return;
     }
 
+    // Guard: isLocked is permanent — cannot be undone
+    if (field === "isLocked" && status.isLocked) {
+      toast.error("Semester is permanently locked and cannot be unlocked.");
+      return;
+    }
+
+    // Guard: Cannot publish unless mark entry is closed AND semester is locked
+    if (field === "isPublished" && !status.isPublished) {
+      if (status.markEntryOpen) {
+        toast.error("Please close Mark Entry before publishing results.");
+        return;
+      }
+      if (!status.isLocked) {
+        toast.error("Please lock the semester before publishing results.");
+        return;
+      }
+    }
+
     try {
       const newValue = !status[field];
       await api.post("/exam/semester-control", {
@@ -245,13 +263,24 @@ const ExamControlCenter = () => {
             <h3 className="text-xl font-black text-[#003B73] mb-4">
               Result Management
             </h3>
-            <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">
+            <p className="text-sm text-gray-500 font-medium mb-2 leading-relaxed">
               Make consolidated results visible to students on their respective
               portals.
             </p>
+            {(!status.isLocked || status.markEntryOpen) && !status.isPublished && (
+              <p className="text-xs text-red-400 font-bold mb-4 bg-red-50 px-3 py-1 rounded-full">
+                ⚠ Close Mark Entry &amp; Lock first
+              </p>
+            )}
             <button
               onClick={() => toggleControl("isPublished")}
-              className={`w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg transition-all ${status.isPublished ? "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/20" : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-900/20"}`}
+              disabled={!status.isLocked || status.markEntryOpen}
+              className={`w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg transition-all ${!status.isLocked || status.markEntryOpen
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : status.isPublished
+                    ? "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/20"
+                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-900/20"
+                }`}
             >
               <CheckCircle size={20} />
               {status.isPublished ? "Unpublish Results" : "Publish Results"}
@@ -271,15 +300,18 @@ const ExamControlCenter = () => {
               Grant final administrative approval and freeze all semester data
               permanently.
             </p>
-            <button
-              onClick={() => toggleControl("isLocked")}
-              className={`w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg transition-all ${status.isLocked ? "bg-black text-white hover:bg-gray-900 shadow-gray-900/40" : "bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-gray-200/20"}`}
-            >
-              <Lock size={20} />
-              {status.isLocked
-                ? "Semester Locked"
-                : "Lock Semester Permanently"}
-            </button>
+            {status.isLocked ? (
+              <div className="w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 bg-black text-white opacity-80 cursor-not-allowed select-none">
+                <Lock size={20} /> Semester Locked
+              </div>
+            ) : (
+              <button
+                onClick={() => toggleControl("isLocked")}
+                className="w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg transition-all bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-gray-200/20"
+              >
+                <Lock size={20} /> Lock Semester Permanently
+              </button>
+            )}
           </div>
         </div>
       )}
