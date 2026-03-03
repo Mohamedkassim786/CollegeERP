@@ -533,7 +533,7 @@ const CourseManager = () => {
                     );
                     const targetDept =
                       sub?.type === "COMMON"
-                        ? "First Year (General)"
+                        ? "First Year"
                         : sub?.department;
                     const sectionList = departments
                       .find((d) => d.name === targetDept)

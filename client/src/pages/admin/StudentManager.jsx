@@ -105,13 +105,13 @@ const StudentManager = () => {
         const yearMatch = s.year === parseInt(selectedYear);
         const sectionMatch = s.section === section;
 
-        if (selectedDept === "First Year (General)") {
+        if (selectedDept?.toLowerCase() === "first year") {
           return (
             yearMatch &&
             sectionMatch &&
             (s.department === null ||
               s.department === "" ||
-              s.department === "First Year (General)" ||
+              s.department?.toLowerCase() === "first year" ||
               s.department === "GEN")
           );
         }
@@ -145,7 +145,7 @@ const StudentManager = () => {
     if (level === 1) {
       setSelectedYear(null);
       setSelectedSection(null);
-      if (selectedDept === "First Year (General)") setSelectedYear(1);
+      if (selectedDept?.toLowerCase() === "first year") setSelectedYear(1);
     }
     if (level === 2) {
       setSelectedSection(null);
@@ -156,7 +156,7 @@ const StudentManager = () => {
     if (selectedSection) {
       setSelectedSection(null);
     } else if (selectedYear) {
-      if (selectedDept === "First Year (General)") {
+      if (selectedDept?.toLowerCase() === "first year") {
         setSelectedYear(null);
         setSelectedDept(null);
       } else {
@@ -404,7 +404,7 @@ const StudentManager = () => {
           </button>
           <button
             onClick={() => {
-              const isGeneral = selectedDept === "First Year (General)";
+              const isGeneral = selectedDept?.toLowerCase() === "first year";
               setNewStudent({
                 ...newStudent,
                 department: isGeneral ? "" : selectedDept || "",
@@ -459,14 +459,14 @@ const StudentManager = () => {
                   onClick={() => resetSelection(1)}
                   className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedYear ? "bg-indigo-600 text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
                 >
-                  {selectedDept === "First Year (General)"
-                    ? (departments.find(d => d.name === "First Year (General)")?.code || "GEN")
+                  {selectedDept?.toLowerCase() === "first year"
+                    ? (departments.find(d => d.name?.toLowerCase() === "first year")?.code || "GEN")
                     : selectedDept}
                 </button>
               </>
             )}
 
-            {selectedYear && selectedDept !== "First Year (General)" && (
+            {selectedYear && selectedDept?.toLowerCase() !== "first year" && (
               <>
                 <ChevronRight
                   size={16}
@@ -500,7 +500,7 @@ const StudentManager = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
             <div
               onClick={() => {
-                setSelectedDept("First Year (General)");
+                setSelectedDept("First Year");
                 setSelectedYear(1);
               }}
               className="group p-10 bg-purple-50/50 hover:bg-purple-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-purple-100 hover:shadow-2xl hover:shadow-purple-200 flex flex-col items-center justify-center text-center"
@@ -509,7 +509,7 @@ const StudentManager = () => {
                 <Users className="w-8 h-8 text-purple-600 group-hover:text-white" />
               </div>
               <h3 className="text-2xl font-black text-purple-900 group-hover:text-white transition-colors">
-                {departments.find((d) => d.name === "First Year (General)")?.code || "GEN"}
+                {departments.find((d) => d.name?.toLowerCase() === "first year")?.code || "GEN"}
               </h3>
               <p className="text-xs font-black text-purple-400 group-hover:text-purple-100 mt-2 uppercase tracking-widest">
                 Unassigned Pool
@@ -517,7 +517,7 @@ const StudentManager = () => {
             </div>
 
             {(Array.isArray(departments) ? departments : [])
-              .filter((d) => d && d.name !== "First Year (General)" && d.code !== (departments.find(dy => dy.name === "First Year (General)")?.code || "GEN"))
+              .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
               .map((dept) => (
                 <div
                   key={dept.id}
@@ -540,7 +540,7 @@ const StudentManager = () => {
 
         {/* Level 2: Year */}
         {selectedDept &&
-          selectedDept !== "First Year (General)" &&
+          selectedDept?.toLowerCase() !== "first year" &&
           !selectedYear && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
               {(
@@ -577,7 +577,7 @@ const StudentManager = () => {
                   (d) =>
                     d.name ===
                     (selectedYear === 1
-                      ? "First Year (General)"
+                      ? "First Year"
                       : selectedDept),
                 )
                 ?.sections?.split(",") || ["A", "B", "C"]
@@ -793,7 +793,7 @@ const StudentManager = () => {
                         : "Select Dept"}
                     </option>
                     {departments
-                      .filter((d) => d && d.name !== "First Year (General)" && d.code !== (departments.find(dy => dy.name === "First Year (General)")?.code || "GEN"))
+                      .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
                       .map((d) => (
                         <option key={d.id} value={d.code || d.name}>
                           {d.code || d.name}
@@ -848,7 +848,7 @@ const StudentManager = () => {
                           (d) =>
                             d.name ===
                             (newStudent.year === "1"
-                              ? "First Year (General)"
+                              ? "First Year"
                               : newStudent.department),
                         )
                         ?.sections?.split(",") || ["A", "B", "C"]
@@ -1037,7 +1037,7 @@ const StudentManager = () => {
                         : "Select Dept"}
                     </option>
                     {departments
-                      .filter((d) => d && d.name !== "First Year (General)" && d.code !== (departments.find(dy => dy.name === "First Year (General)")?.code || "GEN"))
+                      .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
                       .map((d) => (
                         <option key={d.id} value={d.code || d.name}>
                           {d.code || d.name}
@@ -1099,7 +1099,7 @@ const StudentManager = () => {
                           (d) =>
                             d.name ===
                             (parseInt(editingStudent.year) === 1
-                              ? "First Year (General)"
+                              ? "First Year"
                               : editingStudent.department),
                         )
                         ?.sections?.split(",") || ["A", "B", "C"]

@@ -105,7 +105,7 @@ const TimetableManager = () => {
     const departmentData = departments.find(
       (d) => (d.code || d.name) === department,
     );
-    const isGeneral = departmentData?.name === "First Year (General)";
+    const isGeneral = departmentData?.name.toLowerCase() === "first year";
 
     if (isGeneral) {
       validSems = ["1", "2"];
@@ -124,7 +124,7 @@ const TimetableManager = () => {
       (d) => (d.code || d.name) === department,
     );
     if (departmentData) {
-      const isGeneral = departmentData.name === "First Year (General)";
+      const isGeneral = departmentData.name?.toLowerCase() === "first year";
       const currentSemesterInt = parseInt(semester);
       const isSemSpecific = isGeneral
         ? [1, 2].includes(currentSemesterInt)
@@ -706,8 +706,8 @@ const TimetableManager = () => {
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
                 >
-                  {(department === "First Year (General)" ||
-                    currentDept?.name === "First Year (General)"
+                  {(department?.toLowerCase() === "first year" ||
+                    currentDept?.name.toLowerCase() === "first year"
                     ? ["1", "2"]
                     : [
                       (parseInt(year) * 2 - 1).toString(),

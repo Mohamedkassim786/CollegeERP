@@ -61,7 +61,7 @@ const StudentPromotion = () => {
           sourceDept === "" || sourceDept === "GEN"
             ? s.department === null ||
             s.department === "" ||
-            s.department === "First Year (General)" ||
+            s.department?.toLowerCase() === "first year" ||
             s.department === "GEN"
             : s.department === sourceDept ||
             s.department ===
@@ -258,7 +258,7 @@ const StudentPromotion = () => {
                 >
                   <option value="GEN">GENERAL (1st Year)</option>
                   {departments
-                    .filter((d) => d.name !== "First Year (General)")
+                    .filter((d) => d.name?.toLowerCase() !== "first year")
                     .map((d) => (
                       <option key={d.id} value={d.code || d.name}>
                         {d.code || d.name}
@@ -586,7 +586,7 @@ const StudentPromotion = () => {
                           (d) =>
                             d.name ===
                             (promoYear === "1"
-                              ? "First Year (General)"
+                              ? "First Year"
                               : promoDept),
                         )
                         ?.sections?.split(",") || ["A", "B", "C"]

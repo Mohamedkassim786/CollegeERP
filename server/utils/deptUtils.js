@@ -14,6 +14,7 @@ const getDeptCriteria = async (deptString) => {
                 { department: null },
                 { department: '' },
                 { department: 'First Year (General)' },
+                { department: 'First Year' },
                 { department: 'GEN' }
             ]
         };
@@ -24,8 +25,8 @@ const getDeptCriteria = async (deptString) => {
     const allCriteria = [];
 
     for (const trimmed of departments) {
-        if (trimmed === 'GEN' || trimmed === 'First Year (General)') {
-            allCriteria.push('First Year (General)', 'GEN', null, '');
+        if (trimmed.toLowerCase() === 'gen' || trimmed.toLowerCase() === 'first year (general)' || trimmed.toLowerCase() === 'first year') {
+            allCriteria.push('First Year (General)', 'First Year', 'GEN', null, '');
             continue;
         }
 

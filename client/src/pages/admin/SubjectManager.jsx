@@ -626,7 +626,7 @@ const SubjectManager = () => {
                   </label>
                   <div className="flex flex-wrap gap-3">
                     {(Array.isArray(departments) ? departments : [])
-                      .filter((d) => d.name !== "First Year (General)")
+                      .filter((d) => d.name?.toLowerCase() !== "first year")
                       .map((d) => {
                         const deptCode = d.code || d.name;
                         return (
