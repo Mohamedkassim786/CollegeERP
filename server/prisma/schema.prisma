@@ -154,6 +154,10 @@ model Subject {
   semester           Int
   credits            Int                      @default(3)
   type               String                   @default("DEPARTMENT")
+  subjectCategory    String                   @default("THEORY")
+  theoryCredit       Int?
+  labCredit          Int?
+  hasRelativeGrade   Boolean                  @default(false)
   arrears            Arrear[]
   externalStaffTasks ExternalMarkAssignment[]
   facultyAssignments FacultyAssignment[]
@@ -218,6 +222,16 @@ model Marks {
   cia3_test       Float?
   cia3_assignment Float?
   cia3_attendance Float?
+  
+  // LAB specific fields
+  lab_attendance  Float?
+  lab_observation Float?
+  lab_record      Float?
+  lab_model       Float?
+  
+  // INTEGRATED specific fields
+  lab_assessment  Float?
+
   internal        Float?
   isLocked        Boolean      @default(false)
   isApproved      Boolean      @default(false)

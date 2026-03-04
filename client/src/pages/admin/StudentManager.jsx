@@ -14,6 +14,8 @@ import {
   FileSpreadsheet,
   AlertCircle,
   CheckCircle2,
+  BookOpen,
+  ClipboardList,
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import api from "../../api/axios";
@@ -32,6 +34,13 @@ const StudentManager = () => {
   const [departments, setDepartments] = useState([]);
   const [dbSections, setDbSections] = useState([]);
   const [loadingDepts, setLoadingDepts] = useState(false);
+  const [passedOutBatches, setPassedOutBatches] = useState([]); // Added for Passed Out students
+  const [passedOutSubview, setPassedOutSubview] = useState(null); // null | 'STUDENTS' | 'ARREARS'
+  const [passedOutArrears, setPassedOutArrears] = useState([]);
+  const [passingOut, setPassingOut] = useState(false);
+  const [showPassOutArrearUpload, setShowPassOutArrearUpload] = useState(false);
+  const [passOutArrearFile, setPassOutArrearFile] = useState(null);
+  const [passOutArrearUploading, setPassOutArrearUploading] = useState(false);
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -134,13 +143,42 @@ const StudentManager = () => {
     }
   };
 
+  const fetchPassedOutArrears = async () => {
+    try {
+      const res = await api.get('/admin/arrears?type=passedout');
+      setPassedOutArrears(res.data);
+    } catch (err) {
+      console.error("Failed to fetch passed-out arrears");
+    }
+  };
+
+  const fetchPassedOutBatches = async () => {
+    try {
+      const res = await api.get('/admin/students?status=PASSED_OUT');
+      const batches = [...new Set(res.data.map(s => s.batch || s.batchYear).filter(Boolean))];
+      setPassedOutBatches(batches.sort());
+    } catch (err) {
+      console.error("Failed to fetch batches");
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCategory === 'PASSED_OUT') {
+      if (passedOutSubview === 'STUDENTS') fetchPassedOutBatches();
+      if (passedOutSubview === 'ARREARS') fetchPassedOutArrears();
+    }
+  }, [selectedCategory, passedOutSubview]);
+
   const fetchStudents = async (section) => {
     setSelectedSection(section);
     setLoading(true);
     try {
       let queryParams = "";
 
-      if (selectedSemester <= 2 && selectedSemester) {
+      if (selectedCategory === 'PASSED_OUT') {
+        queryParams = `?status=PASSED_OUT`;
+        if (section) queryParams += `&batch=${section}`; // Reusing 'section' state for batch for simplicity in this view
+      } else if (selectedSemester <= 2 && selectedSemester) {
         const sectionObj = dbSections.find(s => s.name === section && s.semester === selectedSemester && s.type === "COMMON");
         if (sectionObj) {
           queryParams = `?semester=${selectedSemester}&sectionId=${sectionObj.id}`;
@@ -193,12 +231,14 @@ const StudentManager = () => {
       setSelectedYear(null);
       setSelectedSemester(null);
       setSelectedSection(null);
+      setPassedOutSubview(null);
     }
     if (level === 0) {
       setSelectedDept(null);
       setSelectedYear(null);
       setSelectedSemester(null);
       setSelectedSection(null);
+      setPassedOutSubview(null);
     }
     if (level === 1) {
       setSelectedYear(null);
@@ -459,7 +499,7 @@ const StudentManager = () => {
           </p>
         </div>
 
-        {selectedCategory && (
+        {selectedCategory && selectedCategory !== 'PASSED_OUT' && (
           <div className="flex gap-4">
             <button
               onClick={() => {
@@ -527,10 +567,20 @@ const StudentManager = () => {
                 <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
                 <button
                   onClick={() => resetSelection(0)}
-                  className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedDept && !selectedSemester ? "bg-[#003B73] text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
+                  className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedDept && !selectedSemester && !selectedSection && !passedOutSubview ? "bg-[#003B73] text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
                 >
-                  {selectedCategory === 'FIRST_YEAR' ? 'FIRST YEAR' : 'DEPARTMENTS'}
+                  {selectedCategory === 'FIRST_YEAR' ? 'FIRST YEAR' : (selectedCategory === 'PASSED_OUT' ? 'PASSED OUT' : 'DEPARTMENTS')}
                 </button>
+              </>
+            )}
+
+            {selectedCategory === 'PASSED_OUT' && passedOutSubview && (
+              <>
+                <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
+                <div className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${passedOutSubview === 'STUDENTS' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-orange-500 text-white shadow-lg'
+                  }`}>
+                  {passedOutSubview === 'STUDENTS' ? 'Students' : 'Arrears'}
+                </div>
               </>
             )}
 
@@ -585,7 +635,7 @@ const StudentManager = () => {
         </div>
 
         {/* Level 0: Categories (First Year vs Departments) */}
-        {!selectedCategory && !selectedDept && !selectedSemester && (
+        {!selectedCategory && !selectedDept && !selectedSemester && !selectedYear && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
             <div
               onClick={() => {
@@ -645,6 +695,21 @@ const StudentManager = () => {
                 Manage Departments
               </p>
             </div>
+
+            <div
+              onClick={() => setSelectedCategory('PASSED_OUT')}
+              className="group p-10 bg-emerald-50/50 hover:bg-emerald-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-emerald-100 hover:shadow-2xl hover:shadow-emerald-200 flex flex-col items-center justify-center text-center"
+            >
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 group-hover:text-white" />
+              </div>
+              <h3 className="text-2xl font-black text-emerald-900 group-hover:text-white transition-colors">
+                PASSED OUT
+              </h3>
+              <p className="text-xs font-black text-emerald-400 group-hover:text-emerald-100 mt-2 uppercase tracking-widest">
+                Graduated Batches
+              </p>
+            </div>
           </div>
         )}
 
@@ -670,6 +735,243 @@ const StudentManager = () => {
             ))}
           </div>
         )}
+
+        {/* PASSED OUT — Sub-option picker */}
+        {selectedCategory === 'PASSED_OUT' && !passedOutSubview && !selectedSection && (
+          <div className="animate-fadeIn relative z-10">
+            <div className="flex justify-between items-center mb-10">
+              <h2 className="text-3xl font-black text-emerald-900 tracking-tight">
+                Passed Out — Select View
+              </h2>
+              <div className="px-6 py-2 bg-emerald-50 text-emerald-600 rounded-2xl font-black text-xs uppercase tracking-widest border border-emerald-100 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                Archive Mode
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {/* Students card */}
+              <div
+                onClick={() => setPassedOutSubview('STUDENTS')}
+                className="group p-10 bg-emerald-50/50 hover:bg-emerald-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-emerald-100 hover:shadow-2xl hover:shadow-emerald-200 flex flex-col items-center justify-center text-center"
+              >
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                  <GraduationCap className="w-8 h-8 text-emerald-600 group-hover:text-white" />
+                </div>
+                <h3 className="text-2xl font-black text-emerald-900 group-hover:text-white transition-colors">
+                  STUDENTS
+                </h3>
+                <p className="text-xs font-black text-emerald-400 group-hover:text-emerald-100 mt-2 uppercase tracking-widest">
+                  View Graduated Batches
+                </p>
+              </div>
+              {/* Arrears card */}
+              <div
+                onClick={() => setPassedOutSubview('ARREARS')}
+                className="group p-10 bg-orange-50/50 hover:bg-orange-500 rounded-[32px] cursor-pointer transition-all duration-500 border border-orange-100 hover:shadow-2xl hover:shadow-orange-200 flex flex-col items-center justify-center text-center"
+              >
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                  <ClipboardList className="w-8 h-8 text-orange-500 group-hover:text-white" />
+                </div>
+                <h3 className="text-2xl font-black text-orange-900 group-hover:text-white transition-colors">
+                  ARREARS
+                </h3>
+                <p className="text-xs font-black text-orange-400 group-hover:text-orange-100 mt-2 uppercase tracking-widest">
+                  Pending Arrear Records
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PASSED OUT — Students (batch selection) */}
+        {selectedCategory === 'PASSED_OUT' && passedOutSubview === 'STUDENTS' && !selectedSection && (
+          <div className="animate-fadeIn relative z-10">
+            <div className="flex justify-between items-center mb-10">
+              <h2 className="text-3xl font-black text-emerald-900 tracking-tight">
+                Select Graduated Batch
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {passedOutBatches.length > 0 ? (
+                passedOutBatches.map(batch => (
+                  <div
+                    key={batch}
+                    onClick={() => fetchStudents(batch)}
+                    className="group p-10 bg-emerald-50/50 hover:bg-emerald-600 rounded-[32px] cursor-pointer transition-all duration-500 border border-emerald-100 hover:shadow-2xl hover:shadow-emerald-200 flex flex-col items-center justify-center text-center"
+                  >
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-white/20 transition-all duration-500 mb-6">
+                      <GraduationCap className="w-8 h-8 text-emerald-600 group-hover:text-white" />
+                    </div>
+                    <h3 className="text-2xl font-black text-emerald-900 group-hover:text-white transition-colors">
+                      Batch {batch}
+                    </h3>
+                    <p className="text-xs font-black text-emerald-400 group-hover:text-emerald-100 mt-2 uppercase tracking-widest">
+                      View Graduates
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full py-20 text-center flex flex-col items-center">
+                  <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                    <AlertCircle className="w-10 h-10 text-gray-300" />
+                  </div>
+                  <p className="text-gray-400 font-bold text-xl italic mb-2">No Graduated Records Found</p>
+                  <p className="text-gray-400 text-sm max-w-sm">Mark students as "PASSED OUT" to see them here.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* PASSED OUT — Arrears view */}
+        {selectedCategory === 'PASSED_OUT' && passedOutSubview === 'ARREARS' && (
+          <div className="animate-fadeIn relative z-10">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-black text-orange-900 tracking-tight">
+                Passed Out — Arrear Records
+              </h2>
+              <div className="flex items-center gap-4">
+                <div className="px-6 py-2 bg-orange-50 text-orange-600 rounded-2xl font-black text-xs uppercase tracking-widest border border-orange-100 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+                  Archive Mode
+                </div>
+                <button
+                  onClick={() => setShowPassOutArrearUpload(v => !v)}
+                  className="px-5 py-2.5 bg-orange-100 text-orange-700 rounded-2xl font-black text-xs uppercase tracking-widest border border-orange-200 hover:bg-orange-200 transition-all flex items-center gap-2"
+                >
+                  <Upload size={14} /> Bulk Upload Arrears
+                </button>
+              </div>
+            </div>
+
+            {/* Bulk upload panel */}
+            {showPassOutArrearUpload && (
+              <div className="mb-8 p-8 bg-orange-50 border border-orange-200 rounded-3xl animate-fadeIn">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <h3 className="font-black text-orange-900 text-lg mb-1">Bulk Upload Passed-Out Arrears</h3>
+                    <p className="text-orange-700 text-sm">Upload an Excel file with columns: <strong>registerNumber</strong>, <strong>subjectCode</strong>, <strong>semester</strong>.</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const wb = new ExcelJS.Workbook();
+                      const ws = wb.addWorksheet('Passed Out Arrears');
+                      ws.addRow(['registerNumber', 'subjectCode', 'semester']);
+                      ws.addRow(['21CSE001', 'CS8501', '7']);
+                      ws.addRow(['21CSE002', 'CS8401', '7']);
+                      const buf = await wb.xlsx.writeBuffer();
+                      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url; a.download = 'passedout_arrear_template.xlsx'; a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-2 px-5 py-3 bg-white text-orange-600 border border-orange-300 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-100 transition-all flex-shrink-0"
+                  >
+                    <FileSpreadsheet size={16} /> Download Template
+                  </button>
+                </div>
+
+                <label className="flex items-center gap-4 px-6 py-6 bg-white border-2 border-dashed border-orange-300 hover:border-orange-500 rounded-2xl cursor-pointer transition-all mb-4 group">
+                  <div className="w-14 h-14 bg-orange-50 group-hover:bg-orange-100 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all">
+                    <FileSpreadsheet size={28} className="text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="font-black text-gray-800">{passOutArrearFile ? passOutArrearFile.name : 'Choose Excel file (.xlsx)'}</p>
+                    <p className="text-xs text-gray-400 font-medium mt-0.5">{passOutArrearFile ? 'Click to change file' : 'Click to browse or drag and drop'}</p>
+                  </div>
+                  <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e => setPassOutArrearFile(e.target.files[0])} />
+                </label>
+
+                <button
+                  disabled={!passOutArrearFile || passOutArrearUploading}
+                  onClick={async () => {
+                    if (!passOutArrearFile) return;
+                    setPassOutArrearUploading(true);
+                    try {
+                      const wb = new ExcelJS.Workbook();
+                      const ab = await passOutArrearFile.arrayBuffer();
+                      await wb.xlsx.load(ab);
+                      const ws = wb.worksheets[0];
+                      if (!ws) throw new Error('No worksheet found');
+
+                      let headers = {};
+                      const records = [];
+                      ws.eachRow((row, rn) => {
+                        if (rn === 1) {
+                          row.eachCell((cell, cn) => {
+                            const h = String(cell.value || '').toLowerCase().replace(/\s+/g, '');
+                            if (h.includes('register') || h.includes('regnum')) headers.reg = cn;
+                            if (h.includes('subject') || h.includes('code')) headers.code = cn;
+                            if (h.includes('semester') || h.includes('sem')) headers.sem = cn;
+                          });
+                          return;
+                        }
+                        const reg = headers.reg ? String(row.getCell(headers.reg).value || '').trim() : '';
+                        const code = headers.code ? String(row.getCell(headers.code).value || '').trim() : '';
+                        const sem = headers.sem ? parseInt(row.getCell(headers.sem).value) : null;
+                        if (reg && code) records.push({ registerNumber: reg, subjectCode: code, semester: sem });
+                      });
+
+                      if (!records.length) throw new Error('No valid records found in file');
+                      const res = await api.post('/admin/arrears/bulk-passedout', { records });
+                      toast.success(`Uploaded ${res.data.count || records.length} arrear records.`);
+                      setPassOutArrearFile(null);
+                      setShowPassOutArrearUpload(false);
+                      fetchPassedOutArrears();
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || err.message || 'Upload failed');
+                    } finally {
+                      setPassOutArrearUploading(false);
+                    }
+                  }}
+                  className="w-full py-5 bg-orange-500 text-white rounded-2xl font-black text-base hover:bg-orange-600 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-orange-200"
+                >
+                  <Upload size={22} />
+                  {passOutArrearUploading ? 'Uploading...' : 'Upload Arrear Records'}
+                </button>
+              </div>
+            )}
+
+
+            {passedOutArrears.length === 0 ? (
+              <div className="py-20 text-center flex flex-col items-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                  <CheckCircle2 className="w-10 h-10 text-gray-300" />
+                </div>
+                <p className="text-gray-400 font-bold text-xl italic mb-2">No Pending Arrears</p>
+                <p className="text-gray-400 text-sm">All passed-out students have cleared their arrears.</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden bg-white rounded-3xl border border-gray-100 shadow-sm">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-orange-500 text-white">
+                    <tr>
+                      <th className="px-6 py-4 font-bold tracking-wider">Reg No</th>
+                      <th className="px-6 py-4 font-bold tracking-wider">Student Name</th>
+                      <th className="px-6 py-4 font-bold tracking-wider">Subject Code</th>
+                      <th className="px-6 py-4 font-bold tracking-wider">Orig. Sem</th>
+                      <th className="px-6 py-4 font-bold tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {passedOutArrears.map((a, i) => (
+                      <tr key={i} className="hover:bg-orange-50/40 transition-colors">
+                        <td className="px-6 py-4 font-black text-gray-800">{a.student?.registerNumber || a.student?.rollNo || 'N/A'}</td>
+                        <td className="px-6 py-4 font-bold text-gray-600">{a.student?.name || 'Unknown'}</td>
+                        <td className="px-6 py-4 font-bold text-orange-600">{a.subject?.code || 'N/A'}</td>
+                        <td className="px-6 py-4 font-semibold text-gray-600">{a.semester}</td>
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg font-bold text-xs">Pending</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
 
         {selectedCategory === 'DEPARTMENTS' && !selectedDept && !selectedSection && !selectedYear && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-fadeIn relative z-10">
@@ -896,10 +1198,7 @@ const StudentManager = () => {
                     {studentsList.length === 0 && (
                       <tr>
                         <td colSpan="4" className="py-32 text-center">
-                          <Users
-                            size={64}
-                            className="mx-auto mb-4 text-gray-100"
-                          />
+                          <Users size={64} className="mx-auto mb-4 text-gray-100" />
                           <p className="font-black text-gray-300 text-xl uppercase tracking-widest">
                             Class is Empty
                           </p>
@@ -915,6 +1214,7 @@ const StudentManager = () => {
             )}
           </div>
         )}
+
       </div>
 
       {/* Add Student Modal */}

@@ -15,6 +15,11 @@ const SubjectManager = () => {
     departments: [],
     semester: "",
     type: "DEPARTMENT",
+    subjectCategory: "THEORY",
+    credits: "3",
+    theoryCredit: "3",
+    labCredit: "1",
+    hasRelativeGrade: false,
   });
   const [departments, setDepartments] = useState([]);
 
@@ -99,6 +104,11 @@ const SubjectManager = () => {
         departments: [],
         semester: "",
         type: "DEPARTMENT",
+        subjectCategory: "THEORY",
+        credits: "3",
+        theoryCredit: "3",
+        labCredit: "1",
+        hasRelativeGrade: false,
       });
       setShowCreateModal(false);
       refreshSubjects();
@@ -389,304 +399,392 @@ const SubjectManager = () => {
 
       {/* Create Subject Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-          <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
-                  New Subject
-                </h3>
-                <p className="text-gray-500 font-bold text-sm mt-1">
-                  Define a new course for the curriculum.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
-              >
-                <X size={32} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubject} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn text-left">
+          <div className="bg-white rounded-[48px] w-full max-w-xl shadow-2xl border border-gray-100 max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="p-10 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1">
+              <div className="flex justify-between items-center mb-10">
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Subject Code
-                  </label>
-                  <input
-                    className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all font-mono"
-                    placeholder="e.g. CS101"
-                    value={newSubject.code}
-                    onChange={(e) =>
-                      setNewSubject({ ...newSubject, code: e.target.value })
-                    }
-                    required
-                  />
+                  <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
+                    New Subject
+                  </h3>
+                  <p className="text-gray-500 font-bold text-sm mt-1">
+                    Define a new course for the curriculum.
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Subject Name
-                  </label>
-                  <input
-                    className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
-                    placeholder="e.g. Data Structures"
-                    value={newSubject.name}
-                    onChange={(e) =>
-                      setNewSubject({ ...newSubject, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                  Short Name (For Timetable)
-                </label>
-                <input
-                  className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all uppercase"
-                  placeholder="e.g. DS"
-                  value={newSubject.shortName}
-                  onChange={(e) =>
-                    setNewSubject({ ...newSubject, shortName: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">
-                  Classification
-                </label>
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewSubject({
-                        ...newSubject,
-                        type: "DEPARTMENT",
-                        departments: [],
-                      })
-                    }
-                    className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === "DEPARTMENT" ? "bg-[#003B73] text-white shadow-lg" : "bg-white text-gray-400 border border-gray-100"}`}
-                  >
-                    Department Specific
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewSubject({
-                        ...newSubject,
-                        type: "COMMON",
-                        departments: [],
-                        semester: "1",
-                      })
-                    }
-                    className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === "COMMON" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-gray-400 border border-gray-100"}`}
-                  >
-                    Common (1st Year)
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    Semester
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={newSubject.semester}
-                    onChange={(e) =>
-                      setNewSubject({ ...newSubject, semester: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="">Select Sem</option>
-                    {newSubject.type === "COMMON"
-                      ? [1, 2].map((s) => (
-                        <option key={s} value={s}>
-                          Semester {s}
-                        </option>
-                      ))
-                      : [3, 4, 5, 6, 7, 8].map((s) => (
-                        <option key={s} value={s}>
-                          Semester {s}
-                        </option>
-                      ))}
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                    {newSubject.type === "COMMON"
-                      ? "Target Department"
-                      : "Target Departments (Multi-Select)"}
-                  </label>
-
-                  {newSubject.type === "COMMON" ? (
-                    <div className="w-full px-6 py-5 bg-gray-100 rounded-3xl font-black text-gray-400 cursor-not-allowed">
-                      All (Common Pool)
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2 p-2 bg-gray-50 border-2 border-transparent focus-within:border-[#003B73] rounded-3xl min-h-[64px] transition-all">
-                      {(Array.isArray(departments) ? departments : [])
-                        .filter(d => d.name?.toLowerCase() !== "first year")
-                        .map(
-                          (d) => {
-                            const deptCode = d.code || d.name;
-                            const isSelected =
-                              newSubject.departments.includes(deptCode);
-
-                            return (
-                              <button
-                                key={d.id}
-                                type="button"
-                                onClick={() => {
-                                  setNewSubject((prev) => ({
-                                    ...prev,
-                                    departments: isSelected
-                                      ? prev.departments.filter(
-                                        (code) => code !== deptCode,
-                                      )
-                                      : [...prev.departments, deptCode],
-                                  }));
-                                }}
-                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isSelected
-                                  ? "bg-[#003B73] text-white shadow-md scale-105"
-                                  : "bg-white text-gray-500 border border-gray-200 hover:border-[#003B73]/50"
-                                  }`}
-                              >
-                                {deptCode}
-                              </button>
-                            );
-                          },
-                        )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-6">
                 <button
-                  type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
+                  className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
                 >
-                  Discard
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
-                >
-                  Confirm Creation
+                  <X size={32} />
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleCreateSubject} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Subject Code
+                    </label>
+                    <input
+                      className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all font-mono"
+                      placeholder="e.g. CS101"
+                      value={newSubject.code}
+                      onChange={(e) =>
+                        setNewSubject({ ...newSubject, code: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Subject Name
+                    </label>
+                    <input
+                      className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
+                      placeholder="e.g. Data Structures"
+                      value={newSubject.name}
+                      onChange={(e) =>
+                        setNewSubject({ ...newSubject, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                    Short Name (For Timetable)
+                  </label>
+                  <input
+                    className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all uppercase"
+                    placeholder="e.g. DS"
+                    value={newSubject.shortName}
+                    onChange={(e) =>
+                      setNewSubject({ ...newSubject, shortName: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">
+                    Classification
+                  </label>
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewSubject({
+                          ...newSubject,
+                          type: "DEPARTMENT",
+                          departments: [],
+                        })
+                      }
+                      className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === "DEPARTMENT" ? "bg-[#003B73] text-white shadow-lg" : "bg-white text-gray-400 border border-gray-100"}`}
+                    >
+                      Department Specific
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewSubject({
+                          ...newSubject,
+                          type: "COMMON",
+                          departments: [],
+                          semester: "1",
+                        })
+                      }
+                      className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.type === "COMMON" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-gray-400 border border-gray-100"}`}
+                    >
+                      Common (1st Year)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Semester
+                    </label>
+                    <CustomSelect
+                      className="w-full"
+                      value={newSubject.semester}
+                      onChange={(e) =>
+                        setNewSubject({ ...newSubject, semester: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Select Sem</option>
+                      {newSubject.type === "COMMON"
+                        ? [1, 2].map((s) => (
+                          <option key={s} value={s}>
+                            Semester {s}
+                          </option>
+                        ))
+                        : [3, 4, 5, 6, 7, 8].map((s) => (
+                          <option key={s} value={s}>
+                            Semester {s}
+                          </option>
+                        ))}
+                    </CustomSelect>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      {newSubject.type === "COMMON"
+                        ? "Target Department"
+                        : "Target Departments (Multi-Select)"}
+                    </label>
+
+                    {newSubject.type === "COMMON" ? (
+                      <div className="w-full px-6 py-5 bg-gray-100 rounded-3xl font-black text-gray-400 cursor-not-allowed">
+                        All (Common Pool)
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 p-2 bg-gray-50 border-2 border-transparent focus-within:border-[#003B73] rounded-3xl min-h-[64px] transition-all">
+                        {(Array.isArray(departments) ? departments : [])
+                          .filter(d => d.name?.toLowerCase() !== "first year")
+                          .map(
+                            (d) => {
+                              const deptCode = d.code || d.name;
+                              const isSelected =
+                                newSubject.departments.includes(deptCode);
+
+                              return (
+                                <button
+                                  key={d.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setNewSubject((prev) => ({
+                                      ...prev,
+                                      departments: isSelected
+                                        ? prev.departments.filter(
+                                          (code) => code !== deptCode,
+                                        )
+                                        : [...prev.departments, deptCode],
+                                    }));
+                                  }}
+                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isSelected
+                                    ? "bg-[#003B73] text-white shadow-md scale-105"
+                                    : "bg-white text-gray-500 border border-gray-200 hover:border-[#003B73]/50"
+                                    }`}
+                                >
+                                  {deptCode}
+                                </button>
+                              );
+                            },
+                          )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Subject Category */}
+                <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">
+                    Subject Category
+                  </label>
+                  <div className="flex gap-3">
+                    {["THEORY", "LAB", "INTEGRATED"].map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          const defaults = cat === "LAB" ? { credits: "1", theoryCredit: "", labCredit: "1" }
+                            : cat === "INTEGRATED" ? { credits: "4", theoryCredit: "3", labCredit: "1" }
+                              : { credits: "3", theoryCredit: "3", labCredit: "" };
+                          setNewSubject({ ...newSubject, subjectCategory: cat, ...defaults });
+                        }}
+                        className={`flex-1 py-3 rounded-2xl font-black text-xs uppercase transition-all ${newSubject.subjectCategory === cat
+                          ? cat === "THEORY" ? "bg-[#003B73] text-white shadow-lg"
+                            : cat === "LAB" ? "bg-emerald-600 text-white shadow-lg"
+                              : "bg-amber-500 text-white shadow-lg"
+                          : "bg-white text-gray-400 border border-gray-100"
+                          }`}
+                      >
+                        {cat === "THEORY" ? "📖 Theory" : cat === "LAB" ? "🔬 Lab" : "🔄 Integrated"}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-3 px-1 font-medium">
+                    {newSubject.subjectCategory === "THEORY" && "Internal: 40 | External: 60 | Total: 100"}
+                    {newSubject.subjectCategory === "LAB" && "Internal: 60 (4-components) | External: 40 | Total: 100"}
+                    {newSubject.subjectCategory === "INTEGRATED" && "Internal: 50 (Theory25+Lab25) | External: 50 (Theory30+Lab20) | Total: 100"}
+                  </p>
+                </div>
+
+                {/* Credits */}
+                {newSubject.subjectCategory === "INTEGRATED" ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Theory Credits</label>
+                      <input type="number" min="1" max="5"
+                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
+                        placeholder="e.g. 3"
+                        value={newSubject.theoryCredit}
+                        onChange={(e) => setNewSubject({ ...newSubject, theoryCredit: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Lab Credits</label>
+                      <input type="number" min="1" max="3"
+                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
+                        placeholder="e.g. 1"
+                        value={newSubject.labCredit}
+                        onChange={(e) => setNewSubject({ ...newSubject, labCredit: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Credits</label>
+                    <input type="number" min="1" max="5"
+                      className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#003B73] rounded-3xl font-bold text-gray-800 outline-none transition-all"
+                      placeholder={newSubject.subjectCategory === "LAB" ? "e.g. 1" : "e.g. 3"}
+                      value={newSubject.credits}
+                      onChange={(e) => setNewSubject({ ...newSubject, credits: e.target.value })}
+                    />
+                  </div>
+                )}
+
+                {/* Relative Grading Toggle */}
+                <div className="flex items-center justify-between p-5 bg-amber-50 rounded-3xl border border-amber-100">
+                  <div>
+                    <p className="text-sm font-black text-amber-800">Relative Grading</p>
+                    <p className="text-xs text-amber-600 font-medium mt-0.5">Grade based on topper's score curve</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewSubject({ ...newSubject, hasRelativeGrade: !newSubject.hasRelativeGrade })}
+                    className={`relative w-14 h-7 rounded-full transition-all ${newSubject.hasRelativeGrade ? "bg-amber-500" : "bg-gray-200"}`}
+                  >
+                    <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${newSubject.hasRelativeGrade ? "left-8" : "left-1"}`} />
+                  </button>
+                </div>
+
+                <div className="flex gap-4 pt-6">
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
+                  >
+                    Confirm Creation
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* Assignment Modal */}
       {selectedSubjectId && (
-        <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-          <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
-                  Assign Faculty
-                </h3>
-                <p className="text-gray-500 font-bold text-sm mt-1">
-                  Allocate teaching workload for{" "}
-                  {subjectList.find((s) => s.id === selectedSubjectId)?.name}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedSubjectId(null)}
-                className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
-              >
-                <X size={32} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAssignFaculty} className="space-y-8">
-              <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                  Select Professor
-                </label>
-                <CustomSelect
-                  className="w-full"
-                  value={assignFacultyId}
-                  onChange={(e) => setAssignFacultyId(e.target.value)}
-                  required
+        <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn text-left">
+          <div className="bg-white rounded-[48px] w-full max-w-xl shadow-2xl border border-gray-100 max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="p-10 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1">
+              <div className="flex justify-between items-center mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
+                    Assign Faculty
+                  </h3>
+                  <p className="text-gray-500 font-bold text-sm mt-1">
+                    Allocate teaching workload for{" "}
+                    {subjectList.find((s) => s.id === selectedSubjectId)?.name}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedSubjectId(null)}
+                  className="p-4 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-3xl transition-all"
                 >
-                  <option value="">-- Search Faculty Database --</option>
-                  {(Array.isArray(facultyList) ? facultyList : []).map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.fullName} ({f.department})
-                    </option>
-                  ))}
-                </CustomSelect>
+                  <X size={32} />
+                </button>
               </div>
 
-              {selectedSubjectId && (
-                <div className="p-6 bg-blue-50/50 rounded-[32px] border border-blue-100">
-                  <label className="block text-xs font-black text-blue-400 uppercase tracking-widest mb-4 px-1">
-                    Target Department
+              <form onSubmit={handleAssignFaculty} className="space-y-8">
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                    Select Professor
+                  </label>
+                  <CustomSelect
+                    className="w-full"
+                    value={assignFacultyId}
+                    onChange={(e) => setAssignFacultyId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Search Faculty Database --</option>
+                    {(Array.isArray(facultyList) ? facultyList : []).map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.fullName} ({f.department})
+                      </option>
+                    ))}
+                  </CustomSelect>
+                </div>
+
+                {selectedSubjectId && (
+                  <div className="p-6 bg-blue-50/50 rounded-[32px] border border-blue-100">
+                    <label className="block text-xs font-black text-blue-400 uppercase tracking-widest mb-4 px-1">
+                      Target Department
+                    </label>
+                    <div className="flex flex-wrap gap-3">
+                      {(Array.isArray(departments) ? departments : [])
+                        .filter((d) => d.name?.toLowerCase() !== "first year")
+                        .map((d) => {
+                          const deptCode = d.code || d.name;
+                          return (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => setAssignDept(deptCode)}
+                              className={`px-6 py-3 rounded-2xl font-black text-xs uppercase transition-all ${assignDept === deptCode ? "bg-[#003B73] text-white shadow-lg scale-105" : "bg-white text-gray-400 border border-gray-100 hover:border-[#003B73]/30"}`}
+                            >
+                              {deptCode}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">
+                    Target Section
                   </label>
                   <div className="flex flex-wrap gap-3">
-                    {(Array.isArray(departments) ? departments : [])
-                      .filter((d) => d.name?.toLowerCase() !== "first year")
-                      .map((d) => {
-                        const deptCode = d.code || d.name;
-                        return (
-                          <button
-                            key={d.id}
-                            type="button"
-                            onClick={() => setAssignDept(deptCode)}
-                            className={`px-6 py-3 rounded-2xl font-black text-xs uppercase transition-all ${assignDept === deptCode ? "bg-[#003B73] text-white shadow-lg scale-105" : "bg-white text-gray-400 border border-gray-100 hover:border-[#003B73]/30"}`}
-                          >
-                            {deptCode}
-                          </button>
-                        )
-                      })}
+                    {["A", "B", "C", "D"].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setAssignSection(s)}
+                        className={`w-14 h-14 rounded-2xl font-black text-lg transition-all ${assignSection === s ? "bg-[#003B73] text-white shadow-lg scale-110" : "bg-white text-gray-400 border border-gray-100 hover:border-[#003B73]/30"}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
 
-              <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">
-                  Target Section
-                </label>
-                <div className="flex flex-wrap gap-3">
-                  {["A", "B", "C", "D"].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setAssignSection(s)}
-                      className={`w-14 h-14 rounded-2xl font-black text-lg transition-all ${assignSection === s ? "bg-[#003B73] text-white shadow-lg scale-110" : "bg-white text-gray-400 border border-gray-100 hover:border-[#003B73]/30"}`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubjectId(null)}
+                    className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
+                  >
+                    Save Assignment
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setSelectedSubjectId(null)}
-                  className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-[24px] font-black transition-all transform active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
-                >
-                  Save Assignment
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}

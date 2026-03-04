@@ -23,10 +23,14 @@ const updateMarksForAdmin = async (req, res) => {
         const subId = parseInt(subjectId);
 
         await prisma.$transaction(async (tx) => {
+            const subject = await tx.subject.findUnique({ where: { id: subId } });
+            const subjectCategory = subject?.subjectCategory || 'THEORY';
+
             const ALLOWED_MARK_FIELDS = [
                 'cia1_test', 'cia1_assignment', 'cia1_attendance',
                 'cia2_test', 'cia2_assignment', 'cia2_attendance',
-                'cia3_test', 'cia3_assignment', 'cia3_attendance'
+                'cia3_test', 'cia3_assignment', 'cia3_attendance',
+                'lab_assessment', 'lab_attendance', 'lab_observation', 'lab_record', 'lab_model'
             ];
             for (const m of marksData) {
                 const sId = parseInt(m.studentId);
@@ -40,7 +44,7 @@ const updateMarksForAdmin = async (req, res) => {
                     if (m.data[field] !== undefined) safeData[field] = m.data[field];
                 }
 
-                const { internal } = markService.calculateInternalMarks(currentMark, safeData);
+                const { internal } = markService.calculateInternalMarks(currentMark, safeData, subjectCategory);
 
                 await tx.marks.upsert({
                     where: { studentId_subjectId: { studentId: sId, subjectId: subId } },

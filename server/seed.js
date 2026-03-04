@@ -113,6 +113,7 @@ async function main() {
             create: {
                 name: s.name,
                 registerNumber: s.reg,
+                rollNo: s.reg, // Use reg as rollNo if not provided
                 department: s.dept,
                 year: 2,
                 semester: 3,

@@ -193,12 +193,23 @@ const deleteStudent = async (req, res) => {
 
 const getStudents = async (req, res) => {
     try {
-        const { semester, departmentId, sectionId } = req.query;
+        const { semester, departmentId, sectionId, status, batch } = req.query;
         let whereClause = {};
+
+        if (status) {
+            whereClause.status = status;
+        }
+
+        if (batch) {
+            whereClause.OR = [
+                { batch: batch },
+                { batchYear: batch }
+            ];
+        }
 
         // Apply high-performance filtering if parameters are passed
         if (semester) {
-            whereClause.status = 'ACTIVE';
+            if (!status) whereClause.status = 'ACTIVE';
             if (parseInt(semester) <= 2) {
                 if (!sectionId) return res.status(400).json({ error: "sectionId is required for First Year." });
                 whereClause.currentSemester = parseInt(semester);
@@ -506,6 +517,47 @@ const batchAssignRegisterNumbers = async (req, res) => {
     }
 };
 
+const passStudentsOut = async (req, res) => {
+    const { studentIds, batch } = req.body;
+    try {
+        if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+            return res.status(400).json({ message: 'No students selected for passing out.' });
+        }
+
+        // Determine batch from students if not explicitly provided
+        let batchLabel = batch;
+        if (!batchLabel) {
+            const first = await prisma.student.findFirst({
+                where: { id: { in: studentIds.map(id => parseInt(id)) } },
+                select: { batch: true, batchYear: true }
+            });
+            batchLabel = first?.batch || first?.batchYear || String(new Date().getFullYear());
+        }
+
+        await prisma.student.updateMany({
+            where: { id: { in: studentIds.map(id => parseInt(id)) } },
+            data: {
+                status: 'PASSED_OUT',
+                batch: batchLabel
+            }
+        });
+
+        // Create Activity Logs
+        await prisma.activityLog.createMany({
+            data: studentIds.map(id => ({
+                action: 'STUDENT_PASSED_OUT',
+                description: `Marked as Passed Out (Batch: ${batchLabel})`,
+                performedBy: parseInt(req.user.id),
+                targetId: parseInt(id)
+            }))
+        });
+
+        res.json({ message: `${studentIds.length} students marked as Passed Out (Batch: ${batchLabel})`, count: studentIds.length, batch: batchLabel });
+    } catch (error) {
+        handleError(res, error, 'Error passing students out');
+    }
+};
+
 module.exports = {
     createStudent,
     updateStudent,
@@ -513,5 +565,6 @@ module.exports = {
     getStudents,
     promoteStudents,
     bulkUploadStudents,
-    batchAssignRegisterNumbers
+    batchAssignRegisterNumbers,
+    passStudentsOut
 };

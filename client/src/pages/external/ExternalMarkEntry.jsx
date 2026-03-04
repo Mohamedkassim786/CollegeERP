@@ -66,6 +66,24 @@ const ExternalMarkEntry = () => {
         marks: marksArray,
       });
       toast.success("Marks submitted successfully");
+
+      // Auto-generate PDF after submission
+      try {
+        const response = await api.get("/external/marks/statement-pdf", {
+          params: { subjectId: data.subjectId },
+          responseType: "blob",
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `Statement_${data.subjectId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (pdfErr) {
+        toast.error("Marks submitted, but PDF generation failed");
+      }
+
       fetchMarks();
     } catch (err) {
       toast.error("Failed to submit marks");

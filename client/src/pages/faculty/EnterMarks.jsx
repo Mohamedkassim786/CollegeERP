@@ -22,10 +22,16 @@ const EnterMarks = () => {
   const [saving, setSaving] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
+  const [currentCategory, setCurrentCategory] = useState("THEORY");
+
   const maxMarks = {
     test: 60,
     assignment: 20,
     attendance: 20,
+    lab_attendance: 25,
+    lab_observation: 25,
+    lab_record: 25,
+    lab_model: 25,
   };
 
   useEffect(() => {
@@ -36,7 +42,10 @@ const EnterMarks = () => {
     try {
       const res = await api.get("/faculty/assignments");
       setAssignments(res.data);
-      if (res.data.length > 0) setSelectedAssignmentId(res.data[0].id);
+      if (res.data.length > 0) {
+        setSelectedAssignmentId(res.data[0].id);
+        setCurrentCategory(res.data[0].subject.subjectCategory || "THEORY");
+      }
     } catch (err) {
       console.error(err);
     }
@@ -50,6 +59,8 @@ const EnterMarks = () => {
         (a) => a.id === parseInt(selectedAssignmentId),
       );
       if (!assignment) return;
+
+      setCurrentCategory(assignment.subject.subjectCategory || "THEORY");
 
       const res = await api.get(`/faculty/marks/${assignment.subject.id}`);
       setStudents(res.data);
@@ -77,11 +88,12 @@ const EnterMarks = () => {
     }
 
     const numVal = parseFloat(value);
+    const max = maxMarks[field] || 100;
 
-    // Allow -1 for absentees, or 0 to maxMarks
+    // Allow -1 for absentees, or 0 to max
     if (
       value !== "" &&
-      (isNaN(numVal) || numVal < -1 || numVal > maxMarks[field])
+      (isNaN(numVal) || numVal < -1 || numVal > max)
     ) {
       return;
     }
@@ -90,7 +102,7 @@ const EnterMarks = () => {
       prev.map((s) => {
         if (s.studentId !== studentId) return s;
 
-        const dbField = `${selectedExam}_${field}`;
+        const dbField = selectedExam === 'integrated_lab' ? field : `${selectedExam}_${field}`;
         return {
           ...s,
           marks: {
@@ -118,12 +130,19 @@ const EnterMarks = () => {
         const payload = {
           studentId: s.studentId,
           subjectId: assignment.subject.id,
-          [`${selectedExam}_test`]: s.marks[`${selectedExam}_test`] || null,
-          [`${selectedExam}_assignment`]:
-            s.marks[`${selectedExam}_assignment`] || null,
-          [`${selectedExam}_attendance`]:
-            s.marks[`${selectedExam}_attendance`] || null,
         };
+
+        if (selectedExam === 'integrated_lab') {
+          payload.lab_attendance = s.marks.lab_attendance || null;
+          payload.lab_observation = s.marks.lab_observation || null;
+          payload.lab_record = s.marks.lab_record || null;
+          payload.lab_model = s.marks.lab_model || null;
+        } else {
+          payload[`${selectedExam}_test`] = s.marks[`${selectedExam}_test`] || null;
+          payload[`${selectedExam}_assignment`] = s.marks[`${selectedExam}_assignment`] || null;
+          payload[`${selectedExam}_attendance`] = s.marks[`${selectedExam}_attendance`] || null;
+        }
+
         return api.post("/faculty/marks", payload);
       });
 
@@ -151,59 +170,72 @@ const EnterMarks = () => {
     const assignment = assignments.find(
       (a) => a.id === parseInt(selectedAssignmentId),
     );
-    const examName = selectedExam.toUpperCase().replace("CIA", "CIA-");
+    const isIntegratedLab = selectedExam === 'integrated_lab';
+    const examLabel = isIntegratedLab ? "INTEGRATED LAB" : selectedExam.toUpperCase().replace("CIA", "CIA-");
 
     // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(examName);
+    const worksheet = workbook.addWorksheet(examLabel);
 
     // Add columns
-    worksheet.columns = [
-      { header: "S.No", key: "sno", width: 10 },
-      { header: "Register Number", key: "regNo", width: 20 },
-      { header: "Student Name", key: "name", width: 30 },
-      { header: "Test (60)", key: "test", width: 15 },
-      { header: "Assignment (20)", key: "assign", width: 15 },
-      { header: "Attendance (20)", key: "attend", width: 15 },
-      { header: "Total (100)", key: "total", width: 15 },
-    ];
+    if (isIntegratedLab) {
+      worksheet.columns = [
+        { header: "S.No", key: "sno", width: 10 },
+        { header: "Register Number", key: "regNo", width: 20 },
+        { header: "Student Name", key: "name", width: 30 },
+        { header: "Attendance (25)", key: "la", width: 15 },
+        { header: "Observation (25)", key: "lo", width: 15 },
+        { header: "Record (25)", key: "lr", width: 15 },
+        { header: "Model (25)", key: "lm", width: 15 },
+        { header: "Total (100)", key: "total", width: 15 },
+      ];
+    } else {
+      worksheet.columns = [
+        { header: "S.No", key: "sno", width: 10 },
+        { header: "Register Number", key: "regNo", width: 20 },
+        { header: "Student Name", key: "name", width: 30 },
+        { header: "Test (60)", key: "test", width: 15 },
+        { header: "Assignment (20)", key: "assign", width: 15 },
+        { header: "Attendance (20)", key: "attend", width: 15 },
+        { header: "Total (100)", key: "total", width: 15 },
+      ];
+    }
 
     // Add rows
     students.forEach((s, idx) => {
-      const rawTest = s.marks[`${selectedExam}_test`];
-      const rawAssign = s.marks[`${selectedExam}_assignment`];
-      const rawAttend = s.marks[`${selectedExam}_attendance`];
+      let isAbs = false;
+      let total = 0;
+      const row = { sno: idx + 1, regNo: s.rollNo, name: s.name };
 
-      const isAbs = rawTest === -1 || rawAssign === -1 || rawAttend === -1;
+      if (isIntegratedLab) {
+        const la = s.marks.lab_attendance || 0;
+        const lo = s.marks.lab_observation || 0;
+        const lr = s.marks.lab_record || 0;
+        const lm = s.marks.lab_model || 0;
+        isAbs = la === -1 || lo === -1 || lr === -1 || lm === -1;
+        total = (la === -1 ? 0 : la) + (lo === -1 ? 0 : lo) + (lr === -1 ? 0 : lr) + (lm === -1 ? 0 : lm);
+        row.la = la === -1 ? "ABSENT" : la;
+        row.lo = lo === -1 ? "ABSENT" : lo;
+        row.lr = lr === -1 ? "ABSENT" : lr;
+        row.lm = lm === -1 ? "ABSENT" : lm;
+      } else {
+        const rawTest = s.marks[`${selectedExam}_test`];
+        const rawAssign = s.marks[`${selectedExam}_assignment`];
+        const rawAttend = s.marks[`${selectedExam}_attendance`];
+        isAbs = rawTest === -1 || rawAssign === -1 || rawAttend === -1;
+        total = (rawTest === -1 ? 0 : (rawTest || 0)) + (rawAssign === -1 ? 0 : (rawAssign || 0)) + (rawAttend === -1 ? 0 : (rawAttend || 0));
+        row.test = rawTest === -1 ? "ABSENT" : (rawTest || 0);
+        row.assign = rawAssign === -1 ? "ABSENT" : (rawAssign || 0);
+        row.attend = rawAttend === -1 ? "ABSENT" : (rawAttend || 0);
+      }
 
-      const test = parseFloat(rawTest === -1 || rawTest === null ? 0 : rawTest);
-      const assign = parseFloat(
-        rawAssign === -1 || rawAssign === null ? 0 : rawAssign,
-      );
-      const attend = parseFloat(
-        rawAttend === -1 || rawAttend === null ? 0 : rawAttend,
-      );
-      const total = test + assign + attend;
-
-      worksheet.addRow({
-        sno: idx + 1,
-        regNo: s.rollNo, // Primary Academic ID
-        name: s.name,
-        test: rawTest === -1 ? "ABSENT" : test,
-        assign: rawAssign === -1 ? "ABSENT" : assign,
-        attend: rawAttend === -1 ? "ABSENT" : attend,
-        total: isAbs ? "ABSENT" : total,
-      });
+      row.total = isAbs ? "ABSENT" : total;
+      worksheet.addRow(row);
     });
 
-    // Generate filename
-    const filename = `${assignment.subject.code}_${examName}_${assignment.section}_Marks.xlsx`;
-
-    // Write to buffer and save
+    const filename = `${assignment.subject.code}_${examLabel}_${assignment.section}_Marks.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     saveAs(blob, filename);
   };
 
@@ -228,7 +260,11 @@ const EnterMarks = () => {
             <CustomSelect
               className="w-full font-semibold "
               value={selectedAssignmentId}
-              onChange={(e) => setSelectedAssignmentId(e.target.value)}
+              onChange={(e) => {
+                setSelectedAssignmentId(e.target.value);
+                const a = assignments.find(x => x.id === parseInt(e.target.value));
+                if (a) setCurrentCategory(a.subject.subjectCategory || "THEORY");
+              }}
             >
               {assignments.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -239,16 +275,19 @@ const EnterMarks = () => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              Exam
+              Exam Component
             </label>
             <CustomSelect
               className="w-full font-semibold "
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
             >
-              <option value="cia1">CIA - I</option>
-              <option value="cia2">CIA - II</option>
-              <option value="cia3">CIA - III</option>
+              <option value="cia1">CIA - I (Theory)</option>
+              <option value="cia2">CIA - II (Theory)</option>
+              <option value="cia3">CIA - III (Theory)</option>
+              {currentCategory === 'INTEGRATED' && (
+                <option value="integrated_lab">Integrated Lab Marks</option>
+              )}
             </CustomSelect>
           </div>
           <div className="flex items-end">
@@ -267,12 +306,11 @@ const EnterMarks = () => {
             <Lock className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
             <div>
               <p className="font-semibold text-red-800">
-                {selectedExam.toUpperCase().replace("CIA", "CIA-")} Marks Locked
+                {selectedExam === 'integrated_lab' ? 'Integrated Lab Marks' : selectedExam.toUpperCase().replace("CIA", "CIA-")} Locked
                 by Admin
               </p>
               <p className="text-sm text-red-600 mt-1">
-                These marks have been locked and cannot be edited. Contact admin
-                to unlock.
+                These marks have been locked and cannot be edited.
               </p>
             </div>
           </div>
@@ -282,12 +320,11 @@ const EnterMarks = () => {
       {/* Marks Table */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fadeIn delay-200">
         <div className="p-6 bg-[#003B73] text-white">
-          <h2 className="text-2xl font-bold">
-            {selectedExam.toUpperCase().replace("CIA", "CIA-")} Marks Entry
+          <h2 className="text-2xl font-bold uppercase tracking-tight">
+            {selectedExam === 'integrated_lab' ? "Integrated Lab Components" : `${selectedExam.toUpperCase().replace("CIA", "CIA-")} Marks Entry`}
           </h2>
-          <p className="text-blue-100 mt-1 font-medium">
-            {students.length} students • Test (60) + Assignment (20) +
-            Attendance (20) = Total (100)
+          <p className="text-blue-100 mt-1 font-medium italic">
+            {selectedExam === 'integrated_lab' ? "Attendance (25) + Observation (25) + Record (25) + Model (25) = Total (100)" : "Test (60) + Assignment (20) + Attendance (20) = Total (100)"}
           </p>
         </div>
 
@@ -304,168 +341,76 @@ const EnterMarks = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b-2 border-gray-200">
                   <tr>
-                    <th className="p-4 text-left font-bold text-gray-700 w-16">
-                      S.No
-                    </th>
-                    <th className="p-4 text-left font-bold text-gray-700">
-                      Roll Number
-                    </th>
-                    <th className="p-4 text-left font-bold text-gray-700">
-                      Reg No
-                    </th>
-                    <th className="p-4 text-left font-bold text-gray-700">
-                      Student Name
-                    </th>
-                    <th className="p-4 text-center font-bold text-gray-700 bg-blue-50 w-32">
-                      Test
-                      <br />
-                      <span className="text-xs font-normal">(60)</span>
-                    </th>
-                    <th className="p-4 text-center font-bold text-gray-700 bg-blue-50 w-32">
-                      Assignment
-                      <br />
-                      <span className="text-xs font-normal">(20)</span>
-                    </th>
-                    <th className="p-4 text-center font-bold text-gray-700 bg-blue-50 w-32">
-                      Attendance
-                      <br />
-                      <span className="text-xs font-normal">(20)</span>
-                    </th>
-                    <th className="p-4 text-center font-bold text-gray-700 bg-blue-50 w-24">
-                      Total
-                      <br />
-                      <span className="text-xs font-normal">(100)</span>
-                    </th>
+                    <th className="p-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px] w-16">S.No</th>
+                    <th className="p-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Roll No</th>
+                    <th className="p-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Student Name</th>
+
+                    {selectedExam === 'integrated_lab' ? (
+                      <>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Attendance (25)</th>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Observation (25)</th>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Record (25)</th>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Model (25)</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Test (60)</th>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Assignment (20)</th>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Attendance (20)</th>
+                      </>
+                    )}
+                    <th className="p-4 text-center font-black text-emerald-600 uppercase tracking-widest text-[10px] bg-emerald-50/50 w-24">Total (100)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {students.map((s, idx) => {
-                    const isAbsent = (val) =>
-                      val === -1 || val === "-1" || parseFloat(val) === -1;
-                    const cleanMark = (val) =>
-                      isAbsent(val) || val === null || val === undefined
-                        ? 0
-                        : parseFloat(val);
-                    const rawTest = s.marks[`${selectedExam}_test`];
-                    const rawAssign = s.marks[`${selectedExam}_assignment`];
-                    const rawAttend = s.marks[`${selectedExam}_attendance`];
-                    const test = cleanMark(rawTest);
-                    const assign = cleanMark(rawAssign);
-                    const attend = cleanMark(rawAttend);
-                    const total = test + assign + attend;
-                    // Show AB if ANY field is absent
-                    const anyAbsent = isAbsent(rawTest) || isAbsent(rawAssign) || isAbsent(rawAttend);
+                    const isAbs = (val) => val === -1 || val === "-1" || parseFloat(val) === -1;
+                    const cleanMark = (val) => isAbs(val) || val === null || val === undefined ? 0 : parseFloat(val);
+
+                    let total = 0;
+                    let anyAbsent = false;
+
+                    if (selectedExam === 'integrated_lab') {
+                      const la = s.marks.lab_attendance;
+                      const lo = s.marks.lab_observation;
+                      const lr = s.marks.lab_record;
+                      const lm = s.marks.lab_model;
+                      anyAbsent = isAbs(la) || isAbs(lo) || isAbs(lr) || isAbs(lm);
+                      total = cleanMark(la) + cleanMark(lo) + cleanMark(lr) + cleanMark(lm);
+                    } else {
+                      const t = s.marks[`${selectedExam}_test`];
+                      const a = s.marks[`${selectedExam}_assignment`];
+                      const at = s.marks[`${selectedExam}_attendance`];
+                      anyAbsent = isAbs(t) || isAbs(a) || isAbs(at);
+                      total = cleanMark(t) + cleanMark(at) + cleanMark(a);
+                    }
 
                     return (
-                      <tr
-                        key={s.studentId}
-                        className="hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="p-4 text-gray-600 font-mono">
-                          {idx + 1}
-                        </td>
-                        <td className="p-4 font-mono text-[#003B73] font-bold uppercase">
-                          {s.rollNo}
-                        </td>
-                        <td className="p-4 font-mono text-gray-500 text-sm italic">
-                          {s.registerNumber || "-"}
-                        </td>
-                        <td className="p-4 font-semibold text-gray-800">
-                          {s.name}
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            className={`w-full p-2 border-2 rounded-lg text-center font-semibold transition-all ${isLocked
-                                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                                : s.marks[`${selectedExam}_test`] === -1
-                                  ? "bg-red-50 border-red-200 text-red-600"
-                                  : "border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              }`}
-                            value={
-                              s.marks[`${selectedExam}_test`] === -1
-                                ? "-1"
-                                : (s.marks[`${selectedExam}_test`] ?? "")
-                            }
-                            onChange={(e) =>
-                              handleInputChange(
-                                s.studentId,
-                                "test",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="Enter -1 for Absent"
-                            disabled={isLocked}
-                            min="-1"
-                            max="60"
-                            step="0.5"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            className={`w-full p-2 border-2 rounded-lg text-center font-semibold transition-all ${isLocked
-                                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                                : s.marks[`${selectedExam}_assignment`] === -1
-                                  ? "bg-red-50 border-red-200 text-red-600"
-                                  : "border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              }`}
-                            value={
-                              s.marks[`${selectedExam}_assignment`] === -1
-                                ? "-1"
-                                : (s.marks[`${selectedExam}_assignment`] ?? "")
-                            }
-                            onChange={(e) =>
-                              handleInputChange(
-                                s.studentId,
-                                "assignment",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="0-20"
-                            disabled={isLocked}
-                            min="-1"
-                            max="20"
-                            step="0.5"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            className={`w-full p-2 border-2 rounded-lg text-center font-semibold transition-all ${isLocked
-                                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                                : s.marks[`${selectedExam}_attendance`] === -1
-                                  ? "bg-red-50 border-red-200 text-red-600"
-                                  : "border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              }`}
-                            value={
-                              s.marks[`${selectedExam}_attendance`] === -1
-                                ? "-1"
-                                : (s.marks[`${selectedExam}_attendance`] ?? "")
-                            }
-                            onChange={(e) =>
-                              handleInputChange(
-                                s.studentId,
-                                "attendance",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="0-20"
-                            disabled={isLocked}
-                            min="0"
-                            max="20"
-                            step="0.5"
-                          />
-                        </td>
+                      <tr key={s.studentId} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="p-4 text-gray-400 font-bold font-mono text-xs">{idx + 1}</td>
+                        <td className="p-4 font-black text-[#003B73] font-mono text-sm uppercase tracking-tighter">{s.rollNo}</td>
+                        <td className="p-4 font-bold text-gray-800 text-sm">{s.name}</td>
+
+                        {selectedExam === 'integrated_lab' ? (
+                          <>
+                            <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks.lab_attendance) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks.lab_attendance === -1 ? "-1" : (s.marks.lab_attendance ?? "")} onChange={(e) => handleInputChange(s.studentId, "lab_attendance", e.target.value)} disabled={isLocked} /></td>
+                            <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks.lab_observation) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks.lab_observation === -1 ? "-1" : (s.marks.lab_observation ?? "")} onChange={(e) => handleInputChange(s.studentId, "lab_observation", e.target.value)} disabled={isLocked} /></td>
+                            <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks.lab_record) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks.lab_record === -1 ? "-1" : (s.marks.lab_record ?? "")} onChange={(e) => handleInputChange(s.studentId, "lab_record", e.target.value)} disabled={isLocked} /></td>
+                            <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks.lab_model) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks.lab_model === -1 ? "-1" : (s.marks.lab_model ?? "")} onChange={(e) => handleInputChange(s.studentId, "lab_model", e.target.value)} disabled={isLocked} /></td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks[`${selectedExam}_test`]) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks[`${selectedExam}_test`] === -1 ? "-1" : (s.marks[`${selectedExam}_test`] ?? "")} onChange={(e) => handleInputChange(s.studentId, "test", e.target.value)} disabled={isLocked} /></td>
+                            <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks[`${selectedExam}_assignment`]) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks[`${selectedExam}_assignment`] === -1 ? "-1" : (s.marks[`${selectedExam}_assignment`] ?? "")} onChange={(e) => handleInputChange(s.studentId, "assignment", e.target.value)} disabled={isLocked} /></td>
+                            <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks[`${selectedExam}_attendance`]) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks[`${selectedExam}_attendance`] === -1 ? "-1" : (s.marks[`${selectedExam}_attendance`] ?? "")} onChange={(e) => handleInputChange(s.studentId, "attendance", e.target.value)} disabled={isLocked} /></td>
+                          </>
+                        )}
+
                         <td className="p-4 text-center">
                           {anyAbsent ? (
-                            <span className="text-sm font-black text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-100 uppercase tracking-widest">
-                              AB
-                            </span>
+                            <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100 uppercase tracking-widest">Absent</span>
                           ) : (
-                            <span className="text-xl font-bold text-[#003B73]">
-                              {total.toFixed(1)}
-                            </span>
+                            <span className="text-lg font-black text-[#003B73] tracking-tighter">{total.toFixed(0)}</span>
                           )}
                         </td>
                       </tr>
@@ -476,48 +421,44 @@ const EnterMarks = () => {
             </div>
 
             {/* Footer Actions */}
-            <div className="p-6 bg-gray-50 border-t-2 border-gray-200 flex justify-between items-center">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-semibold">{students.length}</span>{" "}
-                students
-              </p>
-              <div className="flex gap-3">
+            <div className="p-8 bg-gray-50 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-[#003B73]">
+                  <FileSpreadsheet size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Registry Summary</p>
+                  <p className="text-sm font-black text-[#003B73]">{students.length} Student Profiles Loaded</p>
+                </div>
+              </div>
+              <div className="flex gap-4 w-full md:w-auto">
                 <button
                   onClick={exportToExcel}
-                  className="btn bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-2 border-emerald-200 flex items-center gap-2"
+                  className="flex-1 md:flex-none px-8 py-4 bg-white hover:bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-[20px] font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-sm"
                 >
-                  <Download size={18} />
-                  Export to Excel
+                  <Download size={18} /> Export Datasheet
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving || isLocked}
-                  className={`btn flex items-center gap-2 ${isLocked
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "btn-primary"
-                    }`}
+                  className={`flex-1 md:flex-none px-10 py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${isLocked ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-[#003B73] text-white hover:bg-[#002850] active:scale-95"}`}
                 >
                   {saving ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Saving...
-                    </>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/50 border-t-white" />
                   ) : (
-                    <>
-                      <Save size={18} />
-                      Save Marks
-                    </>
+                    <><Save size={20} /> COMMIT RECORDS</>
                   )}
                 </button>
               </div>
             </div>
           </>
         ) : (
-          <div className="p-20 text-center">
-            <AlertCircle className="mx-auto text-gray-400 mb-4" size={48} />
-            <p className="text-gray-600 text-lg">
-              Select filters and click "Load Students" to begin
-            </p>
+          <div className="p-32 text-center bg-gray-50/50">
+            <div className="w-24 h-24 bg-white rounded-[40px] shadow-xl border border-gray-100 flex items-center justify-center text-gray-200 mx-auto mb-10 group-hover:scale-110 transition-transform">
+              <AlertCircle size={48} />
+            </div>
+            <h3 className="text-2xl font-black text-gray-300 uppercase tracking-widest mb-3">Void Registry</h3>
+            <p className="text-gray-400 font-bold text-[10px] uppercase tracking-[0.2em]">Select Filters & Invoke Pulse Search</p>
           </div>
         )}
       </div>

@@ -44,17 +44,30 @@ const getSubjects = async (req, res) => {
 };
 
 const createSubject = async (req, res) => {
-    const { code, name, department, semester, type, credits, shortName } = req.body;
+    const { code, name, department, semester, type, credits, shortName, subjectCategory, theoryCredit, labCredit, hasRelativeGrade } = req.body;
     try {
+        // Auto-compute credits based on category
+        let finalCredits = parseInt(credits) || 3;
+        const category = subjectCategory || 'THEORY';
+        if (category === 'LAB') {
+            finalCredits = parseInt(labCredit) || 1;
+        } else if (category === 'INTEGRATED') {
+            finalCredits = (parseInt(theoryCredit) || 3) + (parseInt(labCredit) || 1);
+        }
+
         const subject = await prisma.subject.create({
             data: {
                 code,
                 name,
                 shortName,
-                department, // Can be comma separated
+                department,
                 semester: parseInt(semester),
                 type: type || 'DEPARTMENT',
-                credits: parseInt(credits) || 3
+                credits: finalCredits,
+                subjectCategory: category,
+                theoryCredit: category === 'INTEGRATED' || category === 'THEORY' ? (parseInt(theoryCredit) || null) : null,
+                labCredit: category === 'INTEGRATED' || category === 'LAB' ? (parseInt(labCredit) || null) : null,
+                hasRelativeGrade: hasRelativeGrade === true || hasRelativeGrade === 'true'
             }
         });
         res.status(201).json(subject);
@@ -62,6 +75,7 @@ const createSubject = async (req, res) => {
         handleError(res, error, "Error creating subject");
     }
 };
+
 
 const deleteSubject = async (req, res) => {
     const { id } = req.params;

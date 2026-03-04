@@ -7,7 +7,7 @@ const {
     getSubstitutions, assignSubstitute, deleteSubstitution, getFacultyAvailability
 } = require('../controllers/adminController');
 const {
-    createStudent, updateStudent, getStudents, deleteStudent, promoteStudents, bulkUploadStudents, batchAssignRegisterNumbers
+    createStudent, updateStudent, getStudents, deleteStudent, promoteStudents, bulkUploadStudents, batchAssignRegisterNumbers, passStudentsOut
 } = require('../controllers/studentController');
 const {
     createSubject, getSubjects, deleteSubject, assignFaculty, removeFacultyAssignment
@@ -30,7 +30,8 @@ const {
 const { getAttendanceReport } = require('../controllers/attendanceController');
 const { verifyToken, isAdmin, isHod } = require('../middleware/authMiddleware');
 const { validateStudent, validateFaculty, validateSubject, validateMarks } = require('../middleware/validation');
-const { uploadArrears, getArrears, deleteArrear } = require('../controllers/arrearController');
+const { uploadArrears, getArrears, deleteArrear, autoGenerateArrears, bulkUploadPassedOutArrears } = require('../controllers/arrearController');
+
 const { getSubjectsForDispatch, getStudentsForDispatch, exportDispatchPDF } = require('../controllers/dispatchController');
 
 const router = express.Router();
@@ -99,10 +100,13 @@ router.get('/attendance/export-excel', exportAttendanceExcel);
 router.post('/students/promote', promoteStudents);
 router.post('/students/bulk', bulkUploadStudents);
 router.post('/students/batch-assign-register', batchAssignRegisterNumbers);
+router.post('/students/pass-out', isHod, passStudentsOut);
 
 // Arrears
 router.get('/arrears', getArrears);
 router.post('/arrears/upload', upload.single('file'), uploadArrears);
+router.post('/arrears/auto-generate', isAdmin, autoGenerateArrears);
+router.post('/arrears/bulk-passedout', bulkUploadPassedOutArrears);
 router.delete('/arrears/:id', deleteArrear);
 
 // Hall Allocation Routes

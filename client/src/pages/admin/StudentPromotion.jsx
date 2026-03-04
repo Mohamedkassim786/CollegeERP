@@ -11,7 +11,9 @@ import {
   TrendingUp,
   Filter,
   ArrowRight,
+  CheckCircle2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const StudentPromotion = () => {
   const [students, setStudents] = useState([]);
@@ -31,6 +33,8 @@ const StudentPromotion = () => {
   const [promoSection, setPromoSection] = useState("A");
   const [promoYear, setPromoYear] = useState("2");
   const [promoSem, setPromoSem] = useState("3");
+  const [isPassOut, setIsPassOut] = useState(false); // when true, execute PASSED OUT instead of promote
+  const [passingOut, setPassingOut] = useState(false);
 
   // First Year Short Code State
   const [firstYearCode] = useState(() => {
@@ -52,7 +56,13 @@ const StudentPromotion = () => {
       setPromoYear(nextYear.toString());
       setPromoSem((nextYear * 2 - 1).toString());
     }
-  }, [sourceYear]);
+    // Auto-suggest Pass Out when Year 4 / Sem 8
+    if (sourceYear === "4" && String(sourceSem) === "8") {
+      setIsPassOut(true);
+    } else {
+      setIsPassOut(false);
+    }
+  }, [sourceYear, sourceSem]);
 
   useEffect(() => {
     fetchStudents();
@@ -128,6 +138,25 @@ const StudentPromotion = () => {
   const handlePromote = async () => {
     if (selectedStudents.length === 0)
       return alert("Select students to promote");
+
+    // PASSED OUT branch
+    if (isPassOut) {
+      if (!confirm(`Mark ${selectedStudents.length} students as PASSED OUT?`)) return;
+      setPassingOut(true);
+      try {
+        const batchVal = students.find(s => selectedStudents.includes(s.id))?.batch || '';
+        const res = await api.post("/admin/students/pass-out", { studentIds: selectedStudents, batch: batchVal });
+        toast.success(res.data.message);
+        setSelectedStudents([]);
+        fetchStudents();
+      } catch (err) {
+        toast.error("Pass-out failed: " + (err.response?.data?.message || err.message));
+      } finally {
+        setPassingOut(false);
+      }
+      return;
+    }
+
     if (parseInt(promoYear) > 1 && !promoDept)
       return alert("Select target department");
 
@@ -683,33 +712,81 @@ const StudentPromotion = () => {
               </div>
 
               <div className="pt-10 border-t border-gray-100 mt-4 flex flex-col gap-4">
+                {/* PASSED OUT toggle — only shown for Year 4, Semester 8 */}
+                {sourceYear === "4" && String(sourceSem) === "8" && (
+                  <label className="flex items-center gap-3 cursor-pointer bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 group select-none">
+                    <div
+                      onClick={() => setIsPassOut(v => !v)}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-300 ${isPassOut ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                    >
+                      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${isPassOut ? 'left-6' : 'left-0.5'}`}></div>
+                    </div>
+                    <div>
+                      <p className="font-black text-emerald-900 text-xs uppercase tracking-wider">Mark as Passed Out</p>
+                      <p className="text-emerald-600 text-[10px] font-medium">Archive selected students</p>
+                    </div>
+                    <CheckCircle2 size={18} className={`ml-auto transition-all ${isPassOut ? 'text-emerald-500' : 'text-gray-200'}`} />
+                  </label>
+                )}
+
+                {/* Normal target fields — hidden when PASSED OUT is active */}
+                {!isPassOut && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">Target Year</label>
+                        <CustomSelect className="w-full" value={promoYear} onChange={(e) => setPromoYear(e.target.value)}>
+                          {sourceYear === "4" ? (
+                            <option value="4">Year 4 (Repeat)</option>
+                          ) : (
+                            [1, 2, 3, 4].map((y) => (<option key={y} value={y}>Year {y}</option>))
+                          )}
+                        </CustomSelect>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">Target Sec</label>
+                        <CustomSelect className="w-full" value={promoSection} onChange={(e) => setPromoSection(e.target.value)}>
+                          {(departments.find((d) => (d.code || d.name) === (promoYear === "1" ? "GEN" : promoDept))?.sections?.split(",") || ["A", "B", "C"]).map((s) => (<option key={s} value={s}>Section {s}</option>))}
+                        </CustomSelect>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">Target Cycle (Sem)</label>
+                      <CustomSelect className="w-full" value={promoSem} onChange={(e) => setPromoSem(e.target.value)}>
+                        {promoYear === "1" ? (
+                          [1, 2].map((s) => (<option key={s} value={s}>Semester {s}</option>))
+                        ) : (
+                          [3, 4, 5, 6, 7, 8].map((s) => (<option key={s} value={s}>Semester {s}</option>))
+                        )}
+                      </CustomSelect>
+                    </div>
+                  </>
+                )}
+
                 <button
                   onClick={handlePromote}
-                  disabled={selectedStudents.length === 0}
+                  disabled={selectedStudents.length === 0 || passingOut}
                   className={`w-full py-6 rounded-[28px] font-black text-xs tracking-[0.2em] flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-2xl relative overflow-hidden group/submit ${selectedStudents.length === 0
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20"
+                    : isPassOut
+                      ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20"
+                      : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20"
                     }`}
                 >
                   {selectedStudents.length > 0 && (
                     <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover/submit:translate-x-full transition-transform duration-1000 skew-x-[45deg]"></div>
                   )}
-                  <TrendingUp
-                    size={22}
-                    strokeWidth={3}
-                    className={
-                      selectedStudents.length > 0 ? "animate-bounce" : ""
-                    }
-                  />
-                  EXECUTE ADVANCEMENT
+                  {isPassOut ? (
+                    <><CheckCircle2 size={22} strokeWidth={3} /> {passingOut ? 'ARCHIVING...' : 'MARK AS PASSED OUT'}</>
+                  ) : (
+                    <><TrendingUp size={22} strokeWidth={3} className={selectedStudents.length > 0 ? "animate-bounce" : ""} /> EXECUTE ADVANCEMENT</>
+                  )}
                 </button>
 
                 {selectedStudents.length === 0 && (
                   <div className="flex items-center justify-center gap-2 p-4 bg-amber-50 rounded-2xl border border-amber-100">
                     <AlertCircle size={14} className="text-amber-600" />
-                    <p className="text-[9px] text-amber-600 font-black uppercase tracking-widest">
-                      Select Cadets to Authorize
-                    </p>
+                    <p className="text-[9px] text-amber-600 font-black uppercase tracking-widest">Select Cadets to Authorize</p>
                   </div>
                 )}
               </div>

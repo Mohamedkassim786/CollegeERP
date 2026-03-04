@@ -269,12 +269,21 @@ const getSubjectMarks = async (req, res) => {
 const updateMarks = async (req, res) => {
     const { studentId, subjectId } = req.body;
     try {
+        const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
+        if (!subject) return res.status(404).json({ message: 'Subject not found' });
+        const subjectCategory = subject.subjectCategory || 'THEORY';
+
         const currentMark = await prisma.marks.findUnique({
             where: { studentId_subjectId: { studentId: parseInt(studentId), subjectId: parseInt(subjectId) } }
         });
 
         const updates = {};
-        const allowedFields = ['cia1_test', 'cia1_assignment', 'cia1_attendance', 'cia2_test', 'cia2_assignment', 'cia2_attendance', 'cia3_test', 'cia3_assignment', 'cia3_attendance'];
+        const allowedFields = [
+            'cia1_test', 'cia1_assignment', 'cia1_attendance',
+            'cia2_test', 'cia2_assignment', 'cia2_attendance',
+            'cia3_test', 'cia3_assignment', 'cia3_attendance',
+            'lab_assessment', 'lab_attendance', 'lab_observation', 'lab_record', 'lab_model'
+        ];
 
         allowedFields.forEach(field => {
             if (req.body[field] !== undefined) {
@@ -291,7 +300,7 @@ const updateMarks = async (req, res) => {
         const lockError = await markService.checkLockStatus(parseInt(studentId), currentMark, Object.keys(updates));
         if (lockError) return res.status(403).json({ message: lockError });
 
-        const { internal, isApproved_cia1, isApproved_cia2, isApproved_cia3 } = markService.calculateInternalMarks(currentMark, updates);
+        const { internal, isApproved_cia1, isApproved_cia2, isApproved_cia3 } = markService.calculateInternalMarks(currentMark, updates, subjectCategory);
         const finalUpdates = {
             ...updates,
             internal,

@@ -7,40 +7,76 @@ const prisma = new PrismaClient();
  * @param {Object} updates - The new field updates from request.
  * @returns {Object} - Object containing calculated internal marks and flags for approved fields.
  */
-const calculateInternalMarks = (currentMarks, updates) => {
-    const cia1Fields = ['cia1_test', 'cia1_assignment', 'cia1_attendance'];
-    const cia2Fields = ['cia2_test', 'cia2_assignment', 'cia2_attendance'];
-    const cia3Fields = ['cia3_test', 'cia3_assignment', 'cia3_attendance'];
+// Helper to check if a CIA is "Absent" (any component is -1)
+const isAbsent = (test, assign, att) => (test === -1 || assign === -1 || att === -1);
 
+const calculateCIAlo = (test, assign, att) => {
+    // Treat -1 as 0 for sum but keep track of absence
+    const t = (test === -1 || test === null) ? 0 : test;
+    const as = (assign === -1 || assign === null) ? 0 : assign;
+    const at = (att === -1 || att === null) ? 0 : att;
+    return t + as + at;
+};
+
+const calculateInternalMarks = (currentMarks, updates, subjectCategory = 'THEORY') => {
     const merged = { ...currentMarks, ...updates };
+    const keys = Object.keys(updates);
 
-    // Helper to check if a CIA is "Absent" (any component is -1)
-    const isAbsent = (test, assign, att) => (test === -1 || assign === -1 || att === -1);
+    if (subjectCategory === 'LAB') {
+        // LAB Categories: Attendance (5), Observation (10), Record (10), Model (75)
+        const t = (merged.lab_attendance === -1 || merged.lab_attendance === null) ? 0 : merged.lab_attendance;
+        const o = (merged.lab_observation === -1 || merged.lab_observation === null) ? 0 : merged.lab_observation;
+        const r = (merged.lab_record === -1 || merged.lab_record === null) ? 0 : merged.lab_record;
+        const m = (merged.lab_model === -1 || merged.lab_model === null) ? 0 : merged.lab_model;
 
-    const calculateCIAlo = (test, assign, att) => {
-        // Treat -1 as 0 for sum but keep track of absence
-        const t = (test === -1 || test === null) ? 0 : test;
-        const as = (assign === -1 || assign === null) ? 0 : assign;
-        const at = (att === -1 || att === null) ? 0 : att;
-        return t + as + at;
-    };
+        const raw100 = t + o + r + m;
+        const internal = Math.round((raw100 / 100) * 60);
 
-    const cia1Absent = isAbsent(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance);
-    const cia2Absent = isAbsent(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance);
-    const cia3Absent = isAbsent(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance);
+        return {
+            internal,
+            isApproved_cia1: currentMarks?.isApproved_cia1,
+            isApproved_cia2: currentMarks?.isApproved_cia2,
+            isApproved_cia3: currentMarks?.isApproved_cia3
+        };
+    }
 
+    if (subjectCategory === 'INTEGRATED') {
+        // INTEGRATED: Theory CIAs (best of 2 converted to 25) + Lab (25)
+        // 1. Calculate theory internal using standard logic (Scale /100 -> /25)
+        const cia1Total = calculateCIAlo(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance);
+        const cia2Total = calculateCIAlo(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance);
+        const cia3Total = calculateCIAlo(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance);
+
+        const totalsSorted = [cia1Total, cia2Total, cia3Total].sort((a, b) => b - a);
+        const theoryRaw = totalsSorted.length >= 2 ? (totalsSorted[0] + totalsSorted[1]) / 2 : (totalsSorted[0] || 0);
+        const theory25 = (theoryRaw / 100) * 25;
+
+        // 2. Lab Portion (Total /100 scaled to /25)
+        // Components: Attendance (25), Observation (25), Record (25), Model (25) -> Total 100
+        const la = (merged.lab_attendance === -1 || merged.lab_attendance === null) ? 0 : merged.lab_attendance;
+        const lo = (merged.lab_observation === -1 || merged.lab_observation === null) ? 0 : merged.lab_observation;
+        const lr = (merged.lab_record === -1 || merged.lab_record === null) ? 0 : merged.lab_record;
+        const lm = (merged.lab_model === -1 || merged.lab_model === null) ? 0 : merged.lab_model;
+
+        const labRaw100 = la + lo + lr + lm;
+        const lab25 = (labRaw100 / 100) * 25;
+
+        const internal = Math.round(theory25 + lab25);
+
+        return {
+            internal,
+            isApproved_cia1: keys.some(k => ['cia1_test', 'cia1_assignment', 'cia1_attendance'].includes(k)) ? false : currentMarks?.isApproved_cia1,
+            isApproved_cia2: keys.some(k => ['cia2_test', 'cia2_assignment', 'cia2_attendance'].includes(k)) ? false : currentMarks?.isApproved_cia2,
+            isApproved_cia3: keys.some(k => ['cia3_test', 'cia3_assignment', 'cia3_attendance'].includes(k)) ? false : currentMarks?.isApproved_cia3
+        };
+    }
+
+    // DEFAULT: THEORY (Best of 2 / 100)
     const cia1Total = calculateCIAlo(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance);
     const cia2Total = calculateCIAlo(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance);
     const cia3Total = calculateCIAlo(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance);
 
-    // Filter out absent totals for best-of-two
-    const availableTotals = [];
-    if (!cia1Absent) availableTotals.push(cia1Total);
-    if (!cia2Absent) availableTotals.push(cia2Total);
-    if (!cia3Absent) availableTotals.push(cia3Total);
-
-    availableTotals.sort((a, b) => b - a);
-
+    const availableTotals = [cia1Total, cia2Total, cia3Total].sort((a, b) => b - a);
     let internal = 0;
     if (availableTotals.length >= 2) {
         internal = (availableTotals[0] + availableTotals[1]) / 2;
@@ -48,15 +84,16 @@ const calculateInternalMarks = (currentMarks, updates) => {
         internal = availableTotals[0];
     }
 
-    const keys = Object.keys(updates);
-    const result = {
+    const cia1Fields = ['cia1_test', 'cia1_assignment', 'cia1_attendance'];
+    const cia2Fields = ['cia2_test', 'cia2_assignment', 'cia2_attendance'];
+    const cia3Fields = ['cia3_test', 'cia3_assignment', 'cia3_attendance'];
+
+    return {
         internal,
         isApproved_cia1: keys.some(k => cia1Fields.includes(k)) ? false : currentMarks?.isApproved_cia1,
         isApproved_cia2: keys.some(k => cia2Fields.includes(k)) ? false : currentMarks?.isApproved_cia2,
         isApproved_cia3: keys.some(k => cia3Fields.includes(k)) ? false : currentMarks?.isApproved_cia3
     };
-
-    return result;
 };
 
 /**

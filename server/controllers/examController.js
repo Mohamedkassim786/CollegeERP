@@ -53,28 +53,50 @@ exports.getEndSemMarks = async (req, res) => {
         });
 
         // 3. Consolidate data
+        const subject = await prisma.subject.findUnique({ where: { id: subIdInt } });
+        const category = subject?.subjectCategory || 'THEORY';
+
         const consolidated = students.map(student => {
             const ciaRecord = student.marks[0] || {};
             const dummyMapping = student.dummyMappings[0] || {};
             const extRecord = extMarksMap[dummyMapping.dummyNumber] || {};
 
-            // Internal conversion (40%)
-            // Requirement: Only use internal marks IF they are approved by Admin
-            const internal40 = (ciaRecord.internal && ciaRecord.isApproved)
-                ? Math.round(ciaRecord.internal * 0.4)
-                : 0;
+            // Internal conversion depends on category
+            let internalProcessed = 0;
+            if (ciaRecord.internal && ciaRecord.isApproved) {
+                if (category === 'LAB') {
+                    // Internal is 60 (from scaled 100) or already 60
+                    internalProcessed = Math.round((ciaRecord.internal / 100) * 60);
+                } else if (category === 'INTEGRATED') {
+                    // Internal is 50
+                    internalProcessed = ciaRecord.internal;
+                } else {
+                    // THEORY: internal is 100, convert to 40%
+                    internalProcessed = Math.round(ciaRecord.internal * 0.4);
+                }
+            }
 
             const isAbsent = dummyMapping.isAbsent || false;
-            const external60 = isAbsent ? 'AB' : (extRecord.convertedExternal60 ? Math.round(extRecord.convertedExternal60) : 0);
-            const total100 = isAbsent ? 'AB' : (internal40 + (typeof external60 === 'number' ? external60 : 0));
+            let externalProcessed = 0;
+            if (!isAbsent) {
+                if (category === 'LAB') {
+                    externalProcessed = extRecord.rawExternal100 || 0; // stored /40
+                } else if (category === 'INTEGRATED') {
+                    externalProcessed = extRecord.rawExternal100 || 0; // stored /50
+                } else {
+                    externalProcessed = extRecord.convertedExternal60 ? Math.round(extRecord.convertedExternal60) : 0;
+                }
+            }
+
+            const total100 = isAbsent ? 'AB' : (internalProcessed + externalProcessed);
 
             return {
                 id: student.id,
                 name: student.name,
                 registerNumber: student.registerNumber,
                 rollNo: student.rollNo,
-                internal40,
-                external60,
+                internal40: internalProcessed, // Label might be confusing but it represents the processed internal
+                external60: isAbsent ? 'AB' : externalProcessed,
                 total100,
                 dummyNumber: dummyMapping.dummyNumber,
                 isLocked: ciaRecord.endSemMarks?.isLocked || false,
@@ -95,9 +117,12 @@ exports.updateEndSemMarks = async (req, res) => {
         const { subjectId, semester, regulation = '2021' } = req.body;
         const subIdInt = parseInt(subjectId);
 
-        // Run in transaction for atomicity
         const resultCount = await prisma.$transaction(async (tx) => {
-            // 1. Fetch all data for this subject context
+            // 1. Fetch the subject to get its category
+            const subject = await tx.subject.findUnique({ where: { id: subIdInt } });
+            const subjectCategory = subject?.subjectCategory || 'THEORY';
+
+            // 2. Fetch all students with marks + dummy mappings for this subject
             const students = await tx.student.findMany({
                 where: {
                     marks: { some: { subjectId: subIdInt } },
@@ -113,16 +138,14 @@ exports.updateEndSemMarks = async (req, res) => {
             const externalMarks = await tx.externalMark.findMany({
                 where: { subjectId: subIdInt, isApproved: true }
             });
-
             const extMarksMap = {};
-            externalMarks.forEach(em => {
-                extMarksMap[em.dummyNumber] = em;
-            });
+            externalMarks.forEach(em => { extMarksMap[em.dummyNumber] = em; });
 
             const grades = await tx.gradeSettings.findMany({ where: { regulation } });
 
             let count = 0;
             const skipped = [];
+
             for (const student of students) {
                 const ciaRecord = student.marks[0];
                 const dummyMapping = student.dummyMappings[0];
@@ -132,33 +155,64 @@ exports.updateEndSemMarks = async (req, res) => {
                 }
 
                 const extRecord = extMarksMap[dummyMapping.dummyNumber];
-
-                // If they are not absent, but no external mark is found (meaning it's not approved or not entered yet), skip them
                 if (!dummyMapping.isAbsent && !extRecord) continue;
+                if (ciaRecord.endSemMarks?.isLocked || ciaRecord.endSemMarks?.isPublished) continue;
 
-                // 🧱 IDEMPOTENCY & LOCK CHECK
-                if (ciaRecord.endSemMarks?.isLocked || ciaRecord.endSemMarks?.isPublished) {
-                    continue; // Skip locked/published results
-                }
-
-                // 🧱 ROUNDING BIAS FIX & ABSENTEE LOGIC
-                const internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal * 0.4 : 0;
+                // ── Mark calculation based on subject category ──────────────────
+                let internalVal = 0;
                 let externalVal = 0;
-                let rawExternal100 = 0;
-                let finalResultStatus = 'FAIL';
+                let rawExternal = 0;
                 let finalGrade = 'RA';
+                let finalResultStatus = 'FAIL';
 
                 if (dummyMapping.isAbsent) {
-                    externalVal = 0;
-                    rawExternal100 = 0;
+                    // Absent — special treatment regardless of category
+                    finalGrade = 'AB';
                     finalResultStatus = 'FAIL';
-                    finalGrade = 'AB'; // Special absentee grade
-                } else if (extRecord) {
-                    externalVal = extRecord.convertedExternal60 || 0;
-                    rawExternal100 = extRecord.rawExternal100 || 0;
+                } else if (subjectCategory === 'LAB') {
+                    // LAB: Internal=60 (from Marks.internal scaled from 100→60), External=40
+                    internalVal = (ciaRecord.internal && ciaRecord.isApproved)
+                        ? Math.round((ciaRecord.internal / 100) * 60)
+                        : 0;
+                    rawExternal = extRecord?.rawExternal100 || 0;
+                    externalVal = rawExternal; // Lab external is direct /40 — stored as rawExternal100 (/40)
 
                     const totalMarks = Math.round(internalVal + externalVal);
-                    const isExternalPass = rawExternal100 >= 50;
+                    const isExternalPass = rawExternal >= 20; // 50% of 40
+
+                    const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
+                        || { grade: 'RA', resultStatus: 'FAIL' };
+
+                    finalResultStatus = (matchedGrade.resultStatus === 'PASS' && isExternalPass) ? 'PASS' : 'FAIL';
+                    finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
+                    externalVal = rawExternal;
+
+                } else if (subjectCategory === 'INTEGRATED') {
+                    // INTEGRATED: Internal=50 (Theory25+Lab25), External=50 (Theory30+Lab20)
+                    // internal field stores the combined 50-mark internal
+                    internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal : 0;
+                    rawExternal = extRecord?.rawExternal100 || 0;
+                    externalVal = rawExternal; // stored combined /50
+
+                    const totalMarks = Math.round(internalVal + externalVal);
+                    // Both internal components must pass (min 25/50 each = 50%)
+                    const internalPass = internalVal >= 25;
+                    const externalPass = externalVal >= 25; // 50% of 50
+
+                    const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
+                        || { grade: 'RA', resultStatus: 'FAIL' };
+
+                    finalResultStatus = (matchedGrade.resultStatus === 'PASS' && internalPass && externalPass) ? 'PASS' : 'FAIL';
+                    finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
+
+                } else {
+                    // THEORY (default): Internal=40, External=60
+                    internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal * 0.4 : 0;
+                    rawExternal = extRecord?.rawExternal100 || 0;
+                    externalVal = extRecord?.convertedExternal60 || 0;
+
+                    const totalMarks = Math.round(internalVal + externalVal);
+                    const isExternalPass = rawExternal >= 50; // 50% of 100
 
                     const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
                         || { grade: 'RA', resultStatus: 'FAIL' };
@@ -167,10 +221,13 @@ exports.updateEndSemMarks = async (req, res) => {
                     finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
                 }
 
-                const totalMarks = Math.round(internalVal + externalVal);
+                const totalMarks = Math.round(
+                    subjectCategory === 'THEORY'
+                        ? (ciaRecord.isApproved ? ciaRecord.internal * 0.4 : 0) + externalVal
+                        : internalVal + externalVal
+                );
 
-                // 🧱 ATTENDANCE SNAPSHOT
-                // Calculate current attendance percentage
+                // ── Attendance Snapshot ─────────────────────────────────────────
                 const totalClasses = student.attendance.length;
                 const presentCount = student.attendance.filter(a => a.status === 'PRESENT' || a.status === 'OD').length;
                 const attPercentage = totalClasses > 0 ? (presentCount / totalClasses) * 100 : 0;
@@ -178,7 +235,7 @@ exports.updateEndSemMarks = async (req, res) => {
                 await tx.endSemMarks.upsert({
                     where: { marksId: ciaRecord.id },
                     update: {
-                        externalMarks: dummyMapping.isAbsent ? 0 : (extRecord?.rawExternal100 || 0),
+                        externalMarks: dummyMapping.isAbsent ? 0 : rawExternal,
                         totalMarks,
                         grade: finalGrade,
                         resultStatus: finalResultStatus,
@@ -186,7 +243,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     },
                     create: {
                         marksId: ciaRecord.id,
-                        externalMarks: dummyMapping.isAbsent ? 0 : (extRecord?.rawExternal100 || 0),
+                        externalMarks: dummyMapping.isAbsent ? 0 : rawExternal,
                         totalMarks,
                         grade: finalGrade,
                         resultStatus: finalResultStatus,
@@ -194,36 +251,27 @@ exports.updateEndSemMarks = async (req, res) => {
                     }
                 });
 
-                // 🧱 ARREAR PROPAGATION (CRITICAL)
-                // Check if this student has an active Arrear record for this subject
+                // ── Arrear Propagation ─────────────────────────────────────────
                 const arrear = await tx.arrear.findUnique({
                     where: { studentId_subjectId: { studentId: student.id, subjectId: subIdInt } }
                 });
 
                 if (arrear && !arrear.isCleared) {
-                    // Update the active attempt (the one with resultStatus: null)
                     await tx.arrearAttempt.updateMany({
-                        where: {
-                            arrearId: arrear.id,
-                            resultStatus: null
-                        },
+                        where: { arrearId: arrear.id, resultStatus: null },
                         data: {
-                            externalMarks: extRecord.rawExternal100,
+                            externalMarks: rawExternal,
                             totalMarks,
                             grade: finalGrade,
                             resultStatus: finalResultStatus,
-                            semester: student.semester // record the sem they attempted in
+                            semester: student.semester
                         }
                     });
 
-                    // If they passed, clear the parent Arrear record
                     if (finalResultStatus === 'PASS') {
                         await tx.arrear.update({
                             where: { id: arrear.id },
-                            data: {
-                                isCleared: true,
-                                clearedInSem: student.semester
-                            }
+                            data: { isCleared: true, clearedInSem: student.semester }
                         });
                     }
                 }
@@ -237,7 +285,7 @@ exports.updateEndSemMarks = async (req, res) => {
             message: "Consolidated marks updated and grades calculated",
             count: resultCount.count,
             skippedCount: resultCount.skipped.length,
-            skipped: resultCount.skipped  // Admin can see which students were skipped
+            skipped: resultCount.skipped
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -245,7 +293,9 @@ exports.updateEndSemMarks = async (req, res) => {
 };
 
 
+
 // --- GPA/CGPA Engine ---
+
 
 exports.calculateGPA = async (req, res) => {
     try {
