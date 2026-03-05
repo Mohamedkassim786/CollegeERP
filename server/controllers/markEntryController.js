@@ -142,6 +142,7 @@ const getAllSubjectMarksStatus = async (req, res) => {
                 subjectId: subject.id,
                 subjectCode: subject.code,
                 subjectName: subject.name,
+                subjectCategory: subject.subjectCategory || 'THEORY',
                 semester: subject.semester,
                 department: subject.department,
                 faculty: facultyNames,
@@ -175,7 +176,10 @@ const approveMarks = async (req, res) => {
         } else if (exam === 'cia3') {
             updateData.isApproved_cia3 = true;
             if (lock) updateData.isLocked_cia3 = true;
-        } else if (exam === 'internal') {
+        } else if (exam === 'internal' || exam === 'lab_marks' || exam === 'integrated_lab') {
+            // 'internal' = final internal approval (THEORY)
+            // 'lab_marks' = final internal approval (LAB)
+            // 'integrated_lab' = final internal approval (INTEGRATED) - combined theory CIA + lab
             updateData.isApproved = true;
             updateData.approvedBy = adminId;
             updateData.approvedAt = new Date();

@@ -641,92 +641,16 @@ const StudentPromotion = () => {
                 </CustomSelect>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">
-                    Target Year
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={promoYear}
-                    onChange={(e) => setPromoYear(e.target.value)}
-                  >
-                    {[1, 2, 3, 4].map((y) => (
-                      <option key={y} value={y}>
-                        Year {y}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">
-                    Target Sec
-                  </label>
-                  <CustomSelect
-                    className="w-full"
-                    value={promoSection}
-                    onChange={(e) => setPromoSection(e.target.value)}
-                  >
-                    {(
-                      departments
-                        .find(
-                          (d) =>
-                            d.name ===
-                            (promoYear === "1"
-                              ? "First Year"
-                              : promoDept),
-                        )
-                        ?.sections?.split(",") || ["A", "B", "C"]
-                    ).map((s) => (
-                      <option key={s} value={s}>
-                        Section {s}
-                      </option>
-                    ))}
-                  </CustomSelect>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3 block">
-                  Target Cycle (Sem)
-                </label>
-                <CustomSelect
-                  className="w-full"
-                  value={promoSem}
-                  onChange={(e) => setPromoSem(e.target.value)}
-                >
-                  {promoYear === "1" ? (
-                    [1, 2].map((s) => (
-                      <option key={s} value={s}>
-                        Semester {s}
-                      </option>
-                    ))
-                  ) : (
-                    [3, 4, 5, 6, 7, 8].map((s) => (
-                      <option key={s} value={s}>
-                        Semester {s}
-                      </option>
-                    ))
-                  )}
-                </CustomSelect>
-              </div>
-
               <div className="pt-10 border-t border-gray-100 mt-4 flex flex-col gap-4">
-                {/* PASSED OUT toggle — only shown for Year 4, Semester 8 */}
+                {/* PASSED OUT badge — auto-shown for Year 4, Semester 8 */}
                 {sourceYear === "4" && String(sourceSem) === "8" && (
-                  <label className="flex items-center gap-3 cursor-pointer bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 group select-none">
-                    <div
-                      onClick={() => setIsPassOut(v => !v)}
-                      className={`w-12 h-6 rounded-full relative transition-all duration-300 ${isPassOut ? 'bg-emerald-500' : 'bg-gray-200'}`}
-                    >
-                      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${isPassOut ? 'left-6' : 'left-0.5'}`}></div>
-                    </div>
+                  <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4">
+                    <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
                     <div>
-                      <p className="font-black text-emerald-900 text-xs uppercase tracking-wider">Mark as Passed Out</p>
-                      <p className="text-emerald-600 text-[10px] font-medium">Archive selected students</p>
+                      <p className="font-black text-emerald-900 text-xs uppercase tracking-wider">Final Year — Pass Out</p>
+                      <p className="text-emerald-600 text-[10px] font-medium">Students will be archived as passed out</p>
                     </div>
-                    <CheckCircle2 size={18} className={`ml-auto transition-all ${isPassOut ? 'text-emerald-500' : 'text-gray-200'}`} />
-                  </label>
+                  </div>
                 )}
 
                 {/* Normal target fields — hidden when PASSED OUT is active */}

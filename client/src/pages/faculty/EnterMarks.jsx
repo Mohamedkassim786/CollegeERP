@@ -44,7 +44,10 @@ const EnterMarks = () => {
       setAssignments(res.data);
       if (res.data.length > 0) {
         setSelectedAssignmentId(res.data[0].id);
-        setCurrentCategory(res.data[0].subject.subjectCategory || "THEORY");
+        const cat = res.data[0].subject.subjectCategory || "THEORY";
+        setCurrentCategory(cat);
+        // Auto-select correct exam type based on first subject's category
+        if (cat === 'LAB') setSelectedExam('lab_marks');
       }
     } catch (err) {
       console.error(err);
@@ -102,7 +105,9 @@ const EnterMarks = () => {
       prev.map((s) => {
         if (s.studentId !== studentId) return s;
 
-        const dbField = selectedExam === 'integrated_lab' ? field : `${selectedExam}_${field}`;
+        // For both lab_marks (pure LAB) and integrated_lab, use direct field name
+        const isLabExam = selectedExam === 'integrated_lab' || selectedExam === 'lab_marks';
+        const dbField = isLabExam ? field : `${selectedExam}_${field}`;
         return {
           ...s,
           marks: {
@@ -120,11 +125,23 @@ const EnterMarks = () => {
       return;
     }
 
+    if (students.length === 0) {
+      alert("Please load students first before saving.");
+      return;
+    }
+
     setSaving(true);
     try {
       const assignment = assignments.find(
         (a) => a.id === parseInt(selectedAssignmentId),
       );
+      if (!assignment) {
+        alert("No assignment selected. Please reload the page.");
+        return;
+      }
+
+      // Helper: convert undefined/empty to null, but preserve 0 and -1
+      const toVal = (v) => (v === undefined || v === '' ? null : parseFloat(v));
 
       const promises = students.map((s) => {
         const payload = {
@@ -132,15 +149,16 @@ const EnterMarks = () => {
           subjectId: assignment.subject.id,
         };
 
-        if (selectedExam === 'integrated_lab') {
-          payload.lab_attendance = s.marks.lab_attendance || null;
-          payload.lab_observation = s.marks.lab_observation || null;
-          payload.lab_record = s.marks.lab_record || null;
-          payload.lab_model = s.marks.lab_model || null;
+        const isLabExam = selectedExam === 'integrated_lab' || selectedExam === 'lab_marks';
+        if (isLabExam) {
+          payload.lab_attendance = toVal(s.marks.lab_attendance);
+          payload.lab_observation = toVal(s.marks.lab_observation);
+          payload.lab_record = toVal(s.marks.lab_record);
+          payload.lab_model = toVal(s.marks.lab_model);
         } else {
-          payload[`${selectedExam}_test`] = s.marks[`${selectedExam}_test`] || null;
-          payload[`${selectedExam}_assignment`] = s.marks[`${selectedExam}_assignment`] || null;
-          payload[`${selectedExam}_attendance`] = s.marks[`${selectedExam}_attendance`] || null;
+          payload[`${selectedExam}_test`] = toVal(s.marks[`${selectedExam}_test`]);
+          payload[`${selectedExam}_assignment`] = toVal(s.marks[`${selectedExam}_assignment`]);
+          payload[`${selectedExam}_attendance`] = toVal(s.marks[`${selectedExam}_attendance`]);
         }
 
         return api.post("/faculty/marks", payload);
@@ -170,15 +188,15 @@ const EnterMarks = () => {
     const assignment = assignments.find(
       (a) => a.id === parseInt(selectedAssignmentId),
     );
-    const isIntegratedLab = selectedExam === 'integrated_lab';
-    const examLabel = isIntegratedLab ? "INTEGRATED LAB" : selectedExam.toUpperCase().replace("CIA", "CIA-");
+    const isLabExam = selectedExam === 'integrated_lab' || selectedExam === 'lab_marks';
+    const examLabel = selectedExam === 'integrated_lab' ? "INTEGRATED LAB" : selectedExam === 'lab_marks' ? "LAB MARKS" : selectedExam.toUpperCase().replace("CIA", "CIA-");
 
     // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(examLabel);
 
     // Add columns
-    if (isIntegratedLab) {
+    if (isLabExam) {
       worksheet.columns = [
         { header: "S.No", key: "sno", width: 10 },
         { header: "Register Number", key: "regNo", width: 20 },
@@ -207,11 +225,18 @@ const EnterMarks = () => {
       let total = 0;
       const row = { sno: idx + 1, regNo: s.rollNo, name: s.name };
 
-      if (isIntegratedLab) {
-        const la = s.marks.lab_attendance || 0;
-        const lo = s.marks.lab_observation || 0;
-        const lr = s.marks.lab_record || 0;
-        const lm = s.marks.lab_model || 0;
+      // Parse mark value: treat -1/'-1' as absent marker, null/undefined/'' as 0
+      const parseVal = (v) => {
+        if (v === -1 || v === '-1' || parseFloat(v) === -1) return -1; // absent
+        if (v === null || v === undefined || v === '') return 0;
+        return parseFloat(v) || 0;
+      };
+
+      if (isLabExam) {
+        const la = parseVal(s.marks.lab_attendance);
+        const lo = parseVal(s.marks.lab_observation);
+        const lr = parseVal(s.marks.lab_record);
+        const lm = parseVal(s.marks.lab_model);
         isAbs = la === -1 || lo === -1 || lr === -1 || lm === -1;
         total = (la === -1 ? 0 : la) + (lo === -1 ? 0 : lo) + (lr === -1 ? 0 : lr) + (lm === -1 ? 0 : lm);
         row.la = la === -1 ? "ABSENT" : la;
@@ -219,14 +244,14 @@ const EnterMarks = () => {
         row.lr = lr === -1 ? "ABSENT" : lr;
         row.lm = lm === -1 ? "ABSENT" : lm;
       } else {
-        const rawTest = s.marks[`${selectedExam}_test`];
-        const rawAssign = s.marks[`${selectedExam}_assignment`];
-        const rawAttend = s.marks[`${selectedExam}_attendance`];
+        const rawTest = parseVal(s.marks[`${selectedExam}_test`]);
+        const rawAssign = parseVal(s.marks[`${selectedExam}_assignment`]);
+        const rawAttend = parseVal(s.marks[`${selectedExam}_attendance`]);
         isAbs = rawTest === -1 || rawAssign === -1 || rawAttend === -1;
-        total = (rawTest === -1 ? 0 : (rawTest || 0)) + (rawAssign === -1 ? 0 : (rawAssign || 0)) + (rawAttend === -1 ? 0 : (rawAttend || 0));
-        row.test = rawTest === -1 ? "ABSENT" : (rawTest || 0);
-        row.assign = rawAssign === -1 ? "ABSENT" : (rawAssign || 0);
-        row.attend = rawAttend === -1 ? "ABSENT" : (rawAttend || 0);
+        total = (rawTest === -1 ? 0 : rawTest) + (rawAssign === -1 ? 0 : rawAssign) + (rawAttend === -1 ? 0 : rawAttend);
+        row.test = rawTest === -1 ? "ABSENT" : rawTest;
+        row.assign = rawAssign === -1 ? "ABSENT" : rawAssign;
+        row.attend = rawAttend === -1 ? "ABSENT" : rawAttend;
       }
 
       row.total = isAbs ? "ABSENT" : total;
@@ -263,7 +288,14 @@ const EnterMarks = () => {
               onChange={(e) => {
                 setSelectedAssignmentId(e.target.value);
                 const a = assignments.find(x => x.id === parseInt(e.target.value));
-                if (a) setCurrentCategory(a.subject.subjectCategory || "THEORY");
+                if (a) {
+                  const cat = a.subject.subjectCategory || "THEORY";
+                  setCurrentCategory(cat);
+                  // Auto-select correct exam type based on subject category
+                  if (cat === 'LAB') setSelectedExam('lab_marks');
+                  else if (cat === 'INTEGRATED') setSelectedExam('cia1');
+                  else setSelectedExam('cia1');
+                }
               }}
             >
               {assignments.map((a) => (
@@ -282,9 +314,19 @@ const EnterMarks = () => {
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
             >
-              <option value="cia1">CIA - I (Theory)</option>
-              <option value="cia2">CIA - II (Theory)</option>
-              <option value="cia3">CIA - III (Theory)</option>
+              {/* CIA options: only for THEORY and INTEGRATED subjects */}
+              {currentCategory !== 'LAB' && (
+                <>
+                  <option value="cia1">CIA - I (Theory)</option>
+                  <option value="cia2">CIA - II (Theory)</option>
+                  <option value="cia3">CIA - III (Theory)</option>
+                </>
+              )}
+              {/* Lab Marks: shown for pure LAB subjects */}
+              {currentCategory === 'LAB' && (
+                <option value="lab_marks">Lab Marks (Internal)</option>
+              )}
+              {/* Integrated Lab: shown for INTEGRATED subjects */}
               {currentCategory === 'INTEGRATED' && (
                 <option value="integrated_lab">Integrated Lab Marks</option>
               )}
@@ -306,7 +348,7 @@ const EnterMarks = () => {
             <Lock className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
             <div>
               <p className="font-semibold text-red-800">
-                {selectedExam === 'integrated_lab' ? 'Integrated Lab Marks' : selectedExam.toUpperCase().replace("CIA", "CIA-")} Locked
+                {selectedExam === 'lab_marks' ? 'Lab Marks' : selectedExam === 'integrated_lab' ? 'Integrated Lab Marks' : selectedExam.toUpperCase().replace("CIA", "CIA-")} Locked
                 by Admin
               </p>
               <p className="text-sm text-red-600 mt-1">
@@ -321,10 +363,16 @@ const EnterMarks = () => {
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fadeIn delay-200">
         <div className="p-6 bg-[#003B73] text-white">
           <h2 className="text-2xl font-bold uppercase tracking-tight">
-            {selectedExam === 'integrated_lab' ? "Integrated Lab Components" : `${selectedExam.toUpperCase().replace("CIA", "CIA-")} Marks Entry`}
+            {selectedExam === 'lab_marks'
+              ? "Lab Marks Entry"
+              : selectedExam === 'integrated_lab'
+                ? "Integrated Lab Components"
+                : `${selectedExam.toUpperCase().replace("CIA", "CIA-")} Marks Entry`}
           </h2>
           <p className="text-blue-100 mt-1 font-medium italic">
-            {selectedExam === 'integrated_lab' ? "Attendance (25) + Observation (25) + Record (25) + Model (25) = Total (100)" : "Test (60) + Assignment (20) + Attendance (20) = Total (100)"}
+            {(selectedExam === 'integrated_lab' || selectedExam === 'lab_marks')
+              ? "Attendance (25) + Observation (25) + Record (25) + Model Exam (25) = Total (100)"
+              : "Test (60) + Assignment (20) + Attendance (20) = Total (100)"}
           </p>
         </div>
 
@@ -345,12 +393,12 @@ const EnterMarks = () => {
                     <th className="p-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Roll No</th>
                     <th className="p-4 text-left font-black text-gray-400 uppercase tracking-widest text-[10px]">Student Name</th>
 
-                    {selectedExam === 'integrated_lab' ? (
+                    {(selectedExam === 'integrated_lab' || selectedExam === 'lab_marks') ? (
                       <>
                         <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Attendance (25)</th>
                         <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Observation (25)</th>
                         <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Record (25)</th>
-                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Model (25)</th>
+                        <th className="p-4 text-center font-black text-[#003B73] uppercase tracking-widest text-[10px] bg-blue-50/50">Model Exam (25)</th>
                       </>
                     ) : (
                       <>
@@ -370,7 +418,7 @@ const EnterMarks = () => {
                     let total = 0;
                     let anyAbsent = false;
 
-                    if (selectedExam === 'integrated_lab') {
+                    if (selectedExam === 'integrated_lab' || selectedExam === 'lab_marks') {
                       const la = s.marks.lab_attendance;
                       const lo = s.marks.lab_observation;
                       const lr = s.marks.lab_record;
@@ -391,7 +439,7 @@ const EnterMarks = () => {
                         <td className="p-4 font-black text-[#003B73] font-mono text-sm uppercase tracking-tighter">{s.rollNo}</td>
                         <td className="p-4 font-bold text-gray-800 text-sm">{s.name}</td>
 
-                        {selectedExam === 'integrated_lab' ? (
+                        {(selectedExam === 'integrated_lab' || selectedExam === 'lab_marks') ? (
                           <>
                             <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks.lab_attendance) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks.lab_attendance === -1 ? "-1" : (s.marks.lab_attendance ?? "")} onChange={(e) => handleInputChange(s.studentId, "lab_attendance", e.target.value)} disabled={isLocked} /></td>
                             <td className="p-2"><input type="number" className={`w-full p-3 border-2 rounded-xl text-center font-black transition-all ${isLocked ? "bg-gray-50 border-gray-100 text-gray-400" : isAbs(s.marks.lab_observation) ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-100 focus:border-[#003B73]"}`} value={s.marks.lab_observation === -1 ? "-1" : (s.marks.lab_observation ?? "")} onChange={(e) => handleInputChange(s.studentId, "lab_observation", e.target.value)} disabled={isLocked} /></td>

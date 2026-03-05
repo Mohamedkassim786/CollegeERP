@@ -24,24 +24,38 @@ exports.getAssignedDummyList = async (req, res) => {
         const category = assignment.subject?.subjectCategory || 'THEORY';
 
         if (category === 'LAB' || category === 'INTEGRATED') {
-            // For LAB: return actual register numbers (not dummy)
-            const mappings = await prisma.subjectDummyMapping.findMany({
-                where: { subjectId: assignment.subjectId, mappingLocked: true },
-                include: { student: { select: { registerNumber: true, name: true, department: true } } },
-                orderBy: { dummyNumber: 'asc' }
+            // LAB/INTEGRATED: no dummy masking — fetch students from Marks table
+            // (These subjects skip dummy mapping and go directly to external staff)
+            const marksRecords = await prisma.marks.findMany({
+                where: { subjectId: assignment.subjectId },
+                include: {
+                    student: {
+                        select: { id: true, registerNumber: true, name: true, department: true }
+                    }
+                },
+                orderBy: { student: { registerNumber: 'asc' } }
             });
 
-            const resultList = mappings.map(m => ({
-                dummyNumber: m.dummyNumber,
+            // Also fetch any already-submitted external marks for this subject
+            const externalMarks = await prisma.externalMark.findMany({
+                where: { subjectId: assignment.subjectId }
+            });
+            // Key by registerNumber since no dummy number
+            const extMap = {};
+            externalMarks.forEach(em => { extMap[em.dummyNumber] = em.rawExternal100; });
+
+            const resultList = marksRecords.map(m => ({
+                dummyNumber: m.student?.registerNumber || '',  // use registerNumber as key
                 registerNumber: m.student?.registerNumber || '',
                 name: m.student?.name || '',
                 department: m.student?.department || '',
-                isAbsent: m.isAbsent,
-                mark: m.marks
+                isAbsent: false,
+                mark: extMap[m.student?.registerNumber] ?? null
             }));
 
             return res.json({
                 subject: assignment.subject.name,
+                subjectCode: assignment.subject.code,
                 subjectId: assignment.subjectId,
                 subjectCategory: category,
                 deadline: assignment.deadline,
@@ -101,13 +115,22 @@ exports.submitMarks = async (req, res) => {
 
                 const converted60 = category === 'THEORY' ? (raw / 100) * 60 : raw;
 
-                await tx.subjectDummyMapping.updateMany({
-                    where: { dummyNumber, subjectId: subjectInt },
-                    data: { marks: raw }
-                });
+                // Only update dummy mapping for THEORY subjects (LAB/INTEGRATED skip dummy mapping)
+                if (category === 'THEORY') {
+                    await tx.subjectDummyMapping.updateMany({
+                        where: { dummyNumber, subjectId: subjectInt },
+                        data: { marks: raw }
+                    });
+                }
 
+                // For LAB/INTEGRATED: dummyNumber holds the register number (unique key per subject)
                 await tx.externalMark.upsert({
-                    where: { dummyNumber },
+                    where: {
+                        subjectId_dummyNumber: {
+                            subjectId: subjectInt,
+                            dummyNumber
+                        }
+                    },
                     update: {
                         rawExternal100: raw,
                         convertedExternal60: converted60,
@@ -139,6 +162,69 @@ exports.submitMarks = async (req, res) => {
     }
 };
 
+// ─── Admin: Submit external marks directly (bypasses staff assignment) ─────────
+exports.submitMarksAdmin = async (req, res) => {
+    try {
+        const { subjectId, marks } = req.body; // marks = [{ dummyNumber, rawMark }]
+
+        if (!Array.isArray(marks) || !subjectId) {
+            return res.status(400).json({ message: 'subjectId and marks array required' });
+        }
+
+        const subjectInt = parseInt(subjectId);
+        const subject = await prisma.subject.findUnique({ where: { id: subjectInt } });
+        const category = subject?.subjectCategory || 'THEORY';
+
+        await prisma.$transaction(async (tx) => {
+            for (const entry of marks) {
+                const { dummyNumber, rawMark } = entry;
+                const raw = parseFloat(rawMark);
+                if (isNaN(raw) || raw < 0) continue;
+
+                const maxAllowed = category === 'LAB' ? 40 : category === 'INTEGRATED' ? 50 : 60;
+                if (raw > maxAllowed) continue;
+
+                const converted60 = category === 'THEORY' ? raw : raw; // already in correct scale
+
+                if (category === 'THEORY') {
+                    await tx.subjectDummyMapping.updateMany({
+                        where: { dummyNumber, subjectId: subjectInt },
+                        data: { marks: raw }
+                    });
+                }
+
+                await tx.externalMark.upsert({
+                    where: {
+                        subjectId_dummyNumber: {
+                            subjectId: subjectInt,
+                            dummyNumber
+                        }
+                    },
+                    update: {
+                        rawExternal100: raw,
+                        convertedExternal60: converted60,
+                        submittedBy: req.user.id,
+                        submittedAt: new Date(),
+                        isApproved: true
+                    },
+                    create: {
+                        subjectId: subjectInt,
+                        dummyNumber,
+                        rawExternal100: raw,
+                        convertedExternal60: converted60,
+                        submittedBy: req.user.id,
+                        isApproved: true
+                    }
+                });
+            }
+        });
+
+        res.json({ message: `External marks saved for ${marks.length} student(s)`, subjectCategory: category });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // ─── Generate Statement of Marks PDF ─────────────────────────────────────────
 exports.generateStatementPDF = async (req, res) => {
     try {
@@ -150,22 +236,53 @@ exports.generateStatementPDF = async (req, res) => {
 
         const category = subject.subjectCategory || 'THEORY';
 
-        // Fetch all dummy mappings for this subject
-        const mappings = await prisma.subjectDummyMapping.findMany({
-            where: { subjectId: subIdInt, mappingLocked: true },
-            include: {
-                student: { select: { registerNumber: true, name: true, department: true } }
-            },
-            orderBy: { dummyNumber: 'asc' }
-        });
+        let entries = [];
 
-        // Build entries list
-        const entries = mappings.map(m => ({
-            dummyNumber: m.dummyNumber,
-            registerNumber: m.student?.registerNumber || '',
-            department: m.student?.department || '',
-            marks: m.marks
-        }));
+        if (category === 'LAB' || category === 'INTEGRATED') {
+            // LAB/INTEGRATED: no dummy mapping — use externalMark records keyed by registerNumber
+            const externalMarks = await prisma.externalMark.findMany({
+                where: { subjectId: subIdInt },
+                orderBy: { dummyNumber: 'asc' }
+            });
+
+            // Fetch all students who have marks for this subject (for name/dept lookup)
+            const marksRecords = await prisma.marks.findMany({
+                where: { subjectId: subIdInt },
+                include: {
+                    student: { select: { registerNumber: true, name: true, department: true } }
+                }
+            });
+            const studentMap = {};
+            marksRecords.forEach(m => {
+                if (m.student) studentMap[m.student.registerNumber] = m.student;
+            });
+
+            entries = externalMarks.map(em => {
+                const stu = studentMap[em.dummyNumber] || {};
+                return {
+                    dummyNumber: em.dummyNumber,   // registerNumber used as key
+                    registerNumber: em.dummyNumber,
+                    name: stu.name || '',
+                    department: stu.department || subject.department || '',
+                    marks: em.rawExternal100
+                };
+            });
+        } else {
+            // THEORY: use dummy mappings
+            const mappings = await prisma.subjectDummyMapping.findMany({
+                where: { subjectId: subIdInt, mappingLocked: true },
+                include: {
+                    student: { select: { registerNumber: true, name: true, department: true } }
+                },
+                orderBy: { dummyNumber: 'asc' }
+            });
+            entries = mappings.map(m => ({
+                dummyNumber: m.dummyNumber,
+                registerNumber: m.student?.registerNumber || '',
+                department: m.student?.department || '',
+                marks: m.marks
+            }));
+        }
 
         const filename = `Statement_${subject.code}_${category}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');

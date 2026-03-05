@@ -59,19 +59,23 @@ exports.getEndSemMarks = async (req, res) => {
         const consolidated = students.map(student => {
             const ciaRecord = student.marks[0] || {};
             const dummyMapping = student.dummyMappings[0] || {};
-            const extRecord = extMarksMap[dummyMapping.dummyNumber] || {};
+
+            // For THEORY: lookup by dummy number. For LAB/INTEGRATED: lookup by register number (no dummy masking)
+            const lookupKey = (category === 'LAB' || category === 'INTEGRATED')
+                ? student.registerNumber
+                : dummyMapping.dummyNumber;
+            const extRecord = extMarksMap[lookupKey] || {};
 
             // Internal conversion depends on category
             let internalProcessed = 0;
-            if (ciaRecord.internal && ciaRecord.isApproved) {
+            if ((ciaRecord.internal !== undefined && ciaRecord.internal !== null) && ciaRecord.isApproved) {
                 if (category === 'LAB') {
-                    // Internal is 60 (from scaled 100) or already 60
-                    internalProcessed = Math.round((ciaRecord.internal / 100) * 60);
+                    internalProcessed = ciaRecord.internal; // already stored as /60 in markService
                 } else if (category === 'INTEGRATED') {
-                    // Internal is 50
+                    // Internal is 50 (theory25 + lab25)
                     internalProcessed = ciaRecord.internal;
                 } else {
-                    // THEORY: internal is 100, convert to 40%
+                    // THEORY: internal is /100, convert to 40%
                     internalProcessed = Math.round(ciaRecord.internal * 0.4);
                 }
             }
@@ -90,21 +94,33 @@ exports.getEndSemMarks = async (req, res) => {
 
             const total100 = isAbsent ? 'AB' : (internalProcessed + externalProcessed);
 
+            // Add CIA totals to help frontend show breakdown for integrated subjects
+            const calculateSum = (t, a, att) => {
+                const parseVal = (v) => (v === -1 || v === null || v === undefined ? 0 : parseFloat(v) || 0);
+                return parseVal(t) + parseVal(a) + parseVal(att);
+            };
+
             return {
                 id: student.id,
                 name: student.name,
                 registerNumber: student.registerNumber,
                 rollNo: student.rollNo,
-                internal40: internalProcessed, // Label might be confusing but it represents the processed internal
+                internal40: internalProcessed,
                 external60: isAbsent ? 'AB' : externalProcessed,
                 total100,
-                dummyNumber: dummyMapping.dummyNumber,
+                dummyNumber: dummyMapping.dummyNumber || student.registerNumber,
                 isLocked: ciaRecord.endSemMarks?.isLocked || false,
                 isPublished: ciaRecord.endSemMarks?.isPublished || false,
                 grade: ciaRecord.endSemMarks?.grade || 'N/A',
-                resultStatus: ciaRecord.endSemMarks?.resultStatus || 'N/A'
+                resultStatus: ciaRecord.endSemMarks?.resultStatus || 'N/A',
+                // Breakdown fields for Integrated
+                cia1: calculateSum(ciaRecord.cia1_test, ciaRecord.cia1_assignment, ciaRecord.cia1_attendance),
+                cia2: calculateSum(ciaRecord.cia2_test, ciaRecord.cia2_assignment, ciaRecord.cia2_attendance),
+                cia3: calculateSum(ciaRecord.cia3_test, ciaRecord.cia3_assignment, ciaRecord.cia3_attendance),
+                lab: (parseFloat(ciaRecord.lab_attendance) || 0) + (parseFloat(ciaRecord.lab_observation) || 0) + (parseFloat(ciaRecord.lab_record) || 0) + (parseFloat(ciaRecord.lab_model) || 0)
             };
         });
+
 
         res.json(consolidated);
     } catch (error) {
@@ -121,13 +137,20 @@ exports.updateEndSemMarks = async (req, res) => {
             // 1. Fetch the subject to get its category
             const subject = await tx.subject.findUnique({ where: { id: subIdInt } });
             const subjectCategory = subject?.subjectCategory || 'THEORY';
+            const isLabOrIntegrated = subjectCategory === 'LAB' || subjectCategory === 'INTEGRATED';
 
-            // 2. Fetch all students with marks + dummy mappings for this subject
-            const students = await tx.student.findMany({
-                where: {
+            // 2. Fetch students based on category:
+            //    THEORY → must have dummyMapping (needed for absent flag & extRecord key)
+            //    LAB/INTEGRATED → just need a marks record (no dummy mapping)
+            const studentWhere = isLabOrIntegrated
+                ? { marks: { some: { subjectId: subIdInt } } }
+                : {
                     marks: { some: { subjectId: subIdInt } },
                     dummyMappings: { some: { subjectId: subIdInt } }
-                },
+                };
+
+            const students = await tx.student.findMany({
+                where: studentWhere,
                 include: {
                     marks: { where: { subjectId: subIdInt }, include: { endSemMarks: true } },
                     dummyMappings: { where: { subjectId: subIdInt } },
@@ -138,6 +161,7 @@ exports.updateEndSemMarks = async (req, res) => {
             const externalMarks = await tx.externalMark.findMany({
                 where: { subjectId: subIdInt, isApproved: true }
             });
+            // Key by dummyNumber (which is registerNumber for LAB/INTEGRATED)
             const extMarksMap = {};
             externalMarks.forEach(em => { extMarksMap[em.dummyNumber] = em; });
 
@@ -148,14 +172,28 @@ exports.updateEndSemMarks = async (req, res) => {
 
             for (const student of students) {
                 const ciaRecord = student.marks[0];
-                const dummyMapping = student.dummyMappings[0];
-                if (!ciaRecord || !dummyMapping) {
-                    skipped.push({ studentId: student.id, name: student.name, reason: !ciaRecord ? 'No CIA marks' : 'No dummy mapping' });
+                if (!ciaRecord) {
+                    skipped.push({ studentId: student.id, name: student.name, reason: 'No CIA marks' });
                     continue;
                 }
 
-                const extRecord = extMarksMap[dummyMapping.dummyNumber];
-                if (!dummyMapping.isAbsent && !extRecord) continue;
+                // For THEORY: use dummyMapping for absent flag and extRecord key
+                // For LAB/INTEGRATED: use registerNumber as extRecord key, no absent flag from mapping
+                const dummyMapping = student.dummyMappings[0] || null;
+                const isAbsent = isLabOrIntegrated ? false : (dummyMapping?.isAbsent || false);
+
+                // Lookup key for external marks
+                const extLookupKey = isLabOrIntegrated
+                    ? student.registerNumber
+                    : (dummyMapping?.dummyNumber || null);
+
+                if (!isLabOrIntegrated && !dummyMapping) {
+                    skipped.push({ studentId: student.id, name: student.name, reason: 'No dummy mapping' });
+                    continue;
+                }
+
+                const extRecord = extLookupKey ? extMarksMap[extLookupKey] : null;
+                if (!isAbsent && !extRecord) continue;
                 if (ciaRecord.endSemMarks?.isLocked || ciaRecord.endSemMarks?.isPublished) continue;
 
                 // ── Mark calculation based on subject category ──────────────────
@@ -165,39 +203,33 @@ exports.updateEndSemMarks = async (req, res) => {
                 let finalGrade = 'RA';
                 let finalResultStatus = 'FAIL';
 
-                if (dummyMapping.isAbsent) {
-                    // Absent — special treatment regardless of category
+                if (isAbsent) {
                     finalGrade = 'AB';
                     finalResultStatus = 'FAIL';
                 } else if (subjectCategory === 'LAB') {
-                    // LAB: Internal=60 (from Marks.internal scaled from 100→60), External=40
                     internalVal = (ciaRecord.internal && ciaRecord.isApproved)
                         ? Math.round((ciaRecord.internal / 100) * 60)
                         : 0;
                     rawExternal = extRecord?.rawExternal100 || 0;
-                    externalVal = rawExternal; // Lab external is direct /40 — stored as rawExternal100 (/40)
+                    externalVal = rawExternal;
 
                     const totalMarks = Math.round(internalVal + externalVal);
-                    const isExternalPass = rawExternal >= 20; // 50% of 40
+                    const isExternalPass = rawExternal >= 20;
 
                     const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
                         || { grade: 'RA', resultStatus: 'FAIL' };
 
                     finalResultStatus = (matchedGrade.resultStatus === 'PASS' && isExternalPass) ? 'PASS' : 'FAIL';
                     finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
-                    externalVal = rawExternal;
 
                 } else if (subjectCategory === 'INTEGRATED') {
-                    // INTEGRATED: Internal=50 (Theory25+Lab25), External=50 (Theory30+Lab20)
-                    // internal field stores the combined 50-mark internal
                     internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal : 0;
                     rawExternal = extRecord?.rawExternal100 || 0;
-                    externalVal = rawExternal; // stored combined /50
+                    externalVal = rawExternal;
 
                     const totalMarks = Math.round(internalVal + externalVal);
-                    // Both internal components must pass (min 25/50 each = 50%)
                     const internalPass = internalVal >= 25;
-                    const externalPass = externalVal >= 25; // 50% of 50
+                    const externalPass = externalVal >= 25;
 
                     const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
                         || { grade: 'RA', resultStatus: 'FAIL' };
@@ -206,13 +238,13 @@ exports.updateEndSemMarks = async (req, res) => {
                     finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
 
                 } else {
-                    // THEORY (default): Internal=40, External=60
+                    // THEORY
                     internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal * 0.4 : 0;
                     rawExternal = extRecord?.rawExternal100 || 0;
                     externalVal = extRecord?.convertedExternal60 || 0;
 
                     const totalMarks = Math.round(internalVal + externalVal);
-                    const isExternalPass = rawExternal >= 50; // 50% of 100
+                    const isExternalPass = rawExternal >= 50;
 
                     const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
                         || { grade: 'RA', resultStatus: 'FAIL' };
@@ -235,7 +267,7 @@ exports.updateEndSemMarks = async (req, res) => {
                 await tx.endSemMarks.upsert({
                     where: { marksId: ciaRecord.id },
                     update: {
-                        externalMarks: dummyMapping.isAbsent ? 0 : rawExternal,
+                        externalMarks: isAbsent ? 0 : rawExternal,
                         totalMarks,
                         grade: finalGrade,
                         resultStatus: finalResultStatus,
@@ -243,7 +275,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     },
                     create: {
                         marksId: ciaRecord.id,
-                        externalMarks: dummyMapping.isAbsent ? 0 : rawExternal,
+                        externalMarks: isAbsent ? 0 : rawExternal,
                         totalMarks,
                         grade: finalGrade,
                         resultStatus: finalResultStatus,

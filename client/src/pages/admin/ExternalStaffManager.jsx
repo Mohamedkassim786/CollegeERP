@@ -9,10 +9,25 @@ import {
   BookOpen,
   Clock,
   Shield,
+  CheckCircle,
 } from "lucide-react";
 import api from "../../api/axios";
 import Header from "../../components/Header";
 import toast from "react-hot-toast";
+
+const categoryBadge = (cat) => {
+  const map = {
+    THEORY: { label: "Theory", cls: "bg-blue-100 text-blue-700" },
+    LAB: { label: "Lab", cls: "bg-green-100 text-green-700" },
+    INTEGRATED: { label: "Integrated", cls: "bg-purple-100 text-purple-700" },
+  };
+  const info = map[cat] || { label: cat || "Theory", cls: "bg-gray-100 text-gray-600" };
+  return (
+    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${info.cls}`}>
+      {info.label}
+    </span>
+  );
+};
 
 const ExternalStaffManager = () => {
   const [assignments, setAssignments] = useState([]);
@@ -22,11 +37,12 @@ const ExternalStaffManager = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Multi-subject assignment: staffId, selectedSubjectIds[], deadline
   const [formData, setFormData] = useState({
     staffId: "",
-    subjectId: "",
     deadline: "",
   });
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState([]);
 
   const [newStaff, setNewStaff] = useState({
     username: "",
@@ -60,24 +76,52 @@ const ExternalStaffManager = () => {
     }
   };
 
+  const toggleSubjectSelection = (subjectId) => {
+    setSelectedSubjectIds((prev) =>
+      prev.includes(subjectId)
+        ? prev.filter((id) => id !== subjectId)
+        : [...prev, subjectId]
+    );
+  };
+
   const handleAssignMarkEntry = async (e) => {
     e.preventDefault();
 
-    if (!formData.staffId || !formData.subjectId || !formData.deadline) {
-      toast.error("Please fill all fields");
+    if (!formData.staffId || selectedSubjectIds.length === 0 || !formData.deadline) {
+      toast.error("Please select a staff, at least one subject, and a deadline");
       return;
     }
 
     try {
-      await api.post("external/admin/assign-mark-entry", formData);
-      toast.success("Mark entry assigned successfully");
+      // Create one assignment per selected subject
+      const results = await Promise.allSettled(
+        selectedSubjectIds.map((subjectId) =>
+          api.post("external/admin/assign-mark-entry", {
+            staffId: formData.staffId,
+            subjectId,
+            deadline: formData.deadline,
+          })
+        )
+      );
+
+      const failed = results.filter((r) => r.status === "rejected");
+      const succeeded = results.filter((r) => r.status === "fulfilled");
+
+      if (succeeded.length > 0) {
+        toast.success(`${succeeded.length} subject(s) assigned successfully`);
+      }
+      if (failed.length > 0) {
+        failed.forEach((f) =>
+          toast.error(f.reason?.response?.data?.message || "Assignment failed for a subject")
+        );
+      }
+
       setShowWizard(false);
-      setFormData({ staffId: "", subjectId: "", deadline: "" });
+      setFormData({ staffId: "", deadline: "" });
+      setSelectedSubjectIds([]);
       fetchData();
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to assign mark entry",
-      );
+      toast.error(error.response?.data?.message || "Failed to assign mark entry");
     }
   };
 
@@ -134,8 +178,7 @@ const ExternalStaffManager = () => {
             External Mark Entry Control
           </h1>
           <p className="text-gray-500 font-medium mt-2">
-            Manage external evaluators and assign subjects for dummy-based mark
-            entry.
+            Manage external evaluators and assign subjects for mark entry.
           </p>
         </div>
         <div className="flex gap-4 w-full max-w-sm">
@@ -149,7 +192,7 @@ const ExternalStaffManager = () => {
             onClick={() => setShowWizard(true)}
             className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-xl transition-all"
           >
-            <Calendar size={20} /> Assign Subject
+            <Calendar size={20} /> Assign Subject(s)
           </button>
         </div>
       </div>
@@ -258,6 +301,7 @@ const ExternalStaffManager = () => {
               <thead className="bg-gray-50/50 text-[#003B73] text-xs font-black uppercase tracking-wider">
                 <tr>
                   <th className="px-8 py-5 text-left">Subject</th>
+                  <th className="px-8 py-5">Type</th>
                   <th className="px-8 py-5">Assigned Evaluator</th>
                   <th className="px-8 py-5">Deadline</th>
                   <th className="px-8 py-5 text-right">Actions</th>
@@ -276,6 +320,9 @@ const ExternalStaffManager = () => {
                       <p className="text-[10px] font-black text-gray-400 tracking-widest">
                         {asgn.subject?.code}
                       </p>
+                    </td>
+                    <td className="px-8 py-5">
+                      {categoryBadge(asgn.subject?.subjectCategory)}
                     </td>
                     <td className="px-8 py-5 font-bold text-[#003B73]">
                       {asgn.staff?.fullName}
@@ -305,15 +352,16 @@ const ExternalStaffManager = () => {
       {/* Modals */}
       {(showWizard || showCreateModal) && (
         <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden animate-slideIn border border-[#003B73]/10">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden animate-slideIn border border-[#003B73]/10">
             <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="font-black text-[#003B73] text-xl">
-                {showWizard ? "Assign Mark Entry" : "Register Evaluator"}
+                {showWizard ? "Assign Subject(s) to Evaluator" : "Register Evaluator"}
               </h3>
               <button
                 onClick={() => {
                   setShowWizard(false);
                   setShowCreateModal(false);
+                  setSelectedSubjectIds([]);
                 }}
                 className="text-gray-400 hover:text-red-500 transition-colors"
               >
@@ -343,26 +391,50 @@ const ExternalStaffManager = () => {
                     ))}
                   </CustomSelect>
                 </div>
+
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-                    Select Subject
+                    Select Subject(s)
+                    <span className="ml-2 text-[#003B73]">
+                      ({selectedSubjectIds.length} selected)
+                    </span>
                   </label>
-                  <CustomSelect
-                    required
-                    value={formData.subjectId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subjectId: e.target.value })
-                    }
-                    className="w-full"
-                  >
-                    <option value="">Choose...</option>
-                    {subjects.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.name} ({sub.code})
-                      </option>
-                    ))}
-                  </CustomSelect>
+                  <div className="border border-gray-200 rounded-2xl overflow-hidden max-h-56 overflow-y-auto">
+                    {subjects.length === 0 ? (
+                      <p className="p-4 text-center text-gray-400 font-bold text-sm">
+                        No eligible subjects available
+                      </p>
+                    ) : (
+                      subjects.map((sub) => {
+                        const checked = selectedSubjectIds.includes(sub.id);
+                        return (
+                          <label
+                            key={sub.id}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-gray-100 transition-colors ${checked ? "bg-blue-50" : "hover:bg-gray-50"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleSubjectSelection(sub.id)}
+                              className="w-4 h-4 accent-[#003B73]"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-[#003B73] text-sm truncate">
+                                {sub.name}
+                              </p>
+                              <p className="text-[10px] text-gray-400 font-black tracking-widest">
+                                {sub.code}
+                              </p>
+                            </div>
+                            {categoryBadge(sub.subjectCategory)}
+                            {checked && <CheckCircle size={16} className="text-blue-500 shrink-0" />}
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
+
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
                     Submission Deadline
@@ -381,7 +453,7 @@ const ExternalStaffManager = () => {
                   type="submit"
                   className="w-full py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/20 transition-all"
                 >
-                  Create Assignment
+                  Create {selectedSubjectIds.length > 1 ? `${selectedSubjectIds.length} Assignments` : "Assignment"}
                 </button>
               </form>
             ) : (

@@ -434,7 +434,7 @@ model SubjectDummyMapping {
 model ExternalMark {
   id                  Int      @id @default(autoincrement())
   subjectId           Int
-  dummyNumber         String   @unique
+  dummyNumber         String
   rawExternal100      Float
   convertedExternal60 Float
   submittedBy         Int
@@ -445,6 +445,7 @@ model ExternalMark {
   subject   Subject @relation(fields: [subjectId], references: [id])
   evaluator User    @relation("ExternalEvaluator", fields: [submittedBy], references: [id])
 
+  @@unique([subjectId, dummyNumber])
   @@index([dummyNumber])
   @@index([subjectId])
 }

@@ -8,6 +8,8 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronLeft,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import api from "../../api/axios";
 import toast from "react-hot-toast";
@@ -30,7 +32,8 @@ const ExternalMarkEntry = () => {
       setData(res.data);
       const initialMarks = {};
       res.data.dummyList.forEach((item) => {
-        if (item.mark !== null) initialMarks[item.dummyNumber] = item.mark;
+        if (item.mark !== null && item.mark !== undefined)
+          initialMarks[item.dummyNumber] = item.mark;
       });
       setMarks(initialMarks);
     } catch (err) {
@@ -40,13 +43,21 @@ const ExternalMarkEntry = () => {
     }
   };
 
+  // Max mark allowed per category
+  const getMaxMark = (category) => {
+    if (category === "LAB") return 40;
+    if (category === "INTEGRATED") return 50;
+    return 100;
+  };
+
   const handleMarkChange = (dummyNumber, value) => {
     if (value === "") {
       setMarks((prev) => ({ ...prev, [dummyNumber]: value }));
       return;
     }
     const intVal = parseInt(value, 10);
-    if (!isNaN(intVal) && intVal >= 0 && intVal <= 100) {
+    const maxMark = getMaxMark(data?.subjectCategory);
+    if (!isNaN(intVal) && intVal >= 0 && intVal <= maxMark) {
       setMarks((prev) => ({ ...prev, [dummyNumber]: intVal }));
     }
   };
@@ -76,7 +87,7 @@ const ExternalMarkEntry = () => {
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `Statement_${data.subjectId}.pdf`);
+        link.setAttribute("download", `Statement_${data.subjectCode || data.subjectId}.pdf`);
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -98,6 +109,18 @@ const ExternalMarkEntry = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003B73]"></div>
       </div>
     );
+
+  const category = data?.subjectCategory || "THEORY";
+  const maxMark = getMaxMark(category);
+  const isLabOrIntegrated = category === "LAB" || category === "INTEGRATED";
+
+  // Category details for UI
+  const categoryInfo = {
+    THEORY: { label: "Theory", color: "bg-blue-100 text-blue-700", desc: "Marks out of 100 (converted to 60 externally)" },
+    LAB: { label: "Lab", color: "bg-green-100 text-green-700", desc: "External lab marks out of 40" },
+    INTEGRATED: { label: "Integrated", color: "bg-purple-100 text-purple-700", desc: "External marks out of 50 (theory + lab combined)" },
+  };
+  const catInfo = categoryInfo[category] || categoryInfo.THEORY;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -126,9 +149,15 @@ const ExternalMarkEntry = () => {
                   <h1 className="text-4xl font-black tracking-tight">
                     {data.subject}
                   </h1>
-                  <div className="mt-4 flex items-center gap-4">
+                  <div className="mt-4 flex items-center gap-4 flex-wrap">
                     <span className="bg-white/10 px-4 py-1.5 rounded-full text-sm font-bold border border-white/20 uppercase">
-                      Subject Code: {data.subjectId}
+                      {data.subjectCode || `ID: ${data.subjectId}`}
+                    </span>
+                    <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider ${catInfo.color}`}>
+                      {catInfo.label}
+                    </span>
+                    <span className="bg-white/10 px-4 py-1.5 rounded-full text-xs font-bold border border-white/20">
+                      Max: {maxMark} marks
                     </span>
                   </div>
                 </div>
@@ -144,19 +173,21 @@ const ExternalMarkEntry = () => {
             </div>
 
             <div className="p-10">
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-10 flex items-start gap-4">
-                <AlertCircle
-                  className="text-blue-600 mt-1 shrink-0"
-                  size={24}
-                />
+              {/* Info banner: identity masking for THEORY, register numbers for LAB/INTEGRATED */}
+              <div className={`border rounded-2xl p-6 mb-10 flex items-start gap-4 ${isLabOrIntegrated ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}`}>
+                {isLabOrIntegrated ? (
+                  <Eye className="text-green-600 mt-1 shrink-0" size={24} />
+                ) : (
+                  <EyeOff className="text-blue-600 mt-1 shrink-0" size={24} />
+                )}
                 <div>
-                  <p className="text-[#003B73] font-black text-lg">
-                    Identity Masking Active
+                  <p className={`font-black text-lg ${isLabOrIntegrated ? "text-green-800" : "text-[#003B73]"}`}>
+                    {isLabOrIntegrated ? "Register Numbers Visible" : "Identity Masking Active"}
                   </p>
-                  <p className="text-blue-700/70 font-medium">
-                    You are entering marks for randomized dummy numbers. Student
-                    names and register numbers are hidden to ensure unbiased
-                    evaluation.
+                  <p className={`font-medium text-sm ${isLabOrIntegrated ? "text-green-700/80" : "text-blue-700/70"}`}>
+                    {isLabOrIntegrated
+                      ? `${catInfo.desc}. Student register numbers are shown for lab/integrated evaluation.`
+                      : "You are entering marks for randomized dummy numbers. Student names and register numbers are hidden to ensure unbiased evaluation."}
                   </p>
                 </div>
               </div>
@@ -170,9 +201,14 @@ const ExternalMarkEntry = () => {
                           Sl.No
                         </th>
                         <th className="p-4 border-r border-gray-200">
-                          Dummy Number
+                          {isLabOrIntegrated ? "Register Number" : "Dummy Number"}
                         </th>
-                        <th className="p-4 w-48">Marks</th>
+                        {isLabOrIntegrated && (
+                          <th className="p-4 border-r border-gray-200">
+                            Name
+                          </th>
+                        )}
+                        <th className="p-4">Marks (out of {maxMark})</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -185,18 +221,25 @@ const ExternalMarkEntry = () => {
                             {idx + 1}
                           </td>
                           <td className="p-4 border-r border-gray-100 font-black text-[#003B73] text-lg">
-                            {item.dummyNumber}
+                            {isLabOrIntegrated
+                              ? item.registerNumber
+                              : item.dummyNumber}
                           </td>
+                          {isLabOrIntegrated && (
+                            <td className="p-4 border-r border-gray-100 font-medium text-gray-600 text-sm">
+                              {item.name}
+                            </td>
+                          )}
                           <td className="p-4 relative">
                             <div className="flex items-center justify-center gap-2">
                               <input
                                 type="number"
                                 min="0"
-                                max="100"
+                                max={maxMark}
                                 step="1"
                                 placeholder="0"
                                 className="w-24 p-2 bg-gray-50 rounded-xl border-2 border-transparent focus:border-blue-600 outline-none font-black text-center text-lg text-[#003B73] transition-all"
-                                value={marks[item.dummyNumber] || ""}
+                                value={marks[item.dummyNumber] ?? ""}
                                 onChange={(e) =>
                                   handleMarkChange(
                                     item.dummyNumber,
@@ -206,7 +249,7 @@ const ExternalMarkEntry = () => {
                                 required
                               />
                               <span className="font-bold text-gray-400">
-                                / 100
+                                / {maxMark}
                               </span>
                               {marks[item.dummyNumber] !== undefined &&
                                 marks[item.dummyNumber] !== "" && (
@@ -221,10 +264,10 @@ const ExternalMarkEntry = () => {
                       {data.dummyList.length === 0 && (
                         <tr>
                           <td
-                            colSpan="3"
+                            colSpan={isLabOrIntegrated ? "4" : "3"}
                             className="p-10 text-gray-400 font-bold"
                           >
-                            No dummy numbers available for evaluation.
+                            No students available for this subject.
                           </td>
                         </tr>
                       )}

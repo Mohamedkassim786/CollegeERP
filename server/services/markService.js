@@ -107,32 +107,25 @@ const checkLockStatus = async (studentId, currentMark, updatedFields) => {
     const cia1Fields = ['cia1_test', 'cia1_assignment', 'cia1_attendance'];
     const cia2Fields = ['cia2_test', 'cia2_assignment', 'cia2_attendance'];
     const cia3Fields = ['cia3_test', 'cia3_assignment', 'cia3_attendance'];
+    const labFields = ['lab_attendance', 'lab_observation', 'lab_record', 'lab_model', 'lab_assessment'];
 
     const touchingCia1 = updatedFields.some(k => cia1Fields.includes(k));
     const touchingCia2 = updatedFields.some(k => cia2Fields.includes(k));
     const touchingCia3 = updatedFields.some(k => cia3Fields.includes(k));
+    const touchingLabOnly = updatedFields.every(k => labFields.includes(k));
 
-    const student = await prisma.student.findUnique({ where: { id: studentId } });
-    if (!student) return "Student not found";
+    // Lab-only updates are NOT subject to CIA lock checks
+    if (touchingLabOnly) return null;
 
-    const semControl = await prisma.semesterControl.findFirst({
-        where: {
-            department: student.department || 'GEN',
-            year: student.year,
-            semester: student.semester,
-            section: student.section
-        }
-    });
-
-    if (semControl && semControl.isLocked) {
-        return "Academic integrity rule: Semester is permanently locked by Administrator.";
-    }
+    // NOTE: semControl.isLocked is a STUDENT PROMOTION lock, not a mark-entry lock.
+    // Only the per-mark approval locks (isLocked_cia1/2/3) should block faculty mark editing.
+    // Do NOT check semControl.isLocked here.
 
     if (currentMark) {
-        if (touchingCia1 && currentMark.isLocked_cia1) return "CIA 1 marks are locked.";
-        if (touchingCia2 && currentMark.isLocked_cia2) return "CIA 2 marks are locked.";
-        if (touchingCia3 && currentMark.isLocked_cia3) return "CIA 3 marks are locked.";
-        if (currentMark.isLocked && (touchingCia1 || touchingCia2 || touchingCia3)) return "Marks are globally locked.";
+        if (touchingCia1 && currentMark.isLocked_cia1) return "CIA 1 marks are locked by Admin.";
+        if (touchingCia2 && currentMark.isLocked_cia2) return "CIA 2 marks are locked by Admin.";
+        if (touchingCia3 && currentMark.isLocked_cia3) return "CIA 3 marks are locked by Admin.";
+        if (currentMark.isLocked && (touchingCia1 || touchingCia2 || touchingCia3)) return "Marks are globally locked by Admin.";
     }
 
     return null;

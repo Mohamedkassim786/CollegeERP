@@ -63,6 +63,21 @@ const AdminMarksApproval = () => {
   const handleSubjectClick = (subject) => {
     setSelectedSubject(subject);
     fetchSubjectMarks(subject.subjectId);
+    setSelectedStudents([]);
+    // Auto-switch assessment cycle based on subject category
+    if (subject.subjectCategory === 'LAB') {
+      setSelectedExam('lab_marks');
+    } else if (subject.subjectCategory === 'INTEGRATED') {
+      // For INTEGRATED: stay on integrated_lab if that's selected, else go to cia1
+      setSelectedExam(prev =>
+        prev === 'lab_marks' || prev === 'integrated_lab' ? 'integrated_lab' : 'cia1'
+      );
+    } else {
+      // THEORY: reset to cia1 if currently on lab_marks or integrated_lab
+      setSelectedExam(prev =>
+        prev === 'lab_marks' || prev === 'integrated_lab' ? 'cia1' : prev
+      );
+    }
   };
 
   const handleBack = () => {
@@ -160,23 +175,18 @@ const AdminMarksApproval = () => {
   };
 
   const calculateCIA = (test, assignment, attendance) => {
-    const t = test === -1 || test === null ? 0 : test;
-    const as = assignment === -1 || assignment === null ? 0 : assignment;
-    const at = attendance === -1 || attendance === null ? 0 : attendance;
-    return t + as + at;
+    const parse = (v) => (v === -1 || v === null || v === undefined || v === '' ? 0 : parseFloat(v) || 0);
+    return parse(test) + parse(assignment) + parse(attendance);
   };
 
   // Filter Logic
   const filteredSubjects = allSubjects.filter((subject) => {
     if (filterDept) {
-      // Find selected department object
       const selectedDeptObj = departments.find(
         (d) => (d.code || d.name) === filterDept,
       );
       if (selectedDeptObj) {
-        const names = [selectedDeptObj.name, selectedDeptObj.code].filter(
-          Boolean,
-        );
+        const names = [selectedDeptObj.name, selectedDeptObj.code].filter(Boolean);
         if (!names.includes(subject.department)) return false;
       } else if (subject.department !== filterDept) {
         return false;
@@ -185,10 +195,28 @@ const AdminMarksApproval = () => {
     if (filterSemester && subject.semester !== parseInt(filterSemester))
       return false;
 
+    const category = (subject.subjectCategory || 'THEORY').toUpperCase();
+
+    // Category-based tab filtering:
+    // 'lab_marks' tab        → only pure LAB subjects
+    // 'integrated_lab' tab   → only INTEGRATED subjects (lab portion approval)
+    // 'cia1/2/3/internal' tabs → THEORY and INTEGRATED subjects
+    if (selectedExam === 'lab_marks') {
+      if (category !== 'LAB') return false;
+    } else if (selectedExam === 'integrated_lab') {
+      if (category !== 'INTEGRATED') return false;
+    } else {
+      if (category === 'LAB') return false; // LAB subjects don't have CIA marks
+    }
+
+    // Map exam tab → the approval field key used in status counts
+    // 'lab_marks' and 'integrated_lab' both use the 'internal' approval field
+    const examKey = (selectedExam === 'lab_marks' || selectedExam === 'integrated_lab') ? 'internal' : selectedExam;
+
     // Filter based on Selected Exam Status
-    const pendingCount = subject[`pending_${selectedExam}`] || 0;
-    const approvedCount = subject[`approved_${selectedExam}`] || 0;
-    const lockedCount = subject[`locked_${selectedExam}`] || 0;
+    const pendingCount = subject[`pending_${examKey}`] || 0;
+    const approvedCount = subject[`approved_${examKey}`] || 0;
+    const lockedCount = subject[`locked_${examKey}`] || 0;
 
     // Hide subjects with no marks entered yet
     if (pendingCount + approvedCount + lockedCount === 0) return false;
@@ -236,17 +264,32 @@ const AdminMarksApproval = () => {
               </p>
             </div>
 
-            <div className="bg-[#003B73] p-6 rounded-[32px] text-white shadow-lg shadow-blue-900/20 flex items-center gap-6">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                <BookOpen size={24} className="text-white" />
-              </div>
-              <div>
-                <p className="text-blue-200 text-xs font-black uppercase tracking-widest mb-1">
-                  Active Focus
-                </p>
-                <p className="text-2xl font-black tracking-tighter">
-                  {selectedExam.toUpperCase()}
-                </p>
+            <div className="flex flex-col items-end gap-4">
+              <div className="bg-[#003B73] p-6 rounded-[32px] text-white shadow-lg shadow-blue-900/20 flex items-center gap-6 min-w-[300px]">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                  <BookOpen size={24} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-blue-200 text-xs font-black uppercase tracking-widest mb-1">
+                    Active Focus
+                  </p>
+                  <CustomSelect
+                    value={selectedExam}
+                    onChange={(e) => setSelectedExam(e.target.value)}
+                    className="w-full bg-transparent border-none text-white font-black text-xl p-0 focus:ring-0 [&>option]:text-black"
+                  >
+                    <option value="cia1">CIA 1</option>
+                    <option value="cia2">CIA 2</option>
+                    <option value="cia3">CIA 3</option>
+                    {((selectedSubject?.subjectCategory || '').toUpperCase() === 'LAB') && (
+                      <option value="lab_marks">Lab Marks</option>
+                    )}
+                    {((selectedSubject?.subjectCategory || '').toUpperCase() === 'INTEGRATED') && (
+                      <option value="integrated_lab">Integrated Lab Marks</option>
+                    )}
+                    <option value="internal">Final Internal Result</option>
+                  </CustomSelect>
+                </div>
               </div>
             </div>
           </div>
@@ -328,8 +371,28 @@ const AdminMarksApproval = () => {
                       <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
                         CIA 3
                       </th>
+                      {(selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED" && (
+                        <>
+                          <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
+                            Theory (25)
+                          </th>
+                          <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
+                            Lab (25)
+                          </th>
+                        </>
+                      )}
                       <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
                         Final
+                      </th>
+                    </>
+                  ) : selectedExam === "lab_marks" || selectedExam === "integrated_lab" ? (
+                    <>
+                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Attendance</th>
+                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Observation</th>
+                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Record</th>
+                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Model</th>
+                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
+                        {selectedExam === "integrated_lab" ? "Integrated Lab Total" : "Lab Total"}
                       </th>
                     </>
                   ) : (
@@ -360,8 +423,10 @@ const AdminMarksApproval = () => {
                     mark.cia3_attendance,
                   );
 
-                  const isLocked = mark[`isLocked_${selectedExam}`];
-                  const isApproved = mark[`isApproved_${selectedExam}`];
+                  // lab_marks and integrated_lab approval map to the same isApproved/isLocked fields as 'internal'
+                  const examKey = (selectedExam === "lab_marks" || selectedExam === "integrated_lab") ? "internal" : selectedExam;
+                  const isLocked = examKey === "internal" ? mark.isLocked : mark[`isLocked_${examKey}`];
+                  const isApproved = examKey === "internal" ? mark.isApproved : mark[`isApproved_${examKey}`];
 
                   return (
                     <tr
@@ -405,7 +470,40 @@ const AdminMarksApproval = () => {
                           <td className="p-8 text-center font-mono font-bold text-gray-400">
                             {cia3Total.toFixed(1)}
                           </td>
+                          {(selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED" && (
+                            <>
+                              <td className="p-8 text-center font-mono font-bold text-blue-600 bg-blue-50/20">
+                                {(() => {
+                                  // Theory Scaled (Best of 2 / 100 * 25)
+                                  const totals = [cia1Total, cia2Total, cia3Total].sort((a, b) => b - a);
+                                  const theoryRaw = totals.length >= 2 ? (totals[0] + totals[1]) / 2 : (totals[0] || 0);
+                                  return ((theoryRaw / 100) * 25).toFixed(1);
+                                })()}
+                              </td>
+                              <td className="p-8 text-center font-mono font-bold text-purple-600 bg-purple-50/20">
+                                {(() => {
+                                  // Lab Scaled (Sum / 100 * 25)
+                                  const la = parseFloat(mark.lab_attendance) || 0;
+                                  const lo = parseFloat(mark.lab_observation) || 0;
+                                  const lr = parseFloat(mark.lab_record) || 0;
+                                  const lm = parseFloat(mark.lab_model) || 0;
+                                  const labRaw = la + lo + lr + lm;
+                                  return ((labRaw / 100) * 25).toFixed(1);
+                                })()}
+                              </td>
+                            </>
+                          )}
                           <td className="p-8 text-center font-mono font-black text-[#003B73] text-lg bg-blue-50/30">
+                            {mark.internal?.toFixed(1) || "-"}
+                          </td>
+                        </>
+                      ) : selectedExam === "lab_marks" || selectedExam === "integrated_lab" ? (
+                        <>
+                          <td className="p-8 text-center font-mono font-bold text-gray-400">{mark.lab_attendance ?? "-"}</td>
+                          <td className="p-8 text-center font-mono font-bold text-gray-400">{mark.lab_observation ?? "-"}</td>
+                          <td className="p-8 text-center font-mono font-bold text-gray-400">{mark.lab_record ?? "-"}</td>
+                          <td className="p-8 text-center font-mono font-bold text-gray-400">{mark.lab_model ?? "-"}</td>
+                          <td className="p-8 text-center font-mono font-black text-[#003B73] text-lg bg-green-50/30">
                             {mark.internal?.toFixed(1) || "-"}
                           </td>
                         </>
@@ -484,12 +582,11 @@ const AdminMarksApproval = () => {
             <option value="cia1">CIA 1</option>
             <option value="cia2">CIA 2</option>
             <option value="cia3">CIA 3</option>
-            {allSubjects.some(
-              (s) =>
-                s.pending_cia1 === 0 &&
-                s.pending_cia2 === 0 &&
-                s.pending_cia3 === 0,
-            ) && <option value="internal">Final Internal</option>}
+            <option value="lab_marks">Lab Marks (Pure Lab)</option>
+            {allSubjects.some(s => (s.subjectCategory || '').toUpperCase() === 'INTEGRATED') && (
+              <option value="integrated_lab">Integrated Lab Marks</option>
+            )}
+            <option value="internal">Final Internal Approval</option>
           </CustomSelect>
         </div>
       </div>

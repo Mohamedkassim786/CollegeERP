@@ -34,36 +34,44 @@ exports.assignMarkEntry = async (req, res) => {
     try {
         const { staffId, subjectId, deadline } = req.body;
 
-        // 🧱 VALIDATION ENFORCEMENT
-        // 1. Check if dummy numbers exist and are locked for this subject
-        const dummyMapping = await prisma.subjectDummyMapping.findFirst({
-            where: { subjectId: parseInt(subjectId) }
-        });
+        const subIdInt = parseInt(subjectId);
 
-        if (!dummyMapping) {
-            return res.status(400).json({ message: "Dummy numbers not generated for this subject yet" });
+        // Fetch subject to check category
+        const subject = await prisma.subject.findUnique({ where: { id: subIdInt } });
+        if (!subject) return res.status(404).json({ message: 'Subject not found' });
+
+        const category = subject.subjectCategory || 'THEORY';
+
+        // 🧱 For THEORY subjects: dummy mapping must be locked before assignment
+        if (category === 'THEORY') {
+            const dummyMapping = await prisma.subjectDummyMapping.findFirst({
+                where: { subjectId: subIdInt }
+            });
+            if (!dummyMapping) {
+                return res.status(400).json({ message: 'Dummy numbers not generated for this subject yet' });
+            }
+            if (!dummyMapping.mappingLocked) {
+                return res.status(400).json({ message: 'Dummy mapping must be locked before assignment' });
+            }
         }
+        // LAB and INTEGRATED: no dummy mapping required — external staff works by register number
 
-        if (!dummyMapping.mappingLocked) {
-            return res.status(400).json({ message: "Dummy mapping must be locked before assignment" });
-        }
-
-        // 2. Check if already assigned and not completed
+        // Check if already assigned and not completed
         const existingAssignment = await prisma.externalMarkAssignment.findFirst({
             where: {
-                subjectId: parseInt(subjectId),
+                subjectId: subIdInt,
                 status: { in: ['PENDING', 'SUBMITTED', 'COMPLETED'] }
             }
         });
 
         if (existingAssignment) {
-            return res.status(400).json({ message: "Subject already assigned or valuation completed" });
+            return res.status(400).json({ message: 'Subject already assigned or valuation completed' });
         }
 
         const assignment = await prisma.externalMarkAssignment.create({
             data: {
                 staffId: parseInt(staffId),
-                subjectId: parseInt(subjectId),
+                subjectId: subIdInt,
                 deadline: new Date(deadline),
                 status: 'PENDING'
             }
@@ -76,29 +84,39 @@ exports.assignMarkEntry = async (req, res) => {
 
 exports.getAvailableSubjectsForAssignment = async (req, res) => {
     try {
-        // Fetch subjects that have LOCKED dummy mappings
-        // AND do not have an active/completed assignment
-        const subjectsWithLockedDummies = await prisma.subjectDummyMapping.findMany({
+        // Already-assigned subject IDs (to exclude)
+        const activeAssignments = await prisma.externalMarkAssignment.findMany({
+            where: { status: { in: ['PENDING', 'SUBMITTED', 'COMPLETED', 'LOCKED'] } },
+            select: { subjectId: true }
+        });
+        const assignedIds = activeAssignments.map(a => a.subjectId);
+
+        // 1. THEORY subjects — must have locked dummy mapping
+        const theorySubjectsWithLockedDummies = await prisma.subjectDummyMapping.findMany({
             where: { mappingLocked: true },
             select: { subjectId: true },
             distinct: ['subjectId']
         });
+        const theoryIds = theorySubjectsWithLockedDummies.map(d => d.subjectId)
+            .filter(id => !assignedIds.includes(id));
 
-        const subjectIds = subjectsWithLockedDummies.map(d => d.subjectId);
-
-        // Filter out subjects already assigned
-        const activeAssignments = await prisma.externalMarkAssignment.findMany({
+        // 2. LAB and INTEGRATED subjects
+        // These can be assigned as soon as they exist (no dummy mapping required)
+        const labIntegratedSubjects = await prisma.subject.findMany({
             where: {
-                status: { in: ['PENDING', 'SUBMITTED', 'COMPLETED', 'LOCKED'] }
+                subjectCategory: { in: ['LAB', 'INTEGRATED'] },
+                id: { notIn: assignedIds }
             },
-            select: { subjectId: true }
+            select: { id: true }
         });
+        const labIntegratedIds = labIntegratedSubjects.map(s => s.id);
 
-        const assignedIds = activeAssignments.map(a => a.subjectId);
-        const availableIds = subjectIds.filter(id => !assignedIds.includes(id));
+        // Combine all qualifying IDs
+        const allQualifyingIds = [...new Set([...theoryIds, ...labIntegratedIds])];
 
         const availableSubjects = await prisma.subject.findMany({
-            where: { id: { in: availableIds } }
+            where: { id: { in: allQualifyingIds } },
+            orderBy: [{ subjectCategory: 'asc' }, { semester: 'asc' }]
         });
 
         res.json(availableSubjects);
