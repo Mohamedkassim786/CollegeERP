@@ -9,6 +9,8 @@ import {
   Filter,
   Users,
   BookOpen,
+  Unlock,
+  RotateCcw
 } from "lucide-react";
 
 const AdminMarksApproval = () => {
@@ -18,6 +20,8 @@ const AdminMarksApproval = () => {
   const [departments, setDepartments] = useState([]); // Fetch departments for filter
   const [filterDept, setFilterDept] = useState("");
   const [filterSemester, setFilterSemester] = useState("");
+  const [viewMode, setViewMode] = useState("selection"); // 'selection', 'grid'
+  const [selectedCategory, setSelectedCategory] = useState(null); // 'THEORY', 'LAB'
   const [filterStatus, setFilterStatus] = useState("ALL"); // 'ALL', 'PENDING', 'COMPLETED'
 
   // Detailed View State
@@ -60,23 +64,28 @@ const AdminMarksApproval = () => {
     }
   };
 
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setViewMode("grid");
+    if (category === 'LAB') {
+      setSelectedExam('lab_marks');
+    } else {
+      setSelectedExam('cia1');
+    }
+  };
+
   const handleSubjectClick = (subject) => {
     setSelectedSubject(subject);
     fetchSubjectMarks(subject.subjectId);
     setSelectedStudents([]);
-    // Auto-switch assessment cycle based on subject category
-    if (subject.subjectCategory === 'LAB') {
-      setSelectedExam('lab_marks');
-    } else if (subject.subjectCategory === 'INTEGRATED') {
-      // For INTEGRATED: stay on integrated_lab if that's selected, else go to cia1
-      setSelectedExam(prev =>
-        prev === 'lab_marks' || prev === 'integrated_lab' ? 'integrated_lab' : 'cia1'
-      );
+
+    // Decisive contextual exam selection based on which card was clicked
+    if (selectedCategory === 'LAB') {
+      setSelectedExam(subject.subjectCategory === 'INTEGRATED' ? 'integrated_lab' : 'lab_marks');
+    } else if (selectedCategory === 'INTEGRATED') {
+      setSelectedExam('cia1'); // Default to CIA for Integrated, but user can switch to lab_marks
     } else {
-      // THEORY: reset to cia1 if currently on lab_marks or integrated_lab
-      setSelectedExam(prev =>
-        prev === 'lab_marks' || prev === 'integrated_lab' ? 'cia1' : prev
-      );
+      setSelectedExam('cia1');
     }
   };
 
@@ -197,16 +206,19 @@ const AdminMarksApproval = () => {
 
     const category = (subject.subjectCategory || 'THEORY').toUpperCase();
 
-    // Category-based tab filtering:
-    // 'lab_marks' tab        → only pure LAB subjects
-    // 'integrated_lab' tab   → only INTEGRATED subjects (lab portion approval)
-    // 'cia1/2/3/internal' tabs → THEORY and INTEGRATED subjects
-    if (selectedExam === 'lab_marks') {
-      if (category !== 'LAB') return false;
-    } else if (selectedExam === 'integrated_lab') {
-      if (category !== 'INTEGRATED') return false;
-    } else {
-      if (category === 'LAB') return false; // LAB subjects don't have CIA marks
+    // Strictly filter by chosen module
+    if (selectedCategory === 'THEORY' && category !== 'THEORY') return false;
+    if (selectedCategory === 'LAB' && category !== 'LAB') return false;
+    if (selectedCategory === 'INTEGRATED' && category !== 'INTEGRATED') return false;
+
+    // Further contextual filtering based on tab selection
+    if (selectedCategory === 'INTEGRATED') {
+      // Allow switching between CIA and Lab in the detailed view dropdown, but
+      // for the grid itself, if we are in 'INTEGRATED' mode and a CIA tab is selected, it's fine.
+    } else if (selectedCategory === 'THEORY') {
+      if (selectedExam === 'lab_marks' || selectedExam === 'integrated_lab') return false;
+    } else if (selectedCategory === 'LAB') {
+      if (selectedExam !== 'lab_marks' && selectedExam !== 'internal') return false;
     }
 
     // Map exam tab → the approval field key used in status counts
@@ -273,58 +285,60 @@ const AdminMarksApproval = () => {
                   <p className="text-blue-200 text-xs font-black uppercase tracking-widest mb-1">
                     Active Focus
                   </p>
-                  <CustomSelect
-                    value={selectedExam}
-                    onChange={(e) => setSelectedExam(e.target.value)}
-                    className="w-full bg-transparent border-none text-white font-black text-xl p-0 focus:ring-0 [&>option]:text-black"
-                  >
-                    <option value="cia1">CIA 1</option>
-                    <option value="cia2">CIA 2</option>
-                    <option value="cia3">CIA 3</option>
-                    {((selectedSubject?.subjectCategory || '').toUpperCase() === 'LAB') && (
-                      <option value="lab_marks">Lab Marks</option>
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    {selectedCategory !== 'LAB' && (
+                      <>
+                        <button onClick={() => setSelectedExam('cia1')} className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${selectedExam === 'cia1' ? 'bg-white text-[#003B73] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>CIA 1</button>
+                        <button onClick={() => setSelectedExam('cia2')} className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${selectedExam === 'cia2' ? 'bg-white text-[#003B73] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>CIA 2</button>
+                        <button onClick={() => setSelectedExam('cia3')} className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${selectedExam === 'cia3' ? 'bg-white text-[#003B73] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>CIA 3</button>
+                      </>
                     )}
-                    {((selectedSubject?.subjectCategory || '').toUpperCase() === 'INTEGRATED') && (
-                      <option value="integrated_lab">Integrated Lab Marks</option>
+                    {selectedCategory === 'LAB' && (
+                      <button onClick={() => setSelectedExam('lab_marks')} className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${selectedExam === 'lab_marks' ? 'bg-white text-[#003B73] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>Lab Marks</button>
                     )}
-                    <option value="internal">Final Internal Result</option>
-                  </CustomSelect>
+                    {selectedCategory === 'INTEGRATED' && (
+                      <button onClick={() => setSelectedExam('integrated_lab')} className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${selectedExam === 'integrated_lab' ? 'bg-white text-[#003B73] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>Integrated Lab</button>
+                    )}
+                    <button onClick={() => setSelectedExam('internal')} className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${selectedExam === 'internal' ? 'bg-emerald-400 text-[#003B73] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>Final Result</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12 pt-10 border-t border-gray-50">
-            <button
-              onClick={() => handleApproveSelected(false)}
-              disabled={selectedStudents.length === 0}
-              className="flex items-center justify-center gap-3 px-8 py-5 bg-emerald-600 text-white rounded-[24px] hover:bg-emerald-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-emerald-900/20 hover:-translate-y-1"
-            >
-              <CheckCircle size={22} />
-              Approve ({selectedStudents.length})
-            </button>
-            <button
-              onClick={() => handleApproveSelected(true)}
-              disabled={selectedStudents.length === 0}
-              className="flex items-center justify-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-[24px] hover:bg-blue-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-blue-900/20 hover:-translate-y-1"
-            >
-              <Lock size={22} />
-              Approve & Lock
-            </button>
-            <button
-              onClick={handleUnlockSelected}
-              disabled={selectedStudents.length === 0}
-              className="flex items-center justify-center gap-3 px-8 py-5 bg-orange-500 text-white rounded-[24px] hover:bg-orange-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-orange-900/20 hover:-translate-y-1"
-            >
-              Unlock Entry
-            </button>
-            <button
-              onClick={handleUnapproveSelected}
-              disabled={selectedStudents.length === 0}
-              className="flex items-center justify-center gap-3 px-8 py-5 bg-red-500 text-white rounded-[24px] hover:bg-red-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-red-900/20 hover:-translate-y-1"
-            >
-              Revert Approval
-            </button>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12 pt-10 border-t border-gray-50">
+                <button
+                  onClick={() => handleApproveSelected(false)}
+                  disabled={selectedStudents.length === 0}
+                  className="flex items-center justify-center gap-3 px-8 py-5 bg-emerald-600 text-white rounded-[24px] hover:bg-emerald-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-emerald-900/20 hover:-translate-y-1"
+                >
+                  <CheckCircle size={22} />
+                  Approve ({selectedStudents.length})
+                </button>
+                <button
+                  onClick={() => handleApproveSelected(true)}
+                  disabled={selectedStudents.length === 0}
+                  className="flex items-center justify-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-[24px] hover:bg-blue-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-blue-900/20 hover:-translate-y-1"
+                >
+                  <Lock size={22} />
+                  Approve & Lock
+                </button>
+                <button
+                  onClick={handleUnlockSelected}
+                  disabled={selectedStudents.length === 0}
+                  className="flex items-center justify-center gap-3 px-8 py-5 bg-orange-500 text-white rounded-[24px] hover:bg-orange-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-orange-900/20 hover:-translate-y-1"
+                >
+                  <Unlock size={22} />
+                  Unlock Entry
+                </button>
+                <button
+                  onClick={handleUnapproveSelected}
+                  disabled={selectedStudents.length === 0}
+                  className="flex items-center justify-center gap-3 px-8 py-5 bg-red-500 text-white rounded-[24px] hover:bg-red-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-red-900/20 hover:-translate-y-1"
+                >
+                  <RotateCcw size={22} />
+                  Revert Approval
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -444,18 +458,18 @@ const AdminMarksApproval = () => {
                         />
                       </td>
                       <td className="p-8 font-mono text-sm uppercase text-[#003B73] font-bold">
-                        {mark.student.rollNo}
+                        {mark.student?.rollNo || "N/A"}
                       </td>
                       <td className="p-8">
                         <p className="font-bold text-[#003B73] text-lg">
-                          {mark.student.name}
+                          {mark.student?.name || "Unknown Student"}
                         </p>
                       </td>
                       <td className="p-8">
                         <span className="text-gray-500 font-medium">
-                          {mark.student.department} -{" "}
+                          {mark.student?.department || "N/A"} -{" "}
                           <span className="font-black text-[#003B73]">
-                            Y{mark.student.year}
+                            Y{mark.student?.year || "-"}
                           </span>
                         </span>
                       </td>
@@ -554,275 +568,303 @@ const AdminMarksApproval = () => {
     );
   }
 
+  const renderCard = (subject) => {
+    const examKey = (selectedExam === 'lab_marks' || selectedExam === 'integrated_lab') ? 'internal' : selectedExam;
+    const pending = subject[`pending_${examKey}`] || 0;
+    const approved = subject[`approved_${examKey}`] || 0;
+    const locked = subject[`locked_${examKey}`] || 0;
+    const total = pending + approved + locked;
+
+    const isIntegrated = subject.subjectCategory === 'INTEGRATED';
+
+    return (
+      <div
+        key={subject.subjectId}
+        onClick={() => handleSubjectClick(subject)}
+        className="group relative bg-white p-8 rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 hover:border-blue-200 transition-all cursor-pointer hover:-translate-y-2"
+      >
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex flex-col gap-2">
+            <span className="px-4 py-1.5 bg-blue-50 text-[#003B73] rounded-xl font-black text-[10px] uppercase tracking-wider border border-blue-100 w-fit">
+              {subject.subjectCode} {isIntegrated && "(INTEGRATED)"}
+            </span>
+            <h3 className="text-2xl font-black text-[#003B73] leading-none group-hover:text-blue-600 transition-colors">
+              {subject.subjectName}
+            </h3>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-all">
+            <BookOpen size={24} className="text-gray-400 group-hover:text-blue-600" />
+          </div>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          <div className="flex items-center gap-3 text-gray-500 font-medium text-sm">
+            <Users size={16} className="text-blue-400" />
+            {subject.faculty}
+          </div>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-widest">
+            {subject.department} • Sem {subject.semester}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 pt-6 border-t border-gray-50">
+          {pending > 0 ? (
+            <span className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-50 text-amber-700 rounded-2xl font-black text-xs uppercase tracking-wider">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              {pending} Pending
+            </span>
+          ) : locked > 0 ? (
+            <span className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-wider">
+              <Lock size={14} /> Locked
+            </span>
+          ) : approved > 0 ? (
+            <span className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-700 rounded-2xl font-black text-xs uppercase tracking-wider">
+              <CheckCircle size={14} /> Approved
+            </span>
+          ) : (
+            <span className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-50 text-gray-300 rounded-2xl font-black text-xs uppercase tracking-wider">
+              Not Started
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSubjectGrid = () => {
+    const listToRender = filteredSubjects;
+
+    return (
+      <div className="space-y-12">
+        <div className="flex items-center gap-6 mb-10">
+          <h2 className="text-4xl font-black text-[#003B73] tracking-tight">
+            {selectedCategory === 'THEORY' ? "Theory" : selectedCategory === 'LAB' ? "Practical" : "Integrated"}{" "}
+            <span className={selectedCategory === 'THEORY' ? "text-blue-600" : selectedCategory === 'LAB' ? "text-purple-600" : "text-emerald-600"}>Modules</span>
+          </h2>
+          <div className={`flex-1 h-px bg-gradient-to-r ${selectedCategory === 'THEORY' ? 'from-blue-100' : selectedCategory === 'LAB' ? 'from-purple-100' : 'from-emerald-100'} to-transparent`} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {listToRender.map(renderCard)}
+        </div>
+
+        {listToRender.length === 0 && (
+          <div className="py-40 text-center bg-white rounded-[60px] border-2 border-dashed border-gray-100">
+            <Filter size={64} className="mx-auto text-gray-100 mb-6" />
+            <h3 className="text-2xl font-black text-gray-400">No subjects matches your filters</h3>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const semesters = [...new Set(allSubjects.map((s) => s.semester))].sort(
     (a, b) => a - b,
   );
 
   return (
-    <div className="w-full animate-fadeIn">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8">
-        <div>
-          <h1 className="text-5xl font-black text-[#003B73] tracking-tighter mb-4 leading-none">
-            Marks <span className="text-blue-600">Approval</span>
-          </h1>
-          <p className="text-gray-500 font-medium text-lg">
-            Grant administrative clearance for faculty-submitted assessments.
-          </p>
-        </div>
-
-        <div className="bg-white p-3 rounded-[28px] shadow-xl shadow-blue-900/5 border border-gray-100 flex items-center gap-2">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-4">
-            Assessment Cycle
-          </span>
-          <CustomSelect
-            value={selectedExam}
-            onChange={(e) => setSelectedExam(e.target.value)}
-            className="w-full"
-          >
-            <option value="cia1">CIA 1</option>
-            <option value="cia2">CIA 2</option>
-            <option value="cia3">CIA 3</option>
-            <option value="lab_marks">Lab Marks (Pure Lab)</option>
-            {allSubjects.some(s => (s.subjectCategory || '').toUpperCase() === 'INTEGRATED') && (
-              <option value="integrated_lab">Integrated Lab Marks</option>
+    <div className="w-full animate-fadeIn min-h-screen bg-[#F8FAFC]/50 pb-20">
+      <div className="max-w-[1600px] mx-auto px-8 py-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8">
+          <div>
+            {viewMode === 'grid' && (
+              <button
+                onClick={() => setViewMode('selection')}
+                className="mb-4 flex items-center gap-2 text-blue-600 font-black text-xs tracking-[0.2em] uppercase hover:gap-3 transition-all"
+              >
+                ← Back to modules
+              </button>
             )}
-            <option value="internal">Final Internal Approval</option>
-          </CustomSelect>
-        </div>
-      </div>
+            <h1 className="text-6xl font-black text-[#003B73] tracking-tighter mb-4 leading-none">
+              Marks <span className="text-blue-600">Approval</span>
+            </h1>
+            <p className="text-gray-500 font-medium text-lg max-w-2xl">
+              {viewMode === 'selection'
+                ? "Select a category to manage and validate faculty submissions."
+                : `Managing all ${selectedCategory === 'THEORY' ? 'Theory' : 'Practical'} modules for the current assessment period.`}
+            </p>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-        <div className="bg-gradient-to-br from-[#003B73] to-[#004B8D] p-10 rounded-[40px] shadow-2xl shadow-blue-900/20 text-white flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-            <Clock size={96} />
-          </div>
-          <div>
-            <p className="text-blue-200 text-xs font-black uppercase tracking-widest mb-4">
-              Awaiting Action
-            </p>
-            <p className="text-6xl font-black tracking-tighter">
-              {
-                allSubjects.filter((s) => s[`pending_${selectedExam}`] > 0)
-                  .length
-              }
-            </p>
-          </div>
-          <p className="mt-6 text-sm font-bold text-blue-100 flex items-center gap-2 italic">
-            <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-            Subjects with pending approvals
-          </p>
-        </div>
-
-        <div className="bg-white p-10 rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-            <BookOpen size={96} />
-          </div>
-          <div>
-            <p className="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">
-              Total Curriculum
-            </p>
-            <p className="text-6xl font-black tracking-tighter text-[#003B73]">
-              {allSubjects.length}
-            </p>
-          </div>
-          <p className="mt-6 text-sm font-bold text-gray-400">
-            Actively managed subjects
-          </p>
-        </div>
-
-        <div className="bg-emerald-600 p-10 rounded-[40px] shadow-2xl shadow-emerald-900/20 text-white flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-            <CheckCircle size={96} />
-          </div>
-          <div>
-            <p className="text-emerald-100 text-xs font-black uppercase tracking-widest mb-4">
-              Completed Cycles
-            </p>
-            <p className="text-6xl font-black tracking-tighter text-white">
-              {
-                allSubjects.filter(
-                  (s) =>
-                    s[`pending_${selectedExam}`] === 0 &&
-                    (s[`approved_${selectedExam}`] > 0 ||
-                      s[`locked_${selectedExam}`] > 0),
-                ).length
-              }
-            </p>
-          </div>
-          <p className="mt-6 text-sm font-bold text-emerald-100">
-            Ready for consolidation
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white p-8 rounded-[36px] shadow-xl shadow-blue-900/5 border border-gray-100 mb-12">
-        <div className="flex items-center gap-8 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100">
-              <Filter size={20} className="text-[#003B73]" />
+          {viewMode === 'grid' && (
+            <div className="bg-white p-4 rounded-[32px] shadow-2xl shadow-blue-900/10 border border-gray-100 flex items-center gap-4 min-w-[300px]">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${selectedCategory === 'THEORY' ? 'bg-blue-50 border-blue-100' : 'bg-purple-50 border-purple-100'}`}>
+                {selectedCategory === 'THEORY' ? <Clock size={24} className="text-blue-600" /> : <BookOpen size={24} className="text-purple-600" />}
+              </div>
+              <div className="flex-1">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                  Active Assessment Period
+                </span>
+                <CustomSelect
+                  value={selectedExam}
+                  onChange={(e) => setSelectedExam(e.target.value)}
+                  className="w-full bg-transparent border-none p-0 h-auto font-black text-[#003B73] focus:ring-0 text-lg"
+                >
+                  {selectedCategory === 'THEORY' ? (
+                    <>
+                      <option value="cia1">CIA 1 (Internal Test)</option>
+                      <option value="cia2">CIA 2 (Internal Test)</option>
+                      <option value="cia3">CIA 3 (Internal Test)</option>
+                    </>
+                  ) : selectedCategory === 'LAB' ? (
+                    <>
+                      <option value="lab_marks">Laboratory Evaluation</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="cia1">CIA 1 (Internal Test)</option>
+                      <option value="cia2">CIA 2 (Internal Test)</option>
+                      <option value="cia3">CIA 3 (Internal Test)</option>
+                      <option value="integrated_lab">Integrated Lab Marks</option>
+                    </>
+                  )}
+                  <option value="internal">Final Consolidation</option>
+                </CustomSelect>
+              </div>
             </div>
-            <span className="font-black text-gray-500 uppercase text-xs tracking-widest">
-              Filters
-            </span>
-          </div>
-
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <CustomSelect
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">Pending Action</option>
-              <option value="COMPLETED">Fully Approved</option>
-            </CustomSelect>
-
-            <CustomSelect
-              value={filterDept}
-              onChange={(e) => setFilterDept(e.target.value)}
-              className="w-full"
-            >
-              <option value="">All Departments</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.code || d.name}>
-                  {d.code || d.name}
-                </option>
-              ))}
-            </CustomSelect>
-
-            <CustomSelect
-              value={filterSemester}
-              onChange={(e) => setFilterSemester(e.target.value)}
-              className="w-full"
-            >
-              <option value="">All Semesters</option>
-              {semesters.map((sem) => (
-                <option key={sem} value={sem}>
-                  Semester {sem}
-                </option>
-              ))}
-            </CustomSelect>
-          </div>
+          )}
         </div>
-      </div>
 
-      <div className="bg-white rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Code
-                </th>
-                <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Subject Name
-                </th>
-                <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                  Semester
-                </th>
-                <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Faculty
-                </th>
-                <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                  Status
-                </th>
-                <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-right">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredSubjects.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="p-24 text-center">
-                    <div className="flex flex-col items-center gap-6">
-                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center">
-                        <Filter size={40} className="text-gray-100" />
-                      </div>
-                      <p className="font-black text-2xl text-gray-400">
-                        No matching subjects found
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredSubjects.map((subject) => {
-                  const pending = subject[`pending_${selectedExam}`] || 0;
-                  const approved = subject[`approved_${selectedExam}`] || 0;
-                  const locked = subject[`locked_${selectedExam}`] || 0;
-                  const total = pending + approved + locked;
+        {viewMode === 'selection' ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 py-10">
+            {/* Theory Card */}
+            <div
+              onClick={() => handleCategorySelect('THEORY')}
+              className="group relative bg-[#003B73] p-12 rounded-[50px] shadow-2xl overflow-hidden cursor-pointer hover:-translate-y-3 transition-all duration-500 flex flex-col justify-between min-h-[450px]"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20 -mr-20 -mt-20 group-hover:opacity-40 transition-opacity"></div>
+              <div className="relative z-10 flex-1">
+                <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-10 group-hover:scale-110 transition-transform">
+                  <BookOpen size={40} className="text-white" />
+                </div>
+                <h2 className="text-4xl font-black text-white mb-4 tracking-tighter leading-tight">Theory <br /> <span className="text-blue-400">Modules</span></h2>
+                <p className="text-blue-100/60 font-medium text-base mb-10 max-w-xs">Manage CIA tests, assignments, and internal theory results.</p>
+              </div>
+              <div className="relative z-10 space-y-6">
+                <span className="inline-block px-6 py-3 bg-white/10 rounded-2xl text-white font-black text-sm uppercase tracking-widest">
+                  {allSubjects.filter(s => s.subjectCategory === 'THEORY').length} Subjects
+                </span>
+                <div className="flex items-center gap-3 text-white/40 font-black text-xs uppercase tracking-[0.2em]">
+                  Enter Portal <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-[#003B73] font-black group-hover:translate-x-2 transition-transform">→</div>
+                </div>
+              </div>
+            </div>
 
-                  let statusEl;
-                  if (total === 0) {
-                    statusEl = (
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-2xl text-sm font-black tracking-wide">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full opacity-50" />
-                        Not Started
-                      </span>
-                    );
-                  } else if (pending > 0) {
-                    statusEl = (
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-2xl text-sm font-black">
-                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                        {pending} Pending
-                      </span>
-                    );
-                  } else if (locked > 0) {
-                    statusEl = (
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-2xl text-sm font-black">
-                        <Lock size={14} /> Locked
-                      </span>
-                    );
-                  } else {
-                    statusEl = (
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-2xl text-sm font-black">
-                        <CheckCircle size={14} /> Approved
-                      </span>
-                    );
-                  }
+            {/* Practical Card */}
+            <div
+              onClick={() => handleCategorySelect('LAB')}
+              className="group relative bg-white p-12 rounded-[50px] shadow-2xl border border-gray-100 overflow-hidden cursor-pointer hover:-translate-y-3 transition-all duration-500 flex flex-col justify-between min-h-[450px]"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-[100px] opacity-50 -mr-20 -mt-20 group-hover:opacity-80 transition-opacity"></div>
+              <div className="relative z-10 flex-1">
+                <div className="w-20 h-20 bg-purple-50 rounded-3xl flex items-center justify-center mb-10 group-hover:scale-110 transition-transform">
+                  <Users size={40} className="text-purple-600" />
+                </div>
+                <h2 className="text-4xl font-black text-[#003B73] mb-4 tracking-tighter leading-tight">Practical <br /> <span className="text-purple-600">Modules</span></h2>
+                <p className="text-gray-400 font-medium text-base mb-10 max-w-xs">Manage laboratory evaluation and practical assessments.</p>
+              </div>
+              <div className="relative z-10 space-y-6">
+                <span className="inline-block px-6 py-3 bg-purple-50 rounded-2xl text-purple-600 font-black text-sm uppercase tracking-widest text-center">
+                  {allSubjects.filter(s => s.subjectCategory === 'LAB').length} Subjects
+                </span>
+                <div className="flex items-center gap-3 text-gray-300 font-black text-xs uppercase tracking-[0.2em]">
+                  Enter Portal <div className="w-8 h-8 bg-[#003B73] rounded-xl flex items-center justify-center text-white font-black group-hover:translate-x-2 transition-transform">→</div>
+                </div>
+              </div>
+            </div>
 
-                  return (
-                    <tr
-                      key={subject.subjectId}
-                      className="hover:bg-gray-50/50 transition-colors group"
-                    >
-                      <td className="p-8 font-mono text-sm uppercase text-[#003B73] font-bold">
-                        {subject.subjectCode}
-                      </td>
-                      <td className="p-8">
-                        <p className="font-black text-[#003B73] text-lg leading-tight mb-1 group-hover:translate-x-1 transition-transform">
-                          {subject.subjectName}
-                        </p>
-                        <p className="text-gray-400 text-xs font-black uppercase tracking-widest">
-                          {subject.department}
-                        </p>
-                      </td>
-                      <td className="p-8 text-center">
-                        <span className="text-xl font-black text-blue-200">
-                          #{subject.semester}
-                        </span>
-                      </td>
-                      <td className="p-8">
-                        <p className="font-bold text-[#003B73]">
-                          {subject.faculty}
-                        </p>
-                      </td>
-                      <td className="p-8 text-center">{statusEl}</td>
-                      <td className="p-8 text-right">
-                        <button
-                          onClick={() => handleSubjectClick(subject)}
-                          className="px-8 py-3 bg-[#003B73] text-white rounded-2xl hover:bg-blue-800 text-sm font-black shadow-lg shadow-blue-900/10 hover:-translate-y-0.5 transition-all"
-                        >
-                          Manage Marks
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+            {/* Integrated Card */}
+            <div
+              onClick={() => handleCategorySelect('INTEGRATED')}
+              className="group relative bg-[#10B981] p-12 rounded-[50px] shadow-2xl overflow-hidden cursor-pointer hover:-translate-y-3 transition-all duration-500 flex flex-col justify-between min-h-[450px]"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-[100px] opacity-20 -mr-20 -mt-20 group-hover:opacity-40 transition-opacity"></div>
+              <div className="relative z-10 flex-1">
+                <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-10 group-hover:scale-110 transition-transform">
+                  <Filter size={40} className="text-white" />
+                </div>
+                <h2 className="text-4xl font-black text-white mb-4 tracking-tighter leading-tight">Integrated <br /> <span className="text-emerald-900/50">Modules</span></h2>
+                <p className="text-emerald-50 font-medium text-base mb-10 max-w-xs">Manage combined Theory and Lab components in one place.</p>
+              </div>
+              <div className="relative z-10 space-y-6">
+                <span className="inline-block px-6 py-3 bg-white/10 rounded-2xl text-white font-black text-sm uppercase tracking-widest text-center">
+                  {allSubjects.filter(s => s.subjectCategory === 'INTEGRATED').length} Subjects
+                </span>
+                <div className="flex items-center gap-3 text-white/50 font-black text-xs uppercase tracking-[0.2em]">
+                  Enter Portal <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-emerald-600 font-black group-hover:translate-x-2 transition-transform">→</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Stats Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 animate-slideIn">
+              <div className={`p-12 rounded-[50px] shadow-2xl text-white ${selectedCategory === 'THEORY' ? 'bg-gradient-to-br from-[#003B73] to-[#004B8D] shadow-blue-900/20' : 'bg-gradient-to-br from-purple-700 to-purple-900 shadow-purple-900/20'}`}>
+                <p className="text-white/60 text-xs font-black uppercase tracking-widest mb-4">Pending Requests</p>
+                <p className="text-7xl font-black tracking-tighter mb-6">
+                  {filteredSubjects.filter((s) => s[`pending_${(selectedExam === 'lab_marks' || selectedExam === 'integrated_lab') ? 'internal' : selectedExam}`] > 0).length}
+                </p>
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-white transition-all duration-1000" style={{ width: `${(filteredSubjects.filter(s => s[`pending_${selectedExam}`] > 0).length / Math.max(1, filteredSubjects.length)) * 100}%` }} />
+                </div>
+              </div>
+
+              <div className="bg-white p-12 rounded-[50px] shadow-xl shadow-blue-900/5 border border-gray-100">
+                <p className="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">Active Scope</p>
+                <p className="text-7xl font-black tracking-tighter text-[#003B73] mb-6">{filteredSubjects.length}</p>
+                <p className="text-sm font-bold text-gray-400 italic">Subjects identified in current filter</p>
+              </div>
+
+              <div className="bg-emerald-600 p-12 rounded-[50px] shadow-2xl shadow-emerald-900/20 text-white">
+                <p className="text-emerald-100 text-xs font-black uppercase tracking-widest mb-4">Validation Progress</p>
+                <p className="text-7xl font-black tracking-tighter mb-6">
+                  {Math.round((filteredSubjects.filter(s => s[`pending_${(selectedExam === 'lab_marks' || selectedExam === 'integrated_lab') ? 'internal' : selectedExam}`] === 0).length / Math.max(1, filteredSubjects.length)) * 100)}%
+                </p>
+                <p className="text-sm font-bold text-emerald-100 uppercase tracking-widest">Target achieved in focus</p>
+              </div>
+            </div>
+
+            {/* Filters Panel */}
+            <div className="bg-white/70 backdrop-blur-xl p-8 rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 mb-20 animate-slideIn">
+              <div className="flex flex-col lg:flex-row items-center gap-10">
+                <div className="flex items-center gap-4 py-2 px-6 bg-blue-50/50 rounded-2xl border border-blue-100 w-full lg:w-auto">
+                  <Filter size={20} className="text-[#003B73]" />
+                  <span className="font-black text-[#003B73] uppercase text-xs tracking-widest min-w-[80px]">Quick Filters</span>
+                </div>
+
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Subject Status</label>
+                    <CustomSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                      <option value="ALL">All States</option>
+                      <option value="PENDING">Awaiting Approval</option>
+                      <option value="COMPLETED">Fully Validated</option>
+                    </CustomSelect>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Department</label>
+                    <CustomSelect value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                      <option value="">All Disciplines</option>
+                      {departments.map((d) => <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>)}
+                    </CustomSelect>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Semester</label>
+                    <CustomSelect value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)}>
+                      <option value="">All Semesters</option>
+                      {semesters.map((sem) => <option key={sem} value={sem}>Semester {sem}</option>)}
+                    </CustomSelect>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content */}
+            {renderSubjectGrid()}
+          </>
+        )}
       </div>
     </div>
   );

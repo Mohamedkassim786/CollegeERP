@@ -46,9 +46,15 @@ const getSubjects = async (req, res) => {
 const createSubject = async (req, res) => {
     const { code, name, department, semester, type, credits, shortName, subjectCategory, theoryCredit, labCredit, hasRelativeGrade } = req.body;
     try {
+        // ✅ FIX Bug #13: Validate subjectCategory before storing
+        const VALID_CATEGORIES = ['THEORY', 'LAB', 'INTEGRATED'];
+        const category = subjectCategory || 'THEORY';
+        if (!VALID_CATEGORIES.includes(category)) {
+            return res.status(400).json({ message: `Invalid subjectCategory '${category}'. Must be one of: THEORY, LAB, INTEGRATED` });
+        }
+
         // Auto-compute credits based on category
         let finalCredits = parseInt(credits) || 3;
-        const category = subjectCategory || 'THEORY';
         if (category === 'LAB') {
             finalCredits = parseInt(labCredit) || 1;
         } else if (category === 'INTEGRATED') {

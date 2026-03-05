@@ -23,9 +23,9 @@ exports.getAssignedDummyList = async (req, res) => {
 
         const category = assignment.subject?.subjectCategory || 'THEORY';
 
-        if (category === 'LAB' || category === 'INTEGRATED') {
-            // LAB/INTEGRATED: no dummy masking — fetch students from Marks table
-            // (These subjects skip dummy mapping and go directly to external staff)
+        if (category === 'LAB') {
+            // Pure LAB: no dummy masking — fetch students from Marks table
+            // External examiner enters /100, converted to /40 in display/calc
             const marksRecords = await prisma.marks.findMany({
                 where: { subjectId: assignment.subjectId },
                 include: {
@@ -36,16 +36,15 @@ exports.getAssignedDummyList = async (req, res) => {
                 orderBy: { student: { registerNumber: 'asc' } }
             });
 
-            // Also fetch any already-submitted external marks for this subject
+            // Fetch any already-submitted external marks for this subject
             const externalMarks = await prisma.externalMark.findMany({
-                where: { subjectId: assignment.subjectId }
+                where: { subjectId: assignment.subjectId, component: 'THEORY' }
             });
-            // Key by registerNumber since no dummy number
             const extMap = {};
             externalMarks.forEach(em => { extMap[em.dummyNumber] = em.rawExternal100; });
 
             const resultList = marksRecords.map(m => ({
-                dummyNumber: m.student?.registerNumber || '',  // use registerNumber as key
+                dummyNumber: m.student?.registerNumber || '',
                 registerNumber: m.student?.registerNumber || '',
                 name: m.student?.name || '',
                 department: m.student?.department || '',
@@ -58,24 +57,108 @@ exports.getAssignedDummyList = async (req, res) => {
                 subjectCode: assignment.subject.code,
                 subjectId: assignment.subjectId,
                 subjectCategory: category,
+                component: 'THEORY',
+                maxMark: 100,
+                convertedMax: 40,
                 deadline: assignment.deadline,
                 dummyList: resultList
             });
         }
 
-        // THEORY: return dummy numbers only
+        if (category === 'INTEGRATED') {
+            // INTEGRATED: external has TWO components — THEORY (via dummies) and LAB (via register number)
+            // Determine which component is being requested
+            const component = req.query.component || 'THEORY';
+
+            if (component === 'LAB') {
+                // LAB component: show register numbers + names, max 100 (converts to 25)
+                const marksRecords = await prisma.marks.findMany({
+                    where: { subjectId: assignment.subjectId },
+                    include: {
+                        student: {
+                            select: { id: true, registerNumber: true, name: true, department: true }
+                        }
+                    },
+                    orderBy: { student: { registerNumber: 'asc' } }
+                });
+
+                const externalMarks = await prisma.externalMark.findMany({
+                    where: { subjectId: assignment.subjectId, component: 'LAB' }
+                });
+                const extMap = {};
+                externalMarks.forEach(em => { extMap[em.dummyNumber] = em.rawExternal100; });
+
+                const resultList = marksRecords.map(m => ({
+                    dummyNumber: m.student?.registerNumber || '',
+                    registerNumber: m.student?.registerNumber || '',
+                    name: m.student?.name || '',
+                    department: m.student?.department || '',
+                    isAbsent: false,
+                    mark: extMap[m.student?.registerNumber] ?? null
+                }));
+
+                return res.json({
+                    subject: assignment.subject.name,
+                    subjectCode: assignment.subject.code,
+                    subjectId: assignment.subjectId,
+                    subjectCategory: category,
+                    component: 'LAB',
+                    maxMark: 100,
+                    convertedMax: 25,
+                    deadline: assignment.deadline,
+                    dummyList: resultList
+                });
+            }
+
+            // THEORY component: show dummy numbers (anonymous), max 100 (converts to 25)
+            const mappings = await prisma.subjectDummyMapping.findMany({
+                where: { subjectId: assignment.subjectId, mappingLocked: true, isAbsent: false },
+                select: { dummyNumber: true },
+                orderBy: { dummyNumber: 'asc' }
+            });
+
+            const externalMarks = await prisma.externalMark.findMany({
+                where: { subjectId: assignment.subjectId, component: 'THEORY' }
+            });
+            const extMap = {};
+            externalMarks.forEach(em => { extMap[em.dummyNumber] = em.rawExternal100; });
+
+            return res.json({
+                subject: assignment.subject.name,
+                subjectCode: assignment.subject.code,
+                subjectId: assignment.subjectId,
+                subjectCategory: category,
+                component: 'THEORY',
+                maxMark: 100,
+                convertedMax: 25,
+                deadline: assignment.deadline,
+                dummyList: mappings.map(m => ({ dummyNumber: m.dummyNumber, mark: extMap[m.dummyNumber] ?? null }))
+            });
+        }
+
+        // THEORY: return dummy numbers only, max 100 (converts to 60)
         const mappings = await prisma.subjectDummyMapping.findMany({
             where: { subjectId: assignment.subjectId, mappingLocked: true, isAbsent: false },
             select: { dummyNumber: true, marks: true },
             orderBy: { dummyNumber: 'asc' }
         });
 
+        const existingExtMarks = await prisma.externalMark.findMany({
+            where: { subjectId: assignment.subjectId, component: 'THEORY' }
+        });
+        const extMap = {};
+        existingExtMarks.forEach(em => { extMap[em.dummyNumber] = em.rawExternal100; });
+
         res.json({
             subject: assignment.subject.name,
+            subjectCode: assignment.subject.code,
             subjectId: assignment.subjectId,
             subjectCategory: category,
+            component: 'THEORY',
+            maxMark: 100,
+            convertedMax: 60,
             deadline: assignment.deadline,
-            dummyList: mappings.map(m => ({ dummyNumber: m.dummyNumber, mark: m.marks }))
+            dummyList: mappings.map(m => ({ dummyNumber: m.dummyNumber, mark: extMap[m.dummyNumber] ?? m.marks }))
         });
 
     } catch (error) {
@@ -91,49 +174,60 @@ exports.submitMarks = async (req, res) => {
         }
 
         const staffId = req.user.id;
-        const { subjectId, marks } = req.body; // marks = [{ dummyNumber, rawMark }]
+        // component: 'THEORY' | 'LAB' — for INTEGRATED subjects only. Ignored for pure THEORY/LAB.
+        const { subjectId, marks, component: reqComponent } = req.body;
 
         if (!Array.isArray(marks)) {
             return res.status(400).json({ message: "Invalid marks format" });
         }
 
         const subjectInt = parseInt(subjectId);
-
-        // Fetch subject to determine category
         const subject = await prisma.subject.findUnique({ where: { id: subjectInt } });
         const category = subject?.subjectCategory || 'THEORY';
+
+        // Determine the component tag and conversion factor
+        // THEORY:     raw/100 → stored, converted = raw/100*60
+        // LAB:        raw/100 → converted = raw/100*40
+        // INTEGRATED THEORY component: raw/100 → converted = raw/100*25
+        // INTEGRATED LAB component:    raw/100 → converted = raw/100*25
+        let component = 'THEORY';
+        let convertFactor = 60; // used for THEORY and INTEGRATED THEORY
+        if (category === 'LAB') {
+            component = 'THEORY'; // pure LAB only has one external component, tagged THEORY
+            convertFactor = 40;
+        } else if (category === 'INTEGRATED') {
+            component = reqComponent === 'LAB' ? 'LAB' : 'THEORY';
+            convertFactor = 25; // both INTEGRATED components /100 → /25
+        }
+        // For pure THEORY: component='THEORY', convertFactor=60
 
         await prisma.$transaction(async (tx) => {
             for (const entry of marks) {
                 const { dummyNumber, rawMark } = entry;
                 const raw = parseFloat(rawMark);
-                if (isNaN(raw) || raw < 0) continue;
+                if (isNaN(raw) || raw < 0 || raw > 100) continue;
 
-                // Max allowed differs by category
-                const maxAllowed = category === 'LAB' ? 40 : category === 'INTEGRATED' ? 50 : 100;
-                if (raw > maxAllowed) continue;
+                const converted = (raw / 100) * convertFactor;
 
-                const converted60 = category === 'THEORY' ? (raw / 100) * 60 : raw;
-
-                // Only update dummy mapping for THEORY subjects (LAB/INTEGRATED skip dummy mapping)
-                if (category === 'THEORY') {
+                // Mirror raw mark into SubjectDummyMapping for THEORY external of THEORY/INTEGRATED subjects
+                if ((category === 'THEORY' || (category === 'INTEGRATED' && component === 'THEORY'))) {
                     await tx.subjectDummyMapping.updateMany({
                         where: { dummyNumber, subjectId: subjectInt },
                         data: { marks: raw }
                     });
                 }
 
-                // For LAB/INTEGRATED: dummyNumber holds the register number (unique key per subject)
                 await tx.externalMark.upsert({
                     where: {
-                        subjectId_dummyNumber: {
+                        subjectId_dummyNumber_component: {
                             subjectId: subjectInt,
-                            dummyNumber
+                            dummyNumber,
+                            component
                         }
                     },
                     update: {
                         rawExternal100: raw,
-                        convertedExternal60: converted60,
+                        convertedExternal60: converted,
                         submittedBy: staffId,
                         submittedAt: new Date(),
                         isApproved: true
@@ -141,8 +235,9 @@ exports.submitMarks = async (req, res) => {
                     create: {
                         subjectId: subjectInt,
                         dummyNumber,
+                        component,
                         rawExternal100: raw,
-                        convertedExternal60: converted60,
+                        convertedExternal60: converted,
                         submittedBy: staffId,
                         isApproved: true
                     }
@@ -155,7 +250,7 @@ exports.submitMarks = async (req, res) => {
             });
         });
 
-        res.json({ message: "Marks submitted successfully", count: marks.length, subjectCategory: category });
+        res.json({ message: "Marks submitted successfully", count: marks.length, subjectCategory: category, component });
 
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -165,7 +260,8 @@ exports.submitMarks = async (req, res) => {
 // ─── Admin: Submit external marks directly (bypasses staff assignment) ─────────
 exports.submitMarksAdmin = async (req, res) => {
     try {
-        const { subjectId, marks } = req.body; // marks = [{ dummyNumber, rawMark }]
+        // component: 'THEORY' | 'LAB' — relevant only for INTEGRATED subjects
+        const { subjectId, marks, component: reqComponent } = req.body;
 
         if (!Array.isArray(marks) || !subjectId) {
             return res.status(400).json({ message: 'subjectId and marks array required' });
@@ -175,18 +271,27 @@ exports.submitMarksAdmin = async (req, res) => {
         const subject = await prisma.subject.findUnique({ where: { id: subjectInt } });
         const category = subject?.subjectCategory || 'THEORY';
 
+        // Same conversion logic as submitMarks
+        // THEORY: /100 → /60, LAB: /100 → /40, INTEGRATED THEORY: /100 → /25, INTEGRATED LAB: /100 → /25
+        let component = 'THEORY';
+        let convertFactor = 60;
+        if (category === 'LAB') {
+            component = 'THEORY';
+            convertFactor = 40;
+        } else if (category === 'INTEGRATED') {
+            component = reqComponent === 'LAB' ? 'LAB' : 'THEORY';
+            convertFactor = 25;
+        }
+
         await prisma.$transaction(async (tx) => {
             for (const entry of marks) {
                 const { dummyNumber, rawMark } = entry;
                 const raw = parseFloat(rawMark);
-                if (isNaN(raw) || raw < 0) continue;
+                if (isNaN(raw) || raw < 0 || raw > 100) continue;
 
-                const maxAllowed = category === 'LAB' ? 40 : category === 'INTEGRATED' ? 50 : 60;
-                if (raw > maxAllowed) continue;
+                const converted = (raw / 100) * convertFactor;
 
-                const converted60 = category === 'THEORY' ? raw : raw; // already in correct scale
-
-                if (category === 'THEORY') {
+                if (category === 'THEORY' || (category === 'INTEGRATED' && component === 'THEORY')) {
                     await tx.subjectDummyMapping.updateMany({
                         where: { dummyNumber, subjectId: subjectInt },
                         data: { marks: raw }
@@ -195,14 +300,15 @@ exports.submitMarksAdmin = async (req, res) => {
 
                 await tx.externalMark.upsert({
                     where: {
-                        subjectId_dummyNumber: {
+                        subjectId_dummyNumber_component: {
                             subjectId: subjectInt,
-                            dummyNumber
+                            dummyNumber,
+                            component
                         }
                     },
                     update: {
                         rawExternal100: raw,
-                        convertedExternal60: converted60,
+                        convertedExternal60: converted,
                         submittedBy: req.user.id,
                         submittedAt: new Date(),
                         isApproved: true
@@ -210,8 +316,9 @@ exports.submitMarksAdmin = async (req, res) => {
                     create: {
                         subjectId: subjectInt,
                         dummyNumber,
+                        component,
                         rawExternal100: raw,
-                        convertedExternal60: converted60,
+                        convertedExternal60: converted,
                         submittedBy: req.user.id,
                         isApproved: true
                     }
@@ -219,7 +326,7 @@ exports.submitMarksAdmin = async (req, res) => {
             }
         });
 
-        res.json({ message: `External marks saved for ${marks.length} student(s)`, subjectCategory: category });
+        res.json({ message: `External marks saved for ${marks.length} student(s)`, subjectCategory: category, component });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -228,24 +335,31 @@ exports.submitMarksAdmin = async (req, res) => {
 // ─── Generate Statement of Marks PDF ─────────────────────────────────────────
 exports.generateStatementPDF = async (req, res) => {
     try {
-        const { subjectId, dateSession, qpCode, packetNo } = req.query;
+        const { subjectId, dateSession, qpCode, packetNo, component } = req.query;
         const subIdInt = parseInt(subjectId);
 
         const subject = await prisma.subject.findUnique({ where: { id: subIdInt } });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
 
         const category = subject.subjectCategory || 'THEORY';
+        // For INTEGRATED: component query param decides which PDF to generate
+        // component='THEORY' → Theory Statement (dummy numbers)
+        // component='LAB'    → Lab Statement (register numbers)
+        const pdfComponent = (category === 'INTEGRATED') ? (component || 'THEORY') : null;
 
         let entries = [];
 
-        if (category === 'LAB' || category === 'INTEGRATED') {
-            // LAB/INTEGRATED: no dummy mapping — use externalMark records keyed by registerNumber
+        if (category === 'LAB' || (category === 'INTEGRATED' && pdfComponent === 'LAB')) {
+            // LAB-type: use externalMark records keyed by registerNumber (component=LAB for INTEGRATED)
+            const whereFilter = category === 'LAB'
+                ? { subjectId: subIdInt }
+                : { subjectId: subIdInt, component: 'LAB' };
+
             const externalMarks = await prisma.externalMark.findMany({
-                where: { subjectId: subIdInt },
-                orderBy: { dummyNumber: 'asc' }
+                where: whereFilter,
+                orderBy: { dummyNumber: 'asc' }  // dummyNumber = registerNumber for LAB
             });
 
-            // Fetch all students who have marks for this subject (for name/dept lookup)
             const marksRecords = await prisma.marks.findMany({
                 where: { subjectId: subIdInt },
                 include: {
@@ -260,7 +374,6 @@ exports.generateStatementPDF = async (req, res) => {
             entries = externalMarks.map(em => {
                 const stu = studentMap[em.dummyNumber] || {};
                 return {
-                    dummyNumber: em.dummyNumber,   // registerNumber used as key
                     registerNumber: em.dummyNumber,
                     name: stu.name || '',
                     department: stu.department || subject.department || '',
@@ -268,27 +381,37 @@ exports.generateStatementPDF = async (req, res) => {
                 };
             });
         } else {
-            // THEORY: use dummy mappings
+            // THEORY or INTEGRATED THEORY component: use dummy mappings
+            const whereFilter = category === 'INTEGRATED'
+                ? { subjectId: subIdInt, mappingLocked: true, component: 'THEORY' }  // only theory-mapped
+                : { subjectId: subIdInt, mappingLocked: true };
+
+            const externalMarks = await prisma.externalMark.findMany({
+                where: { subjectId: subIdInt, component: 'THEORY' },
+                orderBy: { dummyNumber: 'asc' }
+            });
+            const extMap = {};
+            externalMarks.forEach(em => { extMap[em.dummyNumber] = em.rawExternal100; });
+
             const mappings = await prisma.subjectDummyMapping.findMany({
                 where: { subjectId: subIdInt, mappingLocked: true },
-                include: {
-                    student: { select: { registerNumber: true, name: true, department: true } }
-                },
+                include: { student: { select: { registerNumber: true, name: true, department: true } } },
                 orderBy: { dummyNumber: 'asc' }
             });
             entries = mappings.map(m => ({
                 dummyNumber: m.dummyNumber,
                 registerNumber: m.student?.registerNumber || '',
                 department: m.student?.department || '',
-                marks: m.marks
+                marks: extMap[m.dummyNumber] ?? m.marks ?? null
             }));
         }
 
-        const filename = `Statement_${subject.code}_${category}.pdf`;
+        const compLabel = pdfComponent ? `_${pdfComponent}` : '';
+        const filename = `Statement_${subject.code}${compLabel}_${category}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-        if (category === 'LAB' || category === 'INTEGRATED') {
+        if (category === 'LAB' || (category === 'INTEGRATED' && pdfComponent === 'LAB')) {
             pdfService.generateLabStatementOfMarks(res, {
                 subject,
                 entries,
@@ -301,8 +424,9 @@ exports.generateStatementPDF = async (req, res) => {
                 entries,
                 dateSession: dateSession || '',
                 qpCode: qpCode || '',
-                packetNo: packetNo || '',
-                boardName: ''
+                packetNoBase: parseInt(packetNo) || 1,
+                examTitle: `END SEMESTER ${category === 'INTEGRATED' ? 'THEORY ' : ''}EXAMINATIONS NOV/DEC ${new Date().getFullYear()}`,
+                boardName: subject.boardName || ''
             });
         }
     } catch (error) {

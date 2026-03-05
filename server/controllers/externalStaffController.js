@@ -32,9 +32,10 @@ exports.getAllAssignmentsForAdmin = async (req, res) => {
 
 exports.assignMarkEntry = async (req, res) => {
     try {
-        const { staffId, subjectId, deadline } = req.body;
+        const { staffId, subjectId, component, deadline } = req.body;
 
         const subIdInt = parseInt(subjectId);
+        const comp = component || 'THEORY';
 
         // Fetch subject to check category
         const subject = await prisma.subject.findUnique({ where: { id: subIdInt } });
@@ -42,8 +43,16 @@ exports.assignMarkEntry = async (req, res) => {
 
         const category = subject.subjectCategory || 'THEORY';
 
-        // 🧱 For THEORY subjects: dummy mapping must be locked before assignment
-        if (category === 'THEORY') {
+        // 🧱 For THEORY subjects (and Integrated Theory): internal approval + dummy mapping must be locked
+        if (category === 'THEORY' || (category === 'INTEGRATED' && comp === 'THEORY')) {
+            // Check Internal Approval Gate
+            const internalApproved = await prisma.marks.findFirst({
+                where: { subjectId: subIdInt, isApproved: true }
+            });
+            if (!internalApproved) {
+                return res.status(400).json({ message: 'Internal marks must be approved before external assignment' });
+            }
+
             const dummyMapping = await prisma.subjectDummyMapping.findFirst({
                 where: { subjectId: subIdInt }
             });
@@ -53,25 +62,34 @@ exports.assignMarkEntry = async (req, res) => {
             if (!dummyMapping.mappingLocked) {
                 return res.status(400).json({ message: 'Dummy mapping must be locked before assignment' });
             }
+        } else if (category === 'LAB' || (category === 'INTEGRATED' && comp === 'LAB')) {
+            // Check Internal Approval Gate for Lab
+            const internalApproved = await prisma.marks.findFirst({
+                where: { subjectId: subIdInt, isApproved: true }
+            });
+            if (!internalApproved) {
+                return res.status(400).json({ message: 'Internal marks must be approved before external assignment' });
+            }
         }
-        // LAB and INTEGRATED: no dummy mapping required — external staff works by register number
 
-        // Check if already assigned and not completed
+        // Check if already assigned for THIS component
         const existingAssignment = await prisma.externalMarkAssignment.findFirst({
             where: {
                 subjectId: subIdInt,
+                component: comp,
                 status: { in: ['PENDING', 'SUBMITTED', 'COMPLETED'] }
             }
         });
 
         if (existingAssignment) {
-            return res.status(400).json({ message: 'Subject already assigned or valuation completed' });
+            return res.status(400).json({ message: `This subject's ${comp} component is already assigned` });
         }
 
         const assignment = await prisma.externalMarkAssignment.create({
             data: {
                 staffId: parseInt(staffId),
                 subjectId: subIdInt,
+                component: comp,
                 deadline: new Date(deadline),
                 status: 'PENDING'
             }
@@ -84,42 +102,60 @@ exports.assignMarkEntry = async (req, res) => {
 
 exports.getAvailableSubjectsForAssignment = async (req, res) => {
     try {
-        // Already-assigned subject IDs (to exclude)
+        // Active assignments to exclude
         const activeAssignments = await prisma.externalMarkAssignment.findMany({
             where: { status: { in: ['PENDING', 'SUBMITTED', 'COMPLETED', 'LOCKED'] } },
+            select: { subjectId: true, component: true }
+        });
+
+        // 1. THEORY and INTEGRATED (Theory) — must have internal approval + locked dummy mapping
+        const theoryLockedDummies = await prisma.subjectDummyMapping.findMany({
+            where: { mappingLocked: true },
             select: { subjectId: true }
         });
-        const assignedIds = activeAssignments.map(a => a.subjectId);
+        const lockedDummyIds = theoryLockedDummies.map(d => d.subjectId);
 
-        // 1. THEORY subjects — must have locked dummy mapping
-        const theorySubjectsWithLockedDummies = await prisma.subjectDummyMapping.findMany({
-            where: { mappingLocked: true },
+        // Subjects with at least one approved internal mark student
+        const internalApprovedSubjects = await prisma.marks.findMany({
+            where: { isApproved: true },
             select: { subjectId: true },
             distinct: ['subjectId']
         });
-        const theoryIds = theorySubjectsWithLockedDummies.map(d => d.subjectId)
-            .filter(id => !assignedIds.includes(id));
+        const approvedSubjectIds = internalApprovedSubjects.map(m => m.subjectId);
 
-        // 2. LAB and INTEGRATED subjects
-        // These can be assigned as soon as they exist (no dummy mapping required)
-        const labIntegratedSubjects = await prisma.subject.findMany({
-            where: {
-                subjectCategory: { in: ['LAB', 'INTEGRATED'] },
-                id: { notIn: assignedIds }
-            },
-            select: { id: true }
-        });
-        const labIntegratedIds = labIntegratedSubjects.map(s => s.id);
-
-        // Combine all qualifying IDs
-        const allQualifyingIds = [...new Set([...theoryIds, ...labIntegratedIds])];
-
-        const availableSubjects = await prisma.subject.findMany({
-            where: { id: { in: allQualifyingIds } },
-            orderBy: [{ subjectCategory: 'asc' }, { semester: 'asc' }]
+        // Fetch all subjects to filter
+        const allSubjects = await prisma.subject.findMany({
+            where: { id: { in: approvedSubjectIds } }
         });
 
-        res.json(availableSubjects);
+        const available = [];
+
+        for (const sub of allSubjects) {
+            const category = sub.subjectCategory || 'THEORY';
+
+            if (category === 'THEORY') {
+                if (lockedDummyIds.includes(sub.id)) {
+                    const isAssigned = activeAssignments.some(a => a.subjectId === sub.id && a.component === 'THEORY');
+                    if (!isAssigned) available.push({ ...sub, componentSlot: 'THEORY' });
+                }
+            } else if (category === 'LAB') {
+                const isAssigned = activeAssignments.some(a => a.subjectId === sub.id && a.component === 'LAB');
+                if (!isAssigned) available.push({ ...sub, componentSlot: 'LAB' });
+            } else if (category === 'INTEGRATED') {
+                // Check Theory slot
+                const theoryAssigned = activeAssignments.some(a => a.subjectId === sub.id && a.component === 'THEORY');
+                if (!theoryAssigned && lockedDummyIds.includes(sub.id)) {
+                    available.push({ ...sub, componentSlot: 'THEORY', displayName: `${sub.name} (Theory)` });
+                }
+                // Check Lab slot
+                const labAssigned = activeAssignments.some(a => a.subjectId === sub.id && a.component === 'LAB');
+                if (!labAssigned) {
+                    available.push({ ...sub, componentSlot: 'LAB', displayName: `${sub.name} (Lab)` });
+                }
+            }
+        }
+
+        res.json(available);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

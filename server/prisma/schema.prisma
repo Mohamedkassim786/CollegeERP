@@ -354,12 +354,15 @@ model ExternalMarkAssignment {
   id        Int      @id @default(autoincrement())
   staffId   Int
   subjectId Int
+  component String   @default("THEORY") // "THEORY" or "LAB"
   deadline  DateTime
   status    String   @default("PENDING")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   subject   Subject  @relation(fields: [subjectId], references: [id])
   staff     User     @relation("ExternalStaffAssignments", fields: [staffId], references: [id])
+
+  @@unique([staffId, subjectId, component])
 }
 
 model FacultyAbsence {
@@ -435,6 +438,7 @@ model ExternalMark {
   id                  Int      @id @default(autoincrement())
   subjectId           Int
   dummyNumber         String
+  component           String   @default("THEORY")  // "THEORY" or "LAB"
   rawExternal100      Float
   convertedExternal60 Float
   submittedBy         Int
@@ -445,10 +449,11 @@ model ExternalMark {
   subject   Subject @relation(fields: [subjectId], references: [id])
   evaluator User    @relation("ExternalEvaluator", fields: [submittedBy], references: [id])
 
-  @@unique([subjectId, dummyNumber])
+  @@unique([subjectId, dummyNumber, component])
   @@index([dummyNumber])
   @@index([subjectId])
 }
+
 
 model ExamSession {
   id        Int      @id @default(autoincrement())

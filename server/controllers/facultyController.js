@@ -200,12 +200,15 @@ const getClassAttendance = async (req, res) => {
             orderBy: { date: 'desc' }
         });
 
+        // ✅ FIX Bug #3: Group by date+period (not just date).
+        // If same class has 2 periods on the same date, they should be counted separately.
         const grouped = {};
         attendance.forEach(r => {
-            if (!grouped[r.date]) grouped[r.date] = { date: r.date, present: 0, absent: 0, total: 0 };
-            grouped[r.date].total++;
-            if (r.status === 'PRESENT' || r.status === 'OD') grouped[r.date].present++;
-            else grouped[r.date].absent++;
+            const key = `${r.date}__P${r.period}`; // unique key per date+period slot
+            if (!grouped[key]) grouped[key] = { date: r.date, period: r.period, present: 0, absent: 0, total: 0 };
+            grouped[key].total++;
+            if (r.status === 'PRESENT' || r.status === 'OD') grouped[key].present++;
+            else grouped[key].absent++;
         });
 
         const result = Object.values(grouped).map(d => ({
@@ -366,8 +369,7 @@ const getFacultyDashboardStats = async (req, res) => {
         const submittedMarksEntries = assignmentStats.reduce((sum, a) => sum + a.marksCount, 0);
         const submissionPercentage = totalMarksEntries > 0 ? Math.round((submittedMarksEntries / totalMarksEntries) * 100) : 0;
 
-        // All marks across assignments (already fetched above)
-        const allInternals = assignmentStats.flatMap(a => []);
+        // ✅ FIX: removed dead `allInternals` variable that was always empty and unused
         const avgPerformance = classPerformance.length > 0
             ? (classPerformance.reduce((s, a) => s + a.average, 0) / classPerformance.length).toFixed(1)
             : '0.0';

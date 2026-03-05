@@ -49,15 +49,9 @@ const DummyNumberManager = () => {
   const fetchSubjects = async (sem) => {
     if (!sem) return;
     try {
-      // Fetch subjects by semester, then filter to THEORY only
-      // (LAB and INTEGRATED subjects skip dummy mapping and go directly to external staff)
-      const res = await api.get(
-        `/admin/subjects?semester=${encodeURIComponent(sem)}`,
-      );
-      const theoryOnly = res.data.filter(
-        (s) => s.subjectCategory === "THEORY" || !s.subjectCategory
-      );
-      setSubjects(theoryOnly);
+      // Use the specialized endpoint that enforces internal approval gates
+      const res = await api.get(`/dummy/get-available?semester=${encodeURIComponent(sem)}`);
+      setSubjects(res.data);
     } catch (err) {
       toast.error("Failed to fetch subjects");
     }

@@ -169,26 +169,32 @@ const approveMarks = async (req, res) => {
         const updateData = {};
         if (exam === 'cia1') {
             updateData.isApproved_cia1 = true;
+            updateData.approvedBy = adminId;   // ✅ FIX: track who approved
+            updateData.approvedAt = new Date();
             if (lock) updateData.isLocked_cia1 = true;
         } else if (exam === 'cia2') {
             updateData.isApproved_cia2 = true;
+            updateData.approvedBy = adminId;
+            updateData.approvedAt = new Date();
             if (lock) updateData.isLocked_cia2 = true;
         } else if (exam === 'cia3') {
             updateData.isApproved_cia3 = true;
+            updateData.approvedBy = adminId;
+            updateData.approvedAt = new Date();
             if (lock) updateData.isLocked_cia3 = true;
         } else if (exam === 'internal' || exam === 'lab_marks' || exam === 'integrated_lab') {
-            // 'internal' = final internal approval (THEORY)
-            // 'lab_marks' = final internal approval (LAB)
-            // 'integrated_lab' = final internal approval (INTEGRATED) - combined theory CIA + lab
             updateData.isApproved = true;
             updateData.approvedBy = adminId;
             updateData.approvedAt = new Date();
             if (lock) updateData.isLocked = true;
         } else {
+            // Approve all CIAs + final internal
             updateData.isApproved_cia1 = true;
             updateData.isApproved_cia2 = true;
             updateData.isApproved_cia3 = true;
             updateData.isApproved = true;
+            updateData.approvedBy = adminId;
+            updateData.approvedAt = new Date();
             if (lock) {
                 updateData.isLocked_cia1 = true;
                 updateData.isLocked_cia2 = true;
@@ -211,6 +217,7 @@ const approveAllMarks = async (req, res) => {
     const adminId = req.user.id;
     try {
         const updateData = {
+            isApproved: true,        // ✅ FIX: was missing — marks stayed in pending queue
             isApproved_cia1: true,
             isApproved_cia2: true,
             isApproved_cia3: true,
@@ -218,6 +225,7 @@ const approveAllMarks = async (req, res) => {
             approvedAt: new Date()
         };
         if (lock) {
+            updateData.isLocked = true;
             updateData.isLocked_cia1 = true;
             updateData.isLocked_cia2 = true;
             updateData.isLocked_cia3 = true;

@@ -128,188 +128,217 @@ const ExamControlCenter = () => {
   };
 
   return (
-    <div className="w-full animate-fadeIn">
-      <div className="flex justify-between items-center mb-10">
-        <div>
-          <h1 className="text-4xl font-black text-[#003B73] tracking-tight flex items-center gap-3">
-            <Award className="text-blue-600" size={32} /> Exam Control Center
-          </h1>
-          <p className="text-gray-500 font-medium mt-1">
-            Manage mark entry, result publication, and semester locking.
-          </p>
-        </div>
+    <div className="w-full animate-fadeIn pb-12">
+      <div className="flex flex-col mb-10">
+        <h1 className="text-4xl font-black text-[#003B73] tracking-tight flex items-center gap-3">
+          <Award className="text-blue-600" size={32} /> Central Examination Control
+        </h1>
+        <p className="text-gray-500 font-medium mt-1">
+          Governing mark entry windows, result publication status, and final semester locking.
+        </p>
       </div>
 
-      {/* Filter Card */}
-      <div className="bg-white p-8 rounded-[32px] shadow-xl shadow-blue-900/5 border border-gray-100 mb-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-              Department
-            </label>
-            <CustomSelect
-              className="w-full"
-              value={status.department}
-              onChange={(e) =>
-                setStatus({ ...status, department: e.target.value })
-              }
-            >
-              <option value="">Select...</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.code || d.name}>
-                  {d.code || d.name}
-                </option>
-              ))}
-            </CustomSelect>
-          </div>
-          <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-              Semester
-            </label>
-            <CustomSelect
-              className="w-full"
-              value={status.semester}
-              onChange={(e) => {
-                const sem = parseInt(e.target.value);
-                const year = Math.ceil(sem / 2);
-                setStatus({
-                  ...status,
-                  semester: e.target.value,
-                  year: year.toString(),
-                });
-              }}
-            >
-              <option value="">Select...</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                <option key={s} value={s}>
-                  Sem {s}
-                </option>
-              ))}
-            </CustomSelect>
-          </div>
-          <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-              Section
-            </label>
-            <CustomSelect
-              className="w-full"
-              value={status.section}
-              onChange={(e) =>
-                setStatus({ ...status, section: e.target.value })
-              }
-            >
-              <option value="">Select...</option>
-              {["A", "B", "C", "D"].map((s) => (
-                <option key={s} value={s}>
-                  Section {s}
-                </option>
-              ))}
-            </CustomSelect>
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={fetchCurrentStatus}
-              disabled={loading}
-              className="w-full bg-[#003B73] text-white py-4 rounded-2xl hover:bg-blue-800 transition-all font-black shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <RefreshCw className="animate-spin" size={20} />
-              ) : (
-                <Filter size={20} />
-              )}
-              Refresh Status
-            </button>
-          </div>
+      {/* Filter Toolbar */}
+      <div className="bg-white p-6 rounded-[28px] shadow-sm border border-gray-100 mb-8 flex flex-wrap items-end gap-6">
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+            Department
+          </label>
+          <CustomSelect
+            className="w-full"
+            value={status.department}
+            onChange={(e) =>
+              setStatus({ ...status, department: e.target.value })
+            }
+          >
+            <option value="">Select Department...</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.code || d.name}>
+                {d.code || d.name}
+              </option>
+            ))}
+          </CustomSelect>
         </div>
+        <div className="w-40">
+          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+            Semester
+          </label>
+          <CustomSelect
+            className="w-full"
+            value={status.semester}
+            onChange={(e) => {
+              const sem = parseInt(e.target.value);
+              const year = Math.ceil(sem / 2);
+              setStatus({
+                ...status,
+                semester: e.target.value,
+                year: year.toString(),
+              });
+            }}
+          >
+            <option value="">Choose...</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+              <option key={s} value={s}>
+                Semester {s}
+              </option>
+            ))}
+          </CustomSelect>
+        </div>
+        <div className="w-40">
+          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+            Section
+          </label>
+          <CustomSelect
+            className="w-full"
+            value={status.section}
+            onChange={(e) =>
+              setStatus({ ...status, section: e.target.value })
+            }
+          >
+            <option value="">Choose...</option>
+            {["A", "B", "C", "D"].map((s) => (
+              <option key={s} value={s}>
+                Section {s}
+              </option>
+            ))}
+          </CustomSelect>
+        </div>
+        <button
+          onClick={fetchCurrentStatus}
+          disabled={loading || !status.department || !status.semester || !status.section}
+          className="bg-[#003B73] text-white h-[52px] px-8 rounded-2xl hover:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400 transition-all font-black flex items-center gap-2"
+        >
+          {loading ? <RefreshCw className="animate-spin" size={20} /> : <Filter size={20} />}
+          Check Status
+        </button>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 text-gray-400">
-          <RefreshCw size={56} className="animate-spin mb-6 text-blue-600/30" />
-          <p className="font-bold text-lg text-gray-400 font-mono tracking-widest">
-            SYNCING ENGINE STATUS...
+        <div className="flex flex-col items-center justify-center py-32">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+          <p className="font-black text-gray-400 uppercase tracking-widest animate-pulse">
+            Syncing Global Status...
+          </p>
+        </div>
+      ) : !status.department || !status.semester || !status.section ? (
+        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[40px] py-24 flex flex-col items-center text-center px-8">
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-6">
+            <Filter size={32} className="text-gray-200" />
+          </div>
+          <h3 className="text-2xl font-black text-gray-300 mb-2">Filters Required</h3>
+          <p className="text-gray-400 font-medium max-w-sm">
+            Select a department, semester and section above to view and manage examination controls.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 animate-fadeIn">
-          <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 flex flex-col items-center text-center transition-all hover:shadow-2xl hover:-translate-y-1">
-            <div
-              className={`w-16 h-16 rounded-3xl mb-6 flex items-center justify-center ${status.markEntryOpen ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}
-            >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-slideUp">
+          {/* Mark Entry Card */}
+          <div className="group relative bg-white p-10 rounded-[48px] shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-100 transition-all duration-500 overflow-hidden">
+            <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full blur-3xl opacity-20 ${status.markEntryOpen ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+
+            <div className={`w-16 h-16 rounded-3xl mb-8 flex items-center justify-center shadow-inner ${status.markEntryOpen ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
               {status.markEntryOpen ? <Lock size={32} /> : <Unlock size={32} />}
             </div>
-            <h3 className="text-xl font-black text-[#003B73] mb-4">
-              Mark Entry Controls
-            </h3>
-            <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">
-              Toggle accessibility for faculty mark entry across all subjects of
-              this semester.
-            </p>
+
+            <div className="mb-8">
+              <h3 className="text-2xl font-black text-[#003B73] mb-3">Mark Entry Window</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <span className={`w-2 h-2 rounded-full ${status.markEntryOpen ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${status.markEntryOpen ? 'text-red-600' : 'text-emerald-600'}`}>
+                  {status.markEntryOpen ? 'Current State: OPEN' : 'Current State: CLOSED'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-400 font-medium leading-relaxed">
+                Controls whether faculty members can enter or modify marks for this specific class and semester.
+              </p>
+            </div>
+
             <button
               onClick={() => toggleControl("markEntryOpen")}
-              className={`w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg transition-all ${status.markEntryOpen ? "bg-red-600 text-white hover:bg-red-700 shadow-red-900/20" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20"}`}
+              className={`w-full py-5 rounded-[24px] font-black text-lg flex items-center justify-center gap-3 transition-all ${status.markEntryOpen
+                  ? "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white"
+                  : "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white"
+                }`}
             >
-              {status.markEntryOpen ? <Lock size={20} /> : <Unlock size={20} />}
-              {status.markEntryOpen ? "Close Mark Entry" : "Open Mark Entry"}
+              {status.markEntryOpen ? "Close Entry Window" : "Open Entry Window"}
             </button>
           </div>
 
-          <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 flex flex-col items-center text-center transition-all hover:shadow-2xl hover:-translate-y-1">
-            <div
-              className={`w-16 h-16 rounded-3xl mb-6 flex items-center justify-center ${status.isPublished ? "bg-orange-50 text-orange-600" : "bg-blue-50 text-blue-600"}`}
-            >
+          {/* Results Publication Card */}
+          <div className="group relative bg-white p-10 rounded-[48px] shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-100 transition-all duration-500 overflow-hidden">
+            <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full blur-3xl opacity-20 ${status.isPublished ? 'bg-blue-500' : 'bg-orange-500'}`}></div>
+
+            <div className={`w-16 h-16 rounded-3xl mb-8 flex items-center justify-center shadow-inner ${status.isPublished ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600"}`}>
               <CheckCircle size={32} />
             </div>
-            <h3 className="text-xl font-black text-[#003B73] mb-4">
-              Result Management
-            </h3>
-            <p className="text-sm text-gray-500 font-medium mb-2 leading-relaxed">
-              Make consolidated results visible to students on their respective
-              portals.
-            </p>
-            {(!status.isLocked || status.markEntryOpen) && !status.isPublished && (
-              <p className="text-xs text-red-400 font-bold mb-4 bg-red-50 px-3 py-1 rounded-full">
-                ⚠ Close Mark Entry &amp; Lock first
+
+            <div className="mb-6">
+              <h3 className="text-2xl font-black text-[#003B73] mb-3">Results Visibility</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <span className={`w-2 h-2 rounded-full ${status.isPublished ? 'bg-blue-500 animate-pulse' : 'bg-orange-500'}`}></span>
+                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${status.isPublished ? 'text-blue-600' : 'text-orange-600'}`}>
+                  {status.isPublished ? 'Status: PUBLISHED' : 'Status: HIDDEN'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-400 font-medium leading-relaxed">
+                Determines if consolidated results and GPA are visible to students and faculty on their portals.
               </p>
+            </div>
+
+            {(!status.isLocked || status.markEntryOpen) && !status.isPublished && (
+              <div className="flex items-center gap-2 mb-6 p-3 bg-red-50 rounded-2xl border border-red-100">
+                <X size={14} className="text-red-500" />
+                <p className="text-[10px] text-red-600 font-black uppercase tracking-wider">
+                  Requirement: Lock Semester Mandatory
+                </p>
+              </div>
             )}
+
             <button
               onClick={() => toggleControl("isPublished")}
               disabled={!status.isLocked || status.markEntryOpen}
-              className={`w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg transition-all ${!status.isLocked || status.markEntryOpen
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              className={`w-full py-5 rounded-[24px] font-black text-lg flex items-center justify-center gap-3 transition-all ${!status.isLocked || status.markEntryOpen
+                  ? "bg-gray-50 text-gray-300 cursor-not-allowed"
                   : status.isPublished
-                    ? "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/20"
-                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-900/20"
+                    ? "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
+                    : "bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white"
                 }`}
             >
-              <CheckCircle size={20} />
               {status.isPublished ? "Unpublish Results" : "Publish Results"}
             </button>
           </div>
 
-          <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-blue-900/5 border border-gray-100 flex flex-col items-center text-center transition-all hover:shadow-2xl hover:-translate-y-1">
-            <div
-              className={`w-16 h-16 rounded-3xl mb-6 flex items-center justify-center ${status.isLocked ? "bg-black text-white" : "bg-gray-50 text-gray-400"}`}
-            >
+          {/* Freeze/Lock Card */}
+          <div className="group relative bg-[#000814] p-10 rounded-[48px] shadow-2xl transition-all duration-500 overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 -mr-12 -mt-12 bg-blue-600 rounded-full blur-[100px] opacity-20"></div>
+
+            <div className={`w-16 h-16 rounded-3xl mb-8 flex items-center justify-center shadow-2xl ${status.isLocked ? "bg-blue-600 text-white" : "bg-white/10 text-white/30"}`}>
               <Lock size={32} />
             </div>
-            <h3 className="text-xl font-black text-[#003B73] mb-4">
-              Permanent Lock
-            </h3>
-            <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">
-              Grant final administrative approval and freeze all semester data
-              permanently.
-            </p>
+
+            <div className="mb-10">
+              <h3 className="text-2xl font-black text-white mb-3">Permanent Freeze</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <span className={`w-2 h-2 rounded-full ${status.isLocked ? 'bg-blue-500' : 'bg-white/20'}`}></span>
+                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${status.isLocked ? 'text-blue-400' : 'text-white/30'}`}>
+                  {status.isLocked ? 'STATE: FROZEN' : 'STATE: ACTIVE'}
+                </span>
+              </div>
+              <p className="text-sm text-white/40 font-medium leading-relaxed">
+                Final administrative seal. Freezes all marks, attendance, and result data. This action is irreversible.
+              </p>
+            </div>
+
             {status.isLocked ? (
-              <div className="w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 bg-black text-white opacity-80 cursor-not-allowed select-none">
-                <Lock size={20} /> Semester Locked
+              <div className="w-full py-5 rounded-[24px] font-black text-lg flex items-center justify-center gap-3 bg-white/10 text-white/40 border border-white/10 cursor-not-allowed">
+                <Lock size={20} /> Data Securely Frozen
               </div>
             ) : (
               <button
                 onClick={() => toggleControl("isLocked")}
-                className="w-full py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg transition-all bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-gray-200/20"
+                className="w-full py-5 rounded-[24px] font-black text-lg flex items-center justify-center gap-3 bg-blue-600 text-white hover:bg-blue-500 shadow-xl shadow-blue-500/20 transition-all"
               >
-                <Lock size={20} /> Lock Semester Permanently
+                <Lock size={20} /> Lock Semester Now
               </button>
             )}
           </div>

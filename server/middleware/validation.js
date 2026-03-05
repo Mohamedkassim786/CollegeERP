@@ -45,6 +45,7 @@ const validateSubject = [
 const validateMarks = [
     body('studentId').isInt(),
     body('subjectId').isInt(),
+    // Theory CIA fields
     body('cia1_test').optional().isFloat({ min: -1, max: 100 }),
     body('cia1_assignment').optional().isFloat({ min: -1, max: 100 }),
     body('cia1_attendance').optional().isFloat({ min: -1, max: 100 }),
@@ -54,6 +55,12 @@ const validateMarks = [
     body('cia3_test').optional().isFloat({ min: -1, max: 100 }),
     body('cia3_assignment').optional().isFloat({ min: -1, max: 100 }),
     body('cia3_attendance').optional().isFloat({ min: -1, max: 100 }),
+    // ✅ FIX Bug #6: lab fields were missing range validation entirely
+    body('lab_attendance').optional().isFloat({ min: -1, max: 100 }),
+    body('lab_observation').optional().isFloat({ min: -1, max: 100 }),
+    body('lab_record').optional().isFloat({ min: -1, max: 100 }),
+    body('lab_model').optional().isFloat({ min: -1, max: 100 }),
+    body('lab_assessment').optional().isFloat({ min: -1, max: 100 }),
     validate
 ];
 
@@ -70,7 +77,13 @@ const validateTimetable = [
 // Attendance validation
 const validateAttendance = [
     body('subjectId').isInt(),
-    body('date').notEmpty().isString().matches(/^\d{4}-\d{2}-\d{2}$/),
+    body('date').notEmpty().isString().matches(/^\d{4}-\d{2}-\d{2}$/)
+        .custom(value => {
+            // ✅ FIX Bug #14: prevent attendance from being submitted for a future date
+            const today = new Date().toISOString().split('T')[0];
+            if (value > today) throw new Error('Attendance date cannot be in the future');
+            return true;
+        }),
     body('attendanceData').isArray().withMessage('Attendance data must be an array'),
     validate
 ];

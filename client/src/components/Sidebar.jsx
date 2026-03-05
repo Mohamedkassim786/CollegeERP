@@ -73,7 +73,6 @@ const Sidebar = ({ role, activePath }) => {
 
     const externalStaffMenu = [
         { label: 'Dashboard', path: '/external', icon: LayoutDashboard },
-        { label: 'Settings', path: '/external/settings', icon: SettingsIcon },
     ];
 
     const menu = role === 'ADMIN' ? adminMenu : (role === 'FACULTY' ? facultyMenu : externalStaffMenu);

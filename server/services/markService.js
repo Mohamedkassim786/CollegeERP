@@ -114,18 +114,16 @@ const checkLockStatus = async (studentId, currentMark, updatedFields) => {
     const touchingCia3 = updatedFields.some(k => cia3Fields.includes(k));
     const touchingLabOnly = updatedFields.every(k => labFields.includes(k));
 
-    // Lab-only updates are NOT subject to CIA lock checks
-    if (touchingLabOnly) return null;
-
-    // NOTE: semControl.isLocked is a STUDENT PROMOTION lock, not a mark-entry lock.
-    // Only the per-mark approval locks (isLocked_cia1/2/3) should block faculty mark editing.
-    // Do NOT check semControl.isLocked here.
-
     if (currentMark) {
+        // ✅ FIX Bug #8: Global lock always blocks editing — even for lab-only fields
+        if (currentMark.isLocked) return "Marks are globally locked by Admin. Contact admin to unlock.";
+
+        // Lab-only updates skip CIA-specific lock checks (but global lock above still applies)
+        if (touchingLabOnly) return null;
+
         if (touchingCia1 && currentMark.isLocked_cia1) return "CIA 1 marks are locked by Admin.";
         if (touchingCia2 && currentMark.isLocked_cia2) return "CIA 2 marks are locked by Admin.";
         if (touchingCia3 && currentMark.isLocked_cia3) return "CIA 3 marks are locked by Admin.";
-        if (currentMark.isLocked && (touchingCia1 || touchingCia2 || touchingCia3)) return "Marks are globally locked by Admin.";
     }
 
     return null;

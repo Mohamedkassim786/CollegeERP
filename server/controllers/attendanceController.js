@@ -39,10 +39,12 @@ const getStudentsForAttendance = async (req, res) => {
 
         const result = students.map(s => ({
             id: s.id,
-            rollNo: s.rollNo, // Added Roll No
+            rollNo: s.rollNo,
             name: s.name,
             registerNumber: s.registerNumber,
-            status: attendanceMap[s.id] || 'PRESENT'
+            // ✅ FIX Bug #9: was defaulting to 'PRESENT' — unrecorded students now show null
+            // so the UI can display a clear "not yet marked" state instead of silent Present
+            status: attendanceMap[s.id] || null
         }));
 
         res.json({ students: result, isAlreadyTaken: existingAttendance.length > 0 });
@@ -117,12 +119,17 @@ const getAttendanceReport = async (req, res) => {
             if (section) where.section = section;
         }
 
+        // ✅ FIX Bug #4: build date filter conditionally — undefined values caused silent all-time fetches
+        const dateFilter = {};
+        if (fromDate) dateFilter.gte = fromDate;
+        if (toDate) dateFilter.lte = toDate;
+
         const students = await prisma.student.findMany({
             where: { ...where },
             include: {
                 attendance: {
                     where: {
-                        date: { gte: fromDate, lte: toDate },
+                        ...(Object.keys(dateFilter).length > 0 && { date: dateFilter }),
                         ...(subjectId && { subjectId: parseInt(subjectId) })
                     }
                 }

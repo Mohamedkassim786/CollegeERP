@@ -247,6 +247,31 @@ const promoteStudents = async (req, res) => {
         }
         const resolvedAYId = nextAcademicYearId ? parseInt(nextAcademicYearId) : (activeAY?.id || 1);
 
+        // ✅ FIX Bug #10: Check if results are published before promoting
+        // Prevents students being promoted before their semester results are officially published
+        if (currentSectionId) {
+            const sectionStudents = await prisma.student.findMany({
+                where: { sectionId: parseInt(currentSectionId), status: 'ACTIVE' },
+                select: { department: true, year: true, semester: true, section: true }
+            });
+            if (sectionStudents.length > 0) {
+                const sample = sectionStudents[0];
+                const semControl = await prisma.semesterControl.findFirst({
+                    where: {
+                        department: sample.department || '',
+                        year: sample.year,
+                        semester: sample.semester,
+                        section: sample.section
+                    }
+                });
+                if (semControl && !semControl.isPublished) {
+                    return res.status(400).json({
+                        message: `Cannot promote students. Results for ${sample.department} Year ${sample.year} Sem ${sample.semester} Section ${sample.section} have not been published yet. Please publish results before promotion.`
+                    });
+                }
+            }
+        }
+
         // Relational Architecture Branch (Phase 2+)
         if (currentSectionId && nextSemester) {
             const students = await prisma.student.findMany({
@@ -378,6 +403,9 @@ const bulkUploadStudents = async (req, res) => {
         let updatedCount = 0;
         let errors = [];
 
+        // ✅ FIX Bug #5: fetch departments ONCE before the loop (was fetching per student = N+1 queries)
+        const allDepts = await prisma.department.findMany();
+
         for (const s of students) {
             let { rollNo, registerNumber, name, department, year, section, semester, regulation, batch } = s;
 
@@ -398,8 +426,8 @@ const bulkUploadStudents = async (req, res) => {
                 const parsedSemester = parseInt(semester) || 1;
 
                 if (department) {
-                    const allDepts = await prisma.department.findMany();
                     const deptText = String(department).trim().toUpperCase();
+                    // ✅ Use pre-fetched allDepts — no extra DB call per student
                     const deptObj = allDepts.find(d =>
                         (d.code && d.code.toUpperCase() === deptText) ||
                         (d.name && d.name.toUpperCase() === deptText)
@@ -502,16 +530,37 @@ const batchAssignRegisterNumbers = async (req, res) => {
         let currentNum = parseInt(startNumber);
         if (isNaN(currentNum)) return res.status(400).json({ message: "Start number must be a valid number." });
 
+        // ✅ FIX Bug #7: fetch students and skip those who already have a register number
+        const students = await prisma.student.findMany({
+            where: { id: { in: studentIds.map(id => parseInt(id)) } },
+            select: { id: true, rollNo: true, registerNumber: true },
+            orderBy: { rollNo: 'asc' }
+        });
+
+        const alreadyAssigned = students.filter(s => s.registerNumber);
+        const toAssign = students.filter(s => !s.registerNumber);
+
+        if (toAssign.length === 0) {
+            return res.status(400).json({
+                message: 'All selected students already have register numbers assigned.',
+                skipped: alreadyAssigned.map(s => s.rollNo)
+            });
+        }
+
         const results = await prisma.$transaction(
-            studentIds.map((id) =>
+            toAssign.map((s) =>
                 prisma.student.update({
-                    where: { id: parseInt(id) },
+                    where: { id: s.id },
                     data: { registerNumber: `${prefix}${currentNum++}` }
                 })
             )
         );
 
-        res.json({ message: `Successfully assigned register numbers to ${results.length} students`, count: results.length });
+        res.json({
+            message: `Successfully assigned register numbers to ${results.length} students`,
+            count: results.length,
+            skipped: alreadyAssigned.length > 0 ? `${alreadyAssigned.length} students skipped (already had register numbers)` : undefined
+        });
     } catch (error) {
         handleError(res, error, "Error in batch register assignment");
     }

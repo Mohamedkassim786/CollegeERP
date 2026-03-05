@@ -76,11 +76,12 @@ const ExternalStaffManager = () => {
     }
   };
 
-  const toggleSubjectSelection = (subjectId) => {
+  const toggleSubjectSelection = (subjectId, component = 'THEORY') => {
+    const key = `${subjectId}-${component}`;
     setSelectedSubjectIds((prev) =>
-      prev.includes(subjectId)
-        ? prev.filter((id) => id !== subjectId)
-        : [...prev, subjectId]
+      prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : [...prev, key]
     );
   };
 
@@ -95,13 +96,15 @@ const ExternalStaffManager = () => {
     try {
       // Create one assignment per selected subject
       const results = await Promise.allSettled(
-        selectedSubjectIds.map((subjectId) =>
-          api.post("external/admin/assign-mark-entry", {
+        selectedSubjectIds.map((key) => {
+          const [subjectId, component] = key.split('-');
+          return api.post("external/admin/assign-mark-entry", {
             staffId: formData.staffId,
-            subjectId,
+            subjectId: parseInt(subjectId),
+            component: component,
             deadline: formData.deadline,
-          })
-        )
+          });
+        })
       );
 
       const failed = results.filter((r) => r.status === "rejected");
@@ -301,7 +304,7 @@ const ExternalStaffManager = () => {
               <thead className="bg-gray-50/50 text-[#003B73] text-xs font-black uppercase tracking-wider">
                 <tr>
                   <th className="px-8 py-5 text-left">Subject</th>
-                  <th className="px-8 py-5">Type</th>
+                  <th className="px-8 py-5">Slot</th>
                   <th className="px-8 py-5">Assigned Evaluator</th>
                   <th className="px-8 py-5">Deadline</th>
                   <th className="px-8 py-5 text-right">Actions</th>
@@ -322,7 +325,9 @@ const ExternalStaffManager = () => {
                       </p>
                     </td>
                     <td className="px-8 py-5">
-                      {categoryBadge(asgn.subject?.subjectCategory)}
+                      <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${asgn.component === 'LAB' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {asgn.component || 'THEORY'}
+                      </span>
                     </td>
                     <td className="px-8 py-5 font-bold text-[#003B73]">
                       {asgn.staff?.fullName}
@@ -406,27 +411,30 @@ const ExternalStaffManager = () => {
                       </p>
                     ) : (
                       subjects.map((sub) => {
-                        const checked = selectedSubjectIds.includes(sub.id);
+                        const key = `${sub.id}-${sub.componentSlot || 'THEORY'}`;
+                        const checked = selectedSubjectIds.includes(key);
                         return (
                           <label
-                            key={sub.id}
+                            key={key}
                             className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b last:border-b-0 border-gray-100 transition-colors ${checked ? "bg-blue-50" : "hover:bg-gray-50"}`}
                           >
                             <input
                               type="checkbox"
                               checked={checked}
-                              onChange={() => toggleSubjectSelection(sub.id)}
+                              onChange={() => toggleSubjectSelection(sub.id, sub.componentSlot)}
                               className="w-4 h-4 accent-[#003B73]"
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-[#003B73] text-sm truncate">
-                                {sub.name}
+                                {sub.displayName || sub.name}
                               </p>
                               <p className="text-[10px] text-gray-400 font-black tracking-widest">
-                                {sub.code}
+                                {sub.code} • {sub.department}
                               </p>
                             </div>
-                            {categoryBadge(sub.subjectCategory)}
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${sub.componentSlot === 'LAB' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {sub.componentSlot || 'THEORY'}
+                            </span>
                             {checked && <CheckCircle size={16} className="text-blue-500 shrink-0" />}
                           </label>
                         );
