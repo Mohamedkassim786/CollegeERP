@@ -104,8 +104,10 @@ const EndSemMarksEntry = () => {
     };
 
     const getMaxExternal = () => {
-        // All mark entry is now /100; conversion happens in backend
-        return 100;
+        const cat = selectedSubject?.subjectCategory || 'THEORY';
+        if (cat === 'LAB') return 40;
+        if (cat === 'INTEGRATED') return 25;
+        return 60;
     };
 
     const getInternalLabel = () => {
@@ -117,9 +119,9 @@ const EndSemMarksEntry = () => {
 
     const getExternalLabel = () => {
         const cat = selectedSubject?.subjectCategory || 'THEORY';
-        if (cat === 'LAB') return 'External /100 → /40';
-        if (cat === 'INTEGRATED') return 'Theory Ext (25) | Lab Ext (25)';
-        return 'External /100 → /60';
+        if (cat === 'LAB') return 'External (/40)';
+        if (cat === 'INTEGRATED') return 'External (/50)';
+        return 'External (/60)';
     };
 
     const handleExternalChange = (studentId, value) => {
@@ -253,7 +255,7 @@ const EndSemMarksEntry = () => {
                         Consolidate internal and external marks to generate final results and grades.
                     </p>
                 </div>
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap gap-3 items-center justify-end">
                     <button
                         onClick={exportResults}
                         className="flex items-center gap-2 px-6 py-4 bg-white text-gray-700 border-2 border-gray-100 rounded-[20px] hover:border-blue-200 hover:bg-blue-50/30 transition-all font-bold shadow-sm"
@@ -433,9 +435,9 @@ const EndSemMarksEntry = () => {
                                 <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">{getInternalLabel()}</th>
                                 {selectedSubject?.subjectCategory === 'INTEGRATED' ? (
                                     <>
-                                        <th className="px-8 py-6 text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] text-center">Theory (25) ✏️</th>
-                                        <th className="px-8 py-6 text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] text-center">Lab (25)</th>
-                                        <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">External Total</th>
+                                        <th className="px-8 py-6 text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] text-center">Theory (/25) ✏️</th>
+                                        <th className="px-8 py-6 text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] text-center">Lab (/25)</th>
+                                        <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Ext. Total (/50)</th>
                                     </>
                                 ) : (
                                     <th className="px-8 py-6 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] text-center">{getExternalLabel()} ✏️</th>
@@ -466,7 +468,11 @@ const EndSemMarksEntry = () => {
                             ) : (
                                 students.map((s) => {
                                     const editVal = externalEdits[s.id];
-                                    const previewTotal = s.internal40 + (parseInt(editVal) || 0);
+
+                                    // 🧮 Calculate preview total (no scaling needed as input is already in final scale)
+                                    const rawVal = parseInt(editVal) || 0;
+                                    const cat = (selectedSubject?.subjectCategory || '').toUpperCase();
+                                    const previewTotal = s.internal40 + rawVal + (cat === 'INTEGRATED' ? (s.labExt25 || 0) : 0);
 
                                     return (
                                         <tr
@@ -497,24 +503,23 @@ const EndSemMarksEntry = () => {
                                                                 <input
                                                                     type="number"
                                                                     min="0"
-                                                                    max="100"
-                                                                    value={externalEdits[s.id] !== undefined ? externalEdits[s.id] : (s.theoryExt25 ?? '')}
+                                                                    max="25"
+                                                                    value={externalEdits[s.id] !== undefined ? externalEdits[s.id] : (s.theoryExt25 != null ? Math.round(s.theoryExt25 * 100) / 100 : '')}
                                                                     onChange={(e) => handleExternalChange(s.id, e.target.value)}
                                                                     className="w-16 h-10 bg-indigo-50 border-2 border-transparent focus:border-indigo-400 rounded-xl outline-none font-black text-center text-indigo-700 transition-all font-mono"
-                                                                    placeholder="-"
+                                                                    placeholder="25"
                                                                 />
-                                                                <span className="text-gray-300 font-bold text-[9px] uppercase tracking-tighter">RAW</span>
                                                             </div>
                                                         )}
                                                     </td>
                                                     <td className="px-8 py-6 text-center">
                                                         <span className="font-black text-emerald-600 text-lg font-mono">
-                                                            {s.labExt25 != null ? s.labExt25 : <span className="text-gray-200">--</span>}
+                                                            {s.labExt25 != null ? (Math.round(s.labExt25 * 100) / 100) : <span className="text-gray-200">--</span>}
                                                         </span>
                                                     </td>
                                                     <td className="px-8 py-6 text-center">
                                                         <span className="inline-flex items-center justify-center px-4 py-2 bg-gray-50 text-[#003B73] rounded-xl font-black text-sm border border-gray-100">
-                                                            {(s.theoryExt25 != null && s.labExt25 != null) ? (Math.round(s.theoryExt25 + s.labExt25)) : '--'}
+                                                            {(s.theoryExt25 != null && s.labExt25 != null) ? (Math.round((s.theoryExt25 + s.labExt25) * 100) / 100) : '--'}
                                                         </span>
                                                     </td>
                                                 </>
@@ -527,15 +532,15 @@ const EndSemMarksEntry = () => {
                                                             <input
                                                                 type="number"
                                                                 min="0"
-                                                                max={maxExternal}
+                                                                max={getMaxExternal()}
                                                                 value={externalEdits[s.id] !== undefined ? externalEdits[s.id] : (s.external60 || '')}
                                                                 onChange={(e) => handleExternalChange(s.id, e.target.value)}
                                                                 className="w-20 h-10 bg-blue-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none font-black text-center text-[#003B73] transition-all font-mono"
-                                                                placeholder="0"
+                                                                placeholder={getMaxExternal().toString()}
                                                             />
                                                             <div className="flex flex-col items-start">
                                                                 <span className="text-gray-300 font-bold text-[9px] uppercase tracking-tighter leading-none">MAX</span>
-                                                                <span className="text-gray-400 font-black text-[11px] font-mono leading-none">{maxExternal}</span>
+                                                                <span className="text-gray-400 font-black text-[11px] font-mono leading-none">{getMaxExternal()}</span>
                                                             </div>
                                                         </div>
                                                     )}

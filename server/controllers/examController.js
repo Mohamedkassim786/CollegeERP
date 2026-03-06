@@ -93,20 +93,20 @@ exports.getEndSemMarks = async (req, res) => {
 
             if (!isAbsent) {
                 if (category === 'LAB') {
-                    // LAB external: /100 → /40
+                    // LAB external: 40 is max
                     const extRecord = extMarksMap[lookupKey] || {};
-                    externalProcessed = extRecord.rawExternal100 ? Math.round((extRecord.rawExternal100 / 100) * 40) : 0;
+                    externalProcessed = extRecord.rawExternal100 || 0;
                 } else if (category === 'INTEGRATED') {
                     // Two components: THEORY (by dummyNumber) + LAB (by registerNumber)
                     const theoryExt = extTheoryMap[lookupKey] || {};
                     const labExt = extLabMap[student.registerNumber] || {};
-                    const theoryConverted25 = theoryExt.rawExternal100 ? Math.round((theoryExt.rawExternal100 / 100) * 25) : 0;
-                    const labConverted25 = labExt.rawExternal100 ? Math.round((labExt.rawExternal100 / 100) * 25) : 0;
+                    const theoryConverted25 = theoryExt.rawExternal100 || 0;
+                    const labConverted25 = labExt.rawExternal100 || 0;
                     externalProcessed = theoryConverted25 + labConverted25;
                 } else {
-                    // THEORY: /100 → /60
+                    // THEORY: 60 is max
                     const extRecord = extMarksMap[lookupKey] || {};
-                    externalProcessed = extRecord.rawExternal100 ? Math.round((extRecord.rawExternal100 / 100) * 60) : 0;
+                    externalProcessed = extRecord.rawExternal100 || 0;
                 }
             }
 
@@ -118,9 +118,17 @@ exports.getEndSemMarks = async (req, res) => {
                 return parseVal(t) + parseVal(a) + parseVal(att);
             };
 
-            // For INTEGRATED, expose both external components separately
-            const theoryExt25 = category === 'INTEGRATED' ? (extTheoryMap[lookupKey]?.rawExternal100 ? Math.round((extTheoryMap[lookupKey].rawExternal100 / 100) * 25) : 0) : null;
-            const labExt25 = category === 'INTEGRATED' ? (extLabMap[student.registerNumber]?.rawExternal100 ? Math.round((extLabMap[student.registerNumber].rawExternal100 / 100) * 25) : 0) : null;
+            // For INTEGRATED, expose both external components separately and SCALED
+            let theoryExt25 = null;
+            let labExt25 = null;
+
+            if (category === 'INTEGRATED') {
+                const tRaw = (extTheoryMap[lookupKey] || extTheoryMap[student.registerNumber])?.rawExternal100 || 0;
+                theoryExt25 = tRaw > 25 ? (tRaw / 100) * 25 : tRaw;
+
+                const lRaw = (extLabMap[student.registerNumber] || extLabMap[lookupKey])?.rawExternal100 || 0;
+                labExt25 = lRaw > 25 ? (lRaw / 100) * 25 : lRaw;
+            }
 
             return {
                 id: student.id,
@@ -129,15 +137,15 @@ exports.getEndSemMarks = async (req, res) => {
                 rollNo: student.rollNo,
                 internal40: internalProcessed,
                 external60: isAbsent ? 'AB' : externalProcessed,
-                theoryExt25,   // INTEGRATED only
-                labExt25,      // INTEGRATED only
+                theoryExt25,   // INTEGRATED only (scaled /25)
+                labExt25,      // INTEGRATED only (scaled /25)
                 total100,
                 dummyNumber: dummyMapping.dummyNumber || student.registerNumber,
                 isLocked: ciaRecord.endSemMarks?.isLocked || false,
                 isPublished: ciaRecord.endSemMarks?.isPublished || false,
                 grade: ciaRecord.endSemMarks?.grade || 'N/A',
                 resultStatus: ciaRecord.endSemMarks?.resultStatus || 'N/A',
-                // Breakdown fields for Integrated
+                // Breakdown fields for Integrated internal
                 cia1: calculateSum(ciaRecord.cia1_test, ciaRecord.cia1_assignment, ciaRecord.cia1_attendance),
                 cia2: calculateSum(ciaRecord.cia2_test, ciaRecord.cia2_assignment, ciaRecord.cia2_attendance),
                 cia3: calculateSum(ciaRecord.cia3_test, ciaRecord.cia3_assignment, ciaRecord.cia3_attendance),
@@ -190,6 +198,7 @@ exports.updateEndSemMarks = async (req, res) => {
             const extLabMap = {};
             externalMarks.forEach(em => {
                 if (em.component === 'LAB') {
+                    // Lab components usually keyed by register number (which is stored in dummyNumber field for pure LAB subjects)
                     extLabMap[em.dummyNumber] = em;
                 } else {
                     extTheoryMap[em.dummyNumber] = em;
@@ -223,7 +232,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     continue;
                 }
 
-                const extRecord = extLookupKey ? extMarksMap[extLookupKey] : null;
+                const extRecord = extLookupKey ? extTheoryMap[extLookupKey] : null;
                 if (!isAbsent && !extRecord) continue;
                 if (ciaRecord.endSemMarks?.isLocked || ciaRecord.endSemMarks?.isPublished) continue;
 
@@ -238,15 +247,17 @@ exports.updateEndSemMarks = async (req, res) => {
                     finalGrade = 'AB';
                     finalResultStatus = 'FAIL';
                 } else if (subjectCategory === 'LAB') {
-                    // LAB: internal /100→/60 (done by markService), external /100→/40
+                    // LAB: internal /60, external /40
                     internalVal = (ciaRecord.internal && ciaRecord.isApproved)
-                        ? ciaRecord.internal  // markService already stores as /60
+                        ? ciaRecord.internal
                         : 0;
-                    rawExternal = extTheoryMap[extLookupKey]?.rawExternal100 || 0;
-                    externalVal = Math.round((rawExternal / 100) * 40);
+                    // Check both maps in case component was labeled differently
+                    const labRec = extLabMap[extLookupKey] || extTheoryMap[extLookupKey];
+                    rawExternal = labRec?.rawExternal100 || 0;
+                    externalVal = rawExternal;
 
                     const totalMarks = Math.round(internalVal + externalVal);
-                    const isExternalPass = externalVal >= 20; // 50% of 40
+                    const isExternalPass = externalVal >= 16; // 40% of 40 (More standard for practical)
 
                     const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
                         || { grade: 'RA', resultStatus: 'FAIL' };
@@ -255,36 +266,47 @@ exports.updateEndSemMarks = async (req, res) => {
                     finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
 
                 } else if (subjectCategory === 'INTEGRATED') {
-                    // INTEGRATED: internal is theory25 + lab25 = 50 (markService)
-                    // External: THEORY component (by dummy) /100→/25 + LAB component (by regNo) /100→/25 = 50
+                    // INTEGRATED: internal is 50, External: THEORY 25 + LAB 25 = 50
                     internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal : 0;
 
-                    const theoryExtRaw = extTheoryMap[extLookupKey]?.rawExternal100 || 0;
-                    const labExtRaw = extLabMap[student.registerNumber]?.rawExternal100 || 0;
-                    const theoryExt25 = Math.round((theoryExtRaw / 100) * 25);
-                    const labExt25 = Math.round((labExtRaw / 100) * 25);
+                    // Lookup Theory (Dummy or Reg) and Lab (Reg)
+                    const theoryRec = extTheoryMap[extLookupKey] || extTheoryMap[student.registerNumber];
+                    const labRec = extLabMap[student.registerNumber] || extLabMap[extLookupKey] || extTheoryMap[student.registerNumber];
+
+                    // Scaling logic: If raw > 25, it's likely out of 100, so scale it.
+                    let theoryRaw = theoryRec?.rawExternal100 || 0;
+                    if (theoryRaw > 25) theoryRaw = (theoryRaw / 100) * 25;
+
+                    let labRaw = labRec?.rawExternal100 || 0;
+                    if (labRaw > 25 && labRec?.component === 'LAB') labRaw = (labRaw / 100) * 25;
+                    else if (labRaw > 25) labRaw = (labRaw / 100) * 25;
+
+                    const theoryExt25 = theoryRaw;
+                    const labExt25 = labRaw;
+
                     externalVal = theoryExt25 + labExt25;
-                    rawExternal = theoryExtRaw; // for arrear propagation reference
+                    rawExternal = theoryExt25; // Base theory for legacy field
 
                     const totalMarks = Math.round(internalVal + externalVal); // max 100
-                    const internalPass = internalVal >= 25;   // 50% of 50
-                    const theoryExtPass = theoryExt25 >= 12.5; // 50% of 25
-                    const labExtPass = labExt25 >= 12.5;       // 50% of 25
+                    const internalPass = internalVal >= 20;   // 40% of 50
+                    const theoryExtPass = theoryExt25 >= 8.75; // 35% of 25 (Standard pass)
+                    const labExtPass = labExt25 >= 12.5;      // 50% of 25 (Lab usually needs 50%)
 
                     const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
                         || { grade: 'RA', resultStatus: 'FAIL' };
 
+                    // Pass only if all components and total meet criteria
                     finalResultStatus = (matchedGrade.resultStatus === 'PASS' && internalPass && theoryExtPass && labExtPass) ? 'PASS' : 'FAIL';
                     finalGrade = finalResultStatus === 'PASS' ? matchedGrade.grade : 'RA';
 
                 } else {
-                    // THEORY: internal /100→/40, external /100→/60
+                    // THEORY: internal 40, external 60
                     internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal * 0.4 : 0;
                     rawExternal = extTheoryMap[extLookupKey]?.rawExternal100 || 0;
-                    externalVal = Math.round((rawExternal / 100) * 60);
+                    externalVal = rawExternal;
 
                     const totalMarks = Math.round(internalVal + externalVal);
-                    const isExternalPass = rawExternal >= 50; // 50% of 100 raw
+                    const isExternalPass = externalVal >= 21; // 35% of 60 (Standard University pass)
 
                     const matchedGrade = grades.find(g => totalMarks >= g.minPercentage && totalMarks <= g.maxPercentage)
                         || { grade: 'RA', resultStatus: 'FAIL' };
@@ -679,6 +701,159 @@ exports.getGradeSheet = async (req, res) => {
         res.setHeader('Content-Disposition', `attachment; filename=grade_sheet_${studentId}.pdf`);
 
         pdfService.generateGradeSheet(res, pdfData);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const getConsolidatedResultsData = async (department, semester, regulation) => {
+    const semInt = parseInt(semester);
+    const deptFilter = await getDeptCriteria(department);
+
+    const subjects = await prisma.subject.findMany({
+        where: {
+            semester: semInt,
+            OR: [
+                deptFilter,
+                { type: 'COMMON' }
+            ]
+        },
+        orderBy: { code: 'asc' }
+    });
+
+    const students = await prisma.student.findMany({
+        where: {
+            ...deptFilter,
+            semester: semInt,
+            status: 'ACTIVE'
+        },
+        include: {
+            marks: {
+                include: {
+                    endSemMarks: true,
+                    subject: true
+                }
+            },
+            results: {
+                where: { semester: semInt }
+            },
+            dummyMappings: true
+        },
+        orderBy: { rollNo: 'asc' }
+    });
+
+    // Fetch all external marks for these subjects to get the breakdown
+    const externalMarks = await prisma.externalMark.findMany({
+        where: {
+            subjectId: { in: subjects.map(s => s.id) },
+            isApproved: true
+        }
+    });
+
+    const extMap = {};
+    externalMarks.forEach(em => {
+        if (!extMap[em.subjectId]) extMap[em.subjectId] = {};
+        extMap[em.subjectId][em.dummyNumber] = em;
+    });
+
+    const studentData = students.map((student, index) => {
+        const studentMarks = {};
+        subjects.forEach(sub => {
+            const markRecord = student.marks.find(m => m.subjectId === sub.id);
+            const dummyMapping = student.dummyMappings.find(dm => dm.subjectId === sub.id);
+            const dummyNo = dummyMapping?.dummyNumber;
+
+            // Scaled component lookups
+            let theoryExt = null;
+            let labExt = null;
+
+            if (sub.subjectCategory === 'INTEGRATED') {
+                // For Integrated, Theory is usually keyed by dummyNo, Lab by registerNumber
+                const tRec = extMap[sub.id]?.[dummyNo] || extMap[sub.id]?.[student.registerNumber];
+                const lRec = extMap[sub.id]?.[student.registerNumber] || extMap[sub.id]?.[dummyNo];
+
+                if (tRec && tRec.component !== 'LAB') {
+                    theoryExt = tRec.rawExternal100 > 25 ? (tRec.rawExternal100 / 100) * 25 : tRec.rawExternal100;
+                }
+                if (lRec && (lRec.component === 'LAB' || lRec !== tRec)) {
+                    labExt = lRec.rawExternal100 > 25 ? (lRec.rawExternal100 / 100) * 25 : lRec.rawExternal100;
+                }
+            } else if (sub.subjectCategory === 'LAB') {
+                const lRec = extMap[sub.id]?.[student.registerNumber] || extMap[sub.id]?.[dummyNo];
+                labExt = lRec ? (lRec.rawExternal100 > 25 ? (lRec.rawExternal100 / 100) * 40 : lRec.rawExternal100) : null;
+            } else {
+                const tRec = extMap[sub.id]?.[dummyNo] || extMap[sub.id]?.[student.registerNumber];
+                theoryExt = tRec ? (tRec.rawExternal100 > 25 ? (tRec.rawExternal100 / 100) * 60 : tRec.rawExternal100) : null;
+            }
+
+            studentMarks[sub.code] = {
+                internal: markRecord?.internal || 0,
+                external: markRecord?.endSemMarks?.externalMarks || 0,
+                theoryExt: theoryExt,
+                labExt: labExt,
+                total: markRecord?.endSemMarks?.totalMarks || 0,
+                grade: markRecord?.endSemMarks?.grade || '-',
+                status: markRecord?.endSemMarks?.resultStatus || '-'
+            };
+        });
+
+        return {
+            sno: index + 1,
+            name: student.name,
+            registerNumber: student.registerNumber,
+            rollNo: student.rollNo,
+            marks: studentMarks,
+            gpa: student.results[0]?.gpa || 0,
+            cgpa: student.results[0]?.cgpa || 0,
+            earnedCredits: student.results[0]?.earnedCredits || 0,
+            resultStatus: student.results[0]?.resultStatus || '-'
+        };
+    });
+
+    return {
+        department,
+        semester: semInt,
+        regulation,
+        subjects: subjects.map(s => ({
+            code: s.code,
+            name: s.name,
+            credits: s.credits,
+            subjectCategory: s.subjectCategory
+        })),
+        students: studentData
+    };
+};
+
+exports.getConsolidatedResults = async (req, res) => {
+    try {
+        const { department, semester, regulation = '2021' } = req.query;
+        if (!department || !semester) return res.status(400).json({ message: "Params missing" });
+        const data = await getConsolidatedResultsData(department, semester, regulation);
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.exportResultsPortrait = async (req, res) => {
+    try {
+        const { department, semester, regulation = '2021' } = req.query;
+        const data = await getConsolidatedResultsData(department, semester, regulation);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=results_portrait_${department}_sem${semester}.pdf`);
+        pdfService.generateProvisionalResultsPortrait(res, data);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.exportResultsLandscape = async (req, res) => {
+    try {
+        const { department, semester, regulation = '2021' } = req.query;
+        const data = await getConsolidatedResultsData(department, semester, regulation);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=results_landscape_A3_${department}_sem${semester}.pdf`);
+        pdfService.generateConsolidatedTabulationSheet(res, data);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

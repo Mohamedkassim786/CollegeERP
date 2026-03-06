@@ -376,28 +376,22 @@ const AdminMarksApproval = () => {
                   </th>
                   {selectedExam === "internal" ? (
                     <>
-                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                        CIA 1
-                      </th>
-                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                        CIA 2
-                      </th>
-                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                        CIA 3
-                      </th>
-                      {(selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED" && (
+                      {((selectedSubject?.subjectCategory || '').toUpperCase() === "THEORY" || (selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED") && (
                         <>
-                          <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                            Theory (25)
-                          </th>
-                          <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                            Lab (25)
-                          </th>
+                          <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">CIA 1</th>
+                          <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">CIA 2</th>
+                          <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">CIA 3</th>
                         </>
                       )}
-                      <th className="p-8 text-xs font-black text-gray-400 uppercase tracking-widest text-center">
-                        Final
-                      </th>
+                      {((selectedSubject?.subjectCategory || '').toUpperCase() === "LAB" || (selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED") && (
+                        <>
+                          <th className="p-8 text-xs font-black text-emerald-500 uppercase tracking-widest text-center">Attendance</th>
+                          <th className="p-8 text-xs font-black text-emerald-500 uppercase tracking-widest text-center">Observation</th>
+                          <th className="p-8 text-xs font-black text-emerald-500 uppercase tracking-widest text-center">Record</th>
+                          <th className="p-8 text-xs font-black text-emerald-500 uppercase tracking-widest text-center">Model</th>
+                        </>
+                      )}
+                      <th className="p-8 text-xs font-black text-[#003B73] uppercase tracking-widest text-center">Final Internal</th>
                     </>
                   ) : selectedExam === "lab_marks" || selectedExam === "integrated_lab" ? (
                     <>
@@ -475,36 +469,19 @@ const AdminMarksApproval = () => {
                       </td>
                       {selectedExam === "internal" ? (
                         <>
-                          <td className="p-8 text-center font-mono font-bold text-gray-400">
-                            {cia1Total.toFixed(1)}
-                          </td>
-                          <td className="p-8 text-center font-mono font-bold text-gray-400">
-                            {cia2Total.toFixed(1)}
-                          </td>
-                          <td className="p-8 text-center font-mono font-bold text-gray-400">
-                            {cia3Total.toFixed(1)}
-                          </td>
-                          {(selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED" && (
+                          {((selectedSubject?.subjectCategory || '').toUpperCase() === "THEORY" || (selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED") && (
                             <>
-                              <td className="p-8 text-center font-mono font-bold text-blue-600 bg-blue-50/20">
-                                {(() => {
-                                  // Theory Scaled (Best of 2 / 100 * 25)
-                                  const totals = [cia1Total, cia2Total, cia3Total].sort((a, b) => b - a);
-                                  const theoryRaw = totals.length >= 2 ? (totals[0] + totals[1]) / 2 : (totals[0] || 0);
-                                  return ((theoryRaw / 100) * 25).toFixed(1);
-                                })()}
-                              </td>
-                              <td className="p-8 text-center font-mono font-bold text-purple-600 bg-purple-50/20">
-                                {(() => {
-                                  // Lab Scaled (Sum / 100 * 25)
-                                  const la = parseFloat(mark.lab_attendance) || 0;
-                                  const lo = parseFloat(mark.lab_observation) || 0;
-                                  const lr = parseFloat(mark.lab_record) || 0;
-                                  const lm = parseFloat(mark.lab_model) || 0;
-                                  const labRaw = la + lo + lr + lm;
-                                  return ((labRaw / 100) * 25).toFixed(1);
-                                })()}
-                              </td>
+                              <td className="p-8 text-center font-mono font-bold text-gray-400">{cia1Total.toFixed(1)}</td>
+                              <td className="p-8 text-center font-mono font-bold text-gray-400">{cia2Total.toFixed(1)}</td>
+                              <td className="p-8 text-center font-mono font-bold text-gray-400">{cia3Total.toFixed(1)}</td>
+                            </>
+                          )}
+                          {((selectedSubject?.subjectCategory || '').toUpperCase() === "LAB" || (selectedSubject?.subjectCategory || '').toUpperCase() === "INTEGRATED") && (
+                            <>
+                              <td className="p-8 text-center font-mono font-bold text-emerald-600">{mark.lab_attendance ?? "-"}</td>
+                              <td className="p-8 text-center font-mono font-bold text-emerald-600">{mark.lab_observation ?? "-"}</td>
+                              <td className="p-8 text-center font-mono font-bold text-emerald-600">{mark.lab_record ?? "-"}</td>
+                              <td className="p-8 text-center font-mono font-bold text-emerald-600">{mark.lab_model ?? "-"}</td>
                             </>
                           )}
                           <td className="p-8 text-center font-mono font-black text-[#003B73] text-lg bg-blue-50/30">
@@ -684,44 +661,6 @@ const AdminMarksApproval = () => {
                 : `Managing all ${selectedCategory === 'THEORY' ? 'Theory' : 'Practical'} modules for the current assessment period.`}
             </p>
           </div>
-
-          {viewMode === 'grid' && (
-            <div className="bg-white p-4 rounded-[32px] shadow-2xl shadow-blue-900/10 border border-gray-100 flex items-center gap-4 min-w-[300px]">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${selectedCategory === 'THEORY' ? 'bg-blue-50 border-blue-100' : 'bg-purple-50 border-purple-100'}`}>
-                {selectedCategory === 'THEORY' ? <Clock size={24} className="text-blue-600" /> : <BookOpen size={24} className="text-purple-600" />}
-              </div>
-              <div className="flex-1">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
-                  Active Assessment Period
-                </span>
-                <CustomSelect
-                  value={selectedExam}
-                  onChange={(e) => setSelectedExam(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 h-auto font-black text-[#003B73] focus:ring-0 text-lg"
-                >
-                  {selectedCategory === 'THEORY' ? (
-                    <>
-                      <option value="cia1">CIA 1 (Internal Test)</option>
-                      <option value="cia2">CIA 2 (Internal Test)</option>
-                      <option value="cia3">CIA 3 (Internal Test)</option>
-                    </>
-                  ) : selectedCategory === 'LAB' ? (
-                    <>
-                      <option value="lab_marks">Laboratory Evaluation</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="cia1">CIA 1 (Internal Test)</option>
-                      <option value="cia2">CIA 2 (Internal Test)</option>
-                      <option value="cia3">CIA 3 (Internal Test)</option>
-                      <option value="integrated_lab">Integrated Lab Marks</option>
-                    </>
-                  )}
-                  <option value="internal">Final Consolidation</option>
-                </CustomSelect>
-              </div>
-            </div>
-          )}
         </div>
 
         {viewMode === 'selection' ? (
@@ -865,8 +804,8 @@ const AdminMarksApproval = () => {
             {renderSubjectGrid()}
           </>
         )}
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

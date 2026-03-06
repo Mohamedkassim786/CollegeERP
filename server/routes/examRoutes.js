@@ -9,6 +9,9 @@ router.get('/faculty-results', verifyToken, isFaculty, examController.getFaculty
 router.post('/calculate-gpa', verifyToken, examController.calculateGPA);
 router.post('/semester-control', verifyToken, isAdmin, examController.toggleSemesterControl);
 router.get('/semester-control', verifyToken, isAdmin, examController.getSemesterControl);
+router.get('/consolidated-results', verifyToken, isAdmin, examController.getConsolidatedResults);
+router.get('/export-portrait', verifyToken, isAdmin, examController.exportResultsPortrait);
+router.get('/export-landscape', verifyToken, isAdmin, examController.exportResultsLandscape);
 router.get('/grade-sheet', verifyToken, examController.getGradeSheet);
 
 module.exports = router;

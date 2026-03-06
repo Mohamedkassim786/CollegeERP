@@ -261,43 +261,296 @@ exports.generateLabStatementOfMarks = (res, data) => {
     doc.end();
 };
 
-exports.generateGradeSheet = (res, data) => {
-    const doc = new PDFDocument({ margin: 50 });
+exports.generateProvisionalResultsPortrait = (res, data) => {
+    const doc = new PDFDocument({ margin: 30, size: 'A4' });
     doc.pipe(res);
-    doc.fontSize(20).text('COLLEGE ERP - SEMESTER GRADE SHEET', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Name: ${data.studentName}`);
-    doc.text(`Register Number: ${data.registerNumber}`);
-    doc.text(`Department: ${data.department}`);
-    doc.text(`Semester: ${data.semester}`);
-    doc.moveDown();
-    const tableTop = 200;
-    doc.fontSize(10);
-    doc.text('Subject Code', 50, tableTop);
-    doc.text('Subject Name', 150, tableTop);
-    doc.text('Credits', 350, tableTop);
-    doc.text('Grade', 400, tableTop);
-    doc.text('Status', 450, tableTop);
-    doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
-    let y = tableTop + 25;
-    data.marks.forEach(m => {
-        doc.text(m.subjectCode, 50, y);
-        doc.text(m.subjectName, 150, y);
-        doc.text(m.credits.toString(), 350, y);
-        doc.text(m.grade || 'N/A', 400, y);
-        doc.text(m.status, 450, y);
-        y += 20;
-    });
-    doc.moveTo(50, y).lineTo(550, y).stroke();
+
+    const M = 30;
+    const CW = doc.page.width - 2 * M;
+    let y = 30;
+
+    // Header
+    y = drawMIETHeader(doc, y);
+    doc.moveDown(0.5);
+    y = doc.y;
+
+    const title = `PROVISIONAL RESULTS - ${data.examSession || 'NOV/DEC ' + new Date().getFullYear()}`;
+    doc.font('Helvetica-Bold').fontSize(12).text(title, M, y, { width: CW, align: 'center' });
     y += 20;
-    doc.fontSize(12).text(`GPA: ${data.gpa.toFixed(2)}`, 50, y);
-    doc.text(`Result: ${data.resultStatus}`, 150, y);
+
+    // Sub-info
+    doc.fontSize(10);
+    doc.text(`BRANCH: ${data.department}`, M, y);
+    doc.text(`SEMESTER: ${data.semester}`, M + 400, y);
+    y += 15;
+    doc.text(`REGULATION: ${data.regulation || '2021'}`, M, y);
+    y += 25;
+
+    // Table Headers
+    const colWidths = {
+        sno: 30,
+        regno: 90,
+        name: 120,
+        subject: 45, // Dynamic based on subject count
+        gpa: 35,
+        result: 50
+    };
+
+    const subjects = data.subjects || [];
+    const subCount = subjects.length;
+    const availWidth = CW - colWidths.sno - colWidths.regno - colWidths.name - colWidths.gpa - colWidths.result;
+    const subWidth = subCount > 0 ? Math.floor(availWidth / subCount) : 0;
+
+    const drawRow = (row, isHeader = false) => {
+        const rowH = isHeader ? 30 : 25;
+        if (y + rowH > doc.page.height - 50) {
+            doc.addPage();
+            y = 30;
+        }
+
+        doc.rect(M, y, CW, rowH).stroke();
+        doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(8);
+
+        let curX = M;
+        // Verticals
+        [colWidths.sno, colWidths.regno, colWidths.name].forEach(w => {
+            doc.moveTo(curX + w, y).lineTo(curX + w, y + rowH).stroke();
+            curX += w;
+        });
+
+        // Subject columns verticals
+        for (let i = 0; i < subCount; i++) {
+            doc.moveTo(curX + subWidth, y).lineTo(curX + subWidth, y + rowH).stroke();
+            curX += subWidth;
+        }
+
+        // GPA vertical
+        doc.moveTo(curX + colWidths.gpa, y).lineTo(curX + colWidths.gpa, y + rowH).stroke();
+
+        // Content
+        curX = M;
+        doc.text(row.sno || '', curX, y + (rowH / 2) - 4, { width: colWidths.sno, align: 'center' });
+        curX += colWidths.sno;
+        doc.text(row.regno || '', curX + 2, y + (rowH / 2) - 4, { width: colWidths.regno - 4, align: 'center' });
+        curX += colWidths.regno;
+        doc.text(row.name || '', curX + 5, y + (rowH / 2) - 4, { width: colWidths.name - 10, align: 'left' });
+        curX += colWidths.name;
+
+        // Grades
+        if (isHeader) {
+            subjects.forEach(sub => {
+                doc.fontSize(7).text(sub.code, curX, y + 5, { width: subWidth, align: 'center' });
+                doc.fontSize(6).text(`(${sub.credits})`, curX, y + 16, { width: subWidth, align: 'center' });
+                curX += subWidth;
+            });
+        } else {
+            subjects.forEach(sub => {
+                const grade = row.marks[sub.code]?.grade || '-';
+                doc.text(grade, curX, y + (rowH / 2) - 4, { width: subWidth, align: 'center' });
+                curX += subWidth;
+            });
+        }
+
+        doc.fontSize(8).text(row.gpa || '', curX, y + (rowH / 2) - 4, { width: colWidths.gpa, align: 'center' });
+        curX += colWidths.gpa;
+        doc.text(row.result || '', curX, y + (rowH / 2) - 4, { width: colWidths.result, align: 'center' });
+
+        y += rowH;
+    };
+
+    // Header Row
+    drawRow({
+        sno: 'S.NO',
+        regno: 'REGISTER NO',
+        name: 'STUDENT NAME',
+        gpa: 'GPA',
+        result: 'RESULT'
+    }, true);
+
+    // Data Rows
+    data.students.forEach(student => {
+        drawRow({
+            sno: student.sno,
+            regno: student.registerNumber,
+            name: student.name,
+            marks: student.marks,
+            gpa: student.gpa?.toFixed(2),
+            result: student.resultStatus
+        });
+    });
+
     doc.end();
 };
 
-exports.generateTranscript = (res, data) => {
-    const doc = new PDFDocument({ margin: 50 });
+exports.generateConsolidatedTabulationSheet = (res, data) => {
+    // A3 Landscape T-Sheet Redesign
+    const doc = new PDFDocument({ margin: 20, size: 'A3', layout: 'landscape' });
     doc.pipe(res);
-    doc.fontSize(20).text('OFFICIAL TRANSCRIPT', { align: 'center' });
+
+    const M = 30;
+    const CW = doc.page.width - 2 * M;
+    let y = 30;
+
+    // --- Header Section (Matching img2) ---
+    doc.font('Helvetica-Bold').fontSize(14).text('M.I.E.T. ENGINEERING COLLEGE (AUTONOMOUS),TRICHY-620007', M, y, { width: CW, align: 'center' });
+    y += 18;
+    doc.fontSize(12).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', M, y, { width: CW, align: 'center' });
+    y += 18;
+
+    const examSession = data.examSession || 'NOVEMBER/DECEMBER EXAMINATIONS 2025';
+    doc.fontSize(12).text(`PROVISIONAL RESULTS OF ${examSession.toUpperCase()}`, M, y, { width: CW, align: 'center' });
+    y += 25;
+
+    // --- Branch/Semester Info Line ---
+    doc.font('Helvetica-Bold').fontSize(10);
+    doc.text(`B.E. ${data.department || ''}`, M, y);
+    doc.text(`Semester : ${data.semester || ''}`, M + 450, y);
+    doc.text(`R-${data.regulation || '2021'}`, M + 600, y);
+    const pubDate = data.publicationDate || new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+    doc.text(`Date of Publication : ${pubDate}`, M + 750, y);
+    y += 15;
+
+    const subjects = data.subjects || [];
+    const subCount = subjects.length;
+
+    // Layout configuration
+    const colWidths = {
+        sno: 25,
+        regno: 70,
+        name: 0 // Will adjust based on remaining space
+    };
+
+    // Each subject gets a block with Int, P-Ext, T-Ext, Total, A-Grade, R-Grade
+    // We need to calculate how much space we have for subjects
+    const fixedWidthStart = colWidths.sno + colWidths.regno;
+    const statCols = { gpa: 30, cgpa: 30, cr: 25, result: 40 };
+    const fixedWidthEnd = statCols.gpa + statCols.cgpa + statCols.cr + statCols.result;
+
+    const totalAvail = CW - fixedWidthStart - fixedWidthEnd;
+    // Subject block needs space for 6 tiny columns: Int, P-Ext, T-Ext, Total, Actual Grade, Relative Grade
+    const subBlockWidth = subCount > 0 ? Math.floor(totalAvail / subCount) : 0;
+
+    // Tiny sub-column relative widths
+    const subParts = { int: 0.12, pext: 0.15, text: 0.15, total: 0.18, agrade: 0.20, rgrade: 0.20 };
+
+    const drawLine = (x1, y1, x2, y2) => doc.moveTo(x1, y1).lineTo(x2, y2).stroke();
+
+    const drawEnhancedRow = (row, isHeader = false) => {
+        const rowH = isHeader ? 50 : 25;
+        if (y + rowH > doc.page.height - 40) {
+            doc.addPage();
+            y = 30; // reset y on new page
+        }
+
+        doc.rect(M, y, CW, rowH).stroke();
+        doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(isHeader ? 7 : 7);
+
+        let curX = M;
+        // S.No
+        doc.text(row.sno || '', curX, y + (rowH / 2) - 3, { width: colWidths.sno, align: 'center' }); curX += colWidths.sno; drawLine(curX, y, curX, y + rowH);
+        // Register No
+        doc.text(row.regno || '', curX, y + (rowH / 2) - 3, { width: colWidths.regno, align: 'center' }); curX += colWidths.regno; drawLine(curX, y, curX, y + rowH);
+
+        // Subjects
+        subjects.forEach(sub => {
+            const bx = curX;
+            const bw = subBlockWidth;
+            const isIntegrated = sub.subjectCategory === 'INTEGRATED';
+
+            if (isHeader) {
+                // Subject Code Header
+                doc.fontSize(7).text(sub.code, bx, y + 4, { width: bw, align: 'center' });
+                drawLine(bx, y + 14, bx + bw, y + 14);
+
+                const subY = y + 14;
+                let sx = bx;
+                doc.fontSize(5);
+
+                // Sub-headers: Int, P-Ext, T-Ext, Total
+                doc.text('Int', sx, subY + 12, { width: bw * subParts.int, align: 'center' }); sx += bw * subParts.int; drawLine(sx, subY, sx, y + rowH);
+                doc.text('P-Ext', sx, subY + 12, { width: bw * subParts.pext, align: 'center' }); sx += bw * subParts.pext; drawLine(sx, subY, sx, y + rowH);
+                doc.text('T-Ext', sx, subY + 12, { width: bw * subParts.text, align: 'center' }); sx += bw * subParts.text; drawLine(sx, subY, sx, y + rowH);
+                doc.text('Total', sx, subY + 12, { width: bw * subParts.total, align: 'center' }); sx += bw * subParts.total; drawLine(sx, subY, sx, y + rowH);
+
+                doc.fontSize(5);
+                doc.text('A-Grd', sx, subY + 12, { width: bw * subParts.agrade, align: 'center' }); sx += bw * subParts.agrade; drawLine(sx, subY, sx, y + rowH);
+                doc.text('R-Grd', sx, subY + 12, { width: bw * subParts.rgrade, align: 'center' });
+
+                // Max marks line
+                doc.fontSize(4.5).fillColor('#444');
+                let mx = bx;
+                const intMax = isIntegrated ? '50' : (sub.subjectCategory === 'LAB' ? '60' : '40');
+                const extMax = isIntegrated ? '100(50)' : (sub.subjectCategory === 'LAB' ? '100(40)' : '100(60)');
+
+                doc.text(intMax, mx, subY + 2, { width: bw * subParts.int, align: 'center' }); mx += bw * subParts.int;
+                doc.text(sub.subjectCategory === 'LAB' || isIntegrated ? extMax : '', mx, subY + 2, { width: bw * subParts.pext, align: 'center' }); mx += bw * subParts.pext;
+                doc.text(sub.subjectCategory === 'THEORY' || isIntegrated ? extMax : '', mx, subY + 2, { width: bw * subParts.text, align: 'center' }); mx += bw * subParts.text;
+                doc.text('100', mx, subY + 2, { width: bw * subParts.total, align: 'center' });
+                doc.fillColor('#000');
+            } else {
+                const mark = row.marks[sub.code] || {};
+                let sx = bx;
+                doc.fontSize(6);
+
+                // Int
+                doc.text(mark.internal != null ? Math.round(mark.internal * 10) / 10 : '-', sx, y + 9, { width: bw * subParts.int, align: 'center' }); sx += bw * subParts.int; drawLine(sx, y, sx, y + rowH);
+
+                // P-Ext
+                doc.text(mark.labExt != null ? Math.round(mark.labExt * 10) / 10 : '-', sx, y + 9, { width: bw * subParts.pext, align: 'center' }); sx += bw * subParts.pext; drawLine(sx, y, sx, y + rowH);
+
+                // T-Ext
+                doc.text(mark.theoryExt != null ? Math.round(mark.theoryExt * 10) / 10 : '-', sx, y + 9, { width: bw * subParts.text, align: 'center' }); sx += bw * subParts.text; drawLine(sx, y, sx, y + rowH);
+
+                // Total
+                doc.font('Helvetica-Bold').text(mark.total != null ? Math.round(mark.total).toString() : '-', sx, y + 9, { width: bw * subParts.total, align: 'center' }); sx += bw * subParts.total; drawLine(sx, y, sx, y + rowH);
+
+                // Grades (A and R)
+                doc.font('Helvetica').fontSize(mark.grade?.length > 2 ? 5 : 6);
+                doc.text(mark.grade || '-', sx, y + 9, { width: bw * subParts.agrade, align: 'center' }); sx += bw * subParts.agrade; drawLine(sx, y, sx, y + rowH);
+                doc.text(mark.grade || '-', sx, y + 9, { width: bw * subParts.rgrade, align: 'center' });
+                doc.font('Helvetica');
+            }
+            curX += bw; drawLine(curX, y, curX, y + rowH);
+        });
+
+        // Stats at the end
+        doc.fontSize(7);
+        doc.text(row.gpa || '', curX, y + 9, { width: statCols.gpa, align: 'center' }); curX += statCols.gpa; drawLine(curX, y, curX, y + rowH);
+        doc.text(row.cgpa || '', curX, y + 9, { width: statCols.cgpa, align: 'center' }); curX += statCols.cgpa; drawLine(curX, y, curX, y + rowH);
+        doc.text(row.cr || '', curX, y + 9, { width: statCols.cr, align: 'center' }); curX += statCols.cr; drawLine(curX, y, curX, y + rowH);
+        doc.text(row.result || '', curX, y + 9, { width: statCols.result, align: 'center' });
+
+        y += rowH;
+    };
+
+    // Draw Header
+    drawEnhancedRow({
+        sno: 'S.No.',
+        regno: 'Register No.',
+        gpa: 'GPA',
+        cgpa: 'CGPA',
+        cr: 'CR',
+        result: 'RESULT'
+    }, true);
+
+    // Draw Data
+    data.students.forEach((s, idx) => {
+        drawEnhancedRow({
+            sno: (idx + 1).toString(),
+            regno: s.registerNumber,
+            marks: s.marks,
+            gpa: s.gpa?.toFixed(2),
+            cgpa: s.cgpa?.toFixed(2),
+            cr: s.earnedCredits?.toString(),
+            result: s.resultStatus === 'PASS' ? 'PASS' : 'FAIL'
+        });
+    });
+
+    const sigY = doc.page.height - 50;
+    doc.font('Helvetica-Bold').fontSize(10);
+    doc.text('Prepared By', M + 50, sigY);
+    doc.text('Verified By', M + 450, sigY);
+    doc.text('Controller of Examinations', CW - 100, sigY);
+
     doc.end();
 };

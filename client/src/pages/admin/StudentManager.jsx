@@ -210,7 +210,9 @@ const StudentManager = () => {
             s.department === matchingDept.name
           );
 
-          return yearMatch && sectionMatch && deptMatch;
+          const statusMatch = s.status !== 'PASSED_OUT';
+
+          return yearMatch && sectionMatch && deptMatch && statusMatch;
         });
         setStudentsList(filtered);
       } else {
@@ -837,9 +839,10 @@ const StudentManager = () => {
                 </div>
                 <button
                   onClick={() => setShowPassOutArrearUpload(v => !v)}
-                  className="px-5 py-2.5 bg-orange-100 text-orange-700 rounded-2xl font-black text-xs uppercase tracking-widest border border-orange-200 hover:bg-orange-200 transition-all flex items-center gap-2"
+                  className="px-6 py-4 bg-orange-600 text-white rounded-[24px] font-black hover:bg-orange-700 transition-all flex items-center gap-3 shadow-xl shadow-orange-900/20 hover:-translate-y-1"
                 >
-                  <Upload size={14} /> Bulk Upload Arrears
+                  <Upload size={20} />
+                  Bulk Upload Arrears
                 </button>
               </div>
             </div>

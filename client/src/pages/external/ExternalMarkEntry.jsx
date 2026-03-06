@@ -32,25 +32,26 @@ const ExternalMarkEntry = () => {
   const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => {
-    fetchMarks("THEORY");
+    fetchMarks();
   }, [assignmentId]);
 
   const fetchMarks = async (component) => {
     setLoading(true);
     try {
       const params = {};
-      // For INTEGRATED: use the passed component
       if (component) params.component = component;
 
       const res = await api.get(`/external/marks/assignment/${assignmentId}`, { params });
       const d = res.data;
 
-      // Set the active component based on what the backend returned
+      // Use the component from response (or the one we asked for, or default)
+      const targetComponent = d.component || component || "THEORY";
+
       if (d.subjectCategory === "INTEGRATED") {
-        setActiveComponent(d.component);
+        setActiveComponent(targetComponent);
       }
 
-      setDataByComponent(prev => ({ ...prev, [component]: d }));
+      setDataByComponent((prev) => ({ ...prev, [targetComponent]: d }));
 
       // Restore marks if already loaded
       const initialMarks = {};
@@ -58,7 +59,7 @@ const ExternalMarkEntry = () => {
         if (item.mark !== null && item.mark !== undefined)
           initialMarks[item.dummyNumber] = item.mark;
       });
-      setMarksByComponent(prev => ({ ...prev, [component]: initialMarks }));
+      setMarksByComponent((prev) => ({ ...prev, [targetComponent]: initialMarks }));
     } catch (err) {
       toast.error("Failed to load marks list");
     } finally {
@@ -211,8 +212,8 @@ const ExternalMarkEntry = () => {
                       {data.subjectCode || data.subject}
                     </span>
                     <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider ${category === "LAB" ? "bg-green-100 text-green-700"
-                        : category === "INTEGRATED" ? "bg-purple-100 text-purple-700"
-                          : "bg-blue-100 text-blue-700"
+                      : category === "INTEGRATED" ? "bg-purple-100 text-purple-700"
+                        : "bg-blue-100 text-blue-700"
                       }`}>
                       {category}
                     </span>

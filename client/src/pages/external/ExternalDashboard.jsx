@@ -73,6 +73,16 @@ const ExternalDashboard = () => {
                     </div>
 
                     <div className="space-y-4 mb-8">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider ${assignment.component === 'LAB' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {assignment.component || 'THEORY'}
+                        </span>
+                        {assignment.subject?.subjectCategory === 'INTEGRATED' && (
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 uppercase tracking-wider">
+                            Integrated
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3 text-sm text-gray-500 font-medium">
                         <Clock size={16} className="text-red-400" />
                         <span>

@@ -96,9 +96,10 @@ const StudentPromotion = () => {
         }
 
         const sectionMatch = sourceSection === "All" ? true : s.section === sourceSection;
+        const statusMatch = s.status === 'ACTIVE' || !s.status; // Only promote active students
         const semMatch = s.currentSemester === parseInt(sourceSem);
 
-        return yearMatch && deptMatch && sectionMatch && semMatch;
+        return yearMatch && deptMatch && sectionMatch && semMatch && statusMatch;
       });
 
       setStudents(filtered);

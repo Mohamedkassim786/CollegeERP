@@ -67,8 +67,8 @@ exports.getAssignedDummyList = async (req, res) => {
 
         if (category === 'INTEGRATED') {
             // INTEGRATED: external has TWO components — THEORY (via dummies) and LAB (via register number)
-            // Determine which component is being requested
-            const component = req.query.component || 'THEORY';
+            // Determine which component is being requested (default to assigned component)
+            const component = req.query.component || assignment.component || 'THEORY';
 
             if (component === 'LAB') {
                 // LAB component: show register numbers + names, max 100 (converts to 25)
@@ -103,7 +103,7 @@ exports.getAssignedDummyList = async (req, res) => {
                     subjectId: assignment.subjectId,
                     subjectCategory: category,
                     component: 'LAB',
-                    maxMark: 100,
+                    maxMark: 25,
                     convertedMax: 25,
                     deadline: assignment.deadline,
                     dummyList: resultList
@@ -129,7 +129,7 @@ exports.getAssignedDummyList = async (req, res) => {
                 subjectId: assignment.subjectId,
                 subjectCategory: category,
                 component: 'THEORY',
-                maxMark: 100,
+                maxMark: 25,
                 convertedMax: 25,
                 deadline: assignment.deadline,
                 dummyList: mappings.map(m => ({ dummyNumber: m.dummyNumber, mark: extMap[m.dummyNumber] ?? null }))
@@ -155,7 +155,7 @@ exports.getAssignedDummyList = async (req, res) => {
             subjectId: assignment.subjectId,
             subjectCategory: category,
             component: 'THEORY',
-            maxMark: 100,
+            maxMark: 60,
             convertedMax: 60,
             deadline: assignment.deadline,
             dummyList: mappings.map(m => ({ dummyNumber: m.dummyNumber, mark: extMap[m.dummyNumber] ?? m.marks }))
@@ -205,9 +205,9 @@ exports.submitMarks = async (req, res) => {
             for (const entry of marks) {
                 const { dummyNumber, rawMark } = entry;
                 const raw = parseFloat(rawMark);
-                if (isNaN(raw) || raw < 0 || raw > 100) continue;
+                if (isNaN(raw) || raw < 0 || raw > convertFactor) continue;
 
-                const converted = (raw / 100) * convertFactor;
+                const converted = raw;
 
                 // Mirror raw mark into SubjectDummyMapping for THEORY external of THEORY/INTEGRATED subjects
                 if ((category === 'THEORY' || (category === 'INTEGRATED' && component === 'THEORY'))) {
@@ -287,9 +287,9 @@ exports.submitMarksAdmin = async (req, res) => {
             for (const entry of marks) {
                 const { dummyNumber, rawMark } = entry;
                 const raw = parseFloat(rawMark);
-                if (isNaN(raw) || raw < 0 || raw > 100) continue;
+                if (isNaN(raw) || raw < 0 || raw > convertFactor) continue;
 
-                const converted = (raw / 100) * convertFactor;
+                const converted = raw;
 
                 if (category === 'THEORY' || (category === 'INTEGRATED' && component === 'THEORY')) {
                     await tx.subjectDummyMapping.updateMany({
