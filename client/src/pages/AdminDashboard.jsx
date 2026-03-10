@@ -21,6 +21,7 @@ import ArrearManagement from "./admin/ArrearManagement";
 import Dispatch from "./admin/Dispatch";
 import Announcements from "./Announcements";
 import Settings from "./Settings";
+import StudentProfile from "./admin/StudentProfile";
 
 const AdminDashboard = () => {
   return (
@@ -40,6 +41,7 @@ const AdminDashboard = () => {
             <Route path="departments" element={<DepartmentManager />} />
             <Route path="courses" element={<CourseManager />} />
             <Route path="students" element={<StudentManager />} />
+            <Route path="students/profile/:id" element={<StudentProfile />} />
             <Route path="students/promote" element={<StudentPromotion />} />
             <Route path="timetable" element={<TimetableManager />} />
             <Route path="marks/:subjectId" element={<AdminMarksManager />} />

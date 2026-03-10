@@ -10,13 +10,13 @@ const validate = (req, res, next) => {
 
 // Student validation
 const validateStudent = [
-    body('rollNo').notEmpty().isString().trim().matches(/^[A-Z][0-9]+$/).withMessage('Roll Number must match format (e.g., E123456)'),
-    body('registerNumber').optional({ nullable: true, checkFalsy: true }).isString().trim().matches(/^\d{9,12}$/).withMessage('Register Number must be 9-12 digits'),
+    body('rollNo').notEmpty().isString().trim().matches(/^[a-zA-Z0-9_\-]+$/).withMessage('Roll Number must be valid alphanumeric format'),
+    body('registerNumber').optional({ nullable: true, checkFalsy: true }).isString().trim().matches(/^[a-zA-Z0-9]+$/).withMessage('Register Number must be valid alphanumeric format'),
     body('name').notEmpty().isString().trim().isLength({ min: 2, max: 100 }),
     body('department').optional({ nullable: true, checkFalsy: true }).isString(),
-    body('year').isInt({ min: 1, max: 4 }),
-    body('section').notEmpty().isString().isLength({ min: 1, max: 1 }),
-    body('semester').isInt({ min: 1, max: 8 }),
+    body('year').optional().isInt({ min: 1, max: 4 }),
+    body('section').optional().isString().isLength({ min: 1, max: 20 }),
+    body('semester').optional().isInt({ min: 1, max: 8 }),
     body('regulation').optional({ nullable: true, checkFalsy: true }).isString().isLength({ min: 4, max: 10 }),
     body('batch').optional({ nullable: true, checkFalsy: true }).isString().isLength({ min: 4, max: 20 }),
     validate

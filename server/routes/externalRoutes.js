@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const externalStaffController = require('../controllers/externalStaffController');
-const { verifyToken, isAdmin, isExternalStaff } = require('../middleware/authMiddleware');
+const { verifyToken, isAdmin, isExternal } = require('../middleware/authMiddleware');
 
-router.get('/assignments', verifyToken, isExternalStaff, externalStaffController.getAssignedAssignments);
+router.get('/assignments', verifyToken, isExternal, externalStaffController.getAssignedAssignments);
 router.get('/admin/assignments', verifyToken, isAdmin, externalStaffController.getAllAssignmentsForAdmin);
 router.post('/admin/assign-mark-entry', verifyToken, isAdmin, externalStaffController.assignMarkEntry);
 router.get('/admin/available-subjects', verifyToken, isAdmin, externalStaffController.getAvailableSubjectsForAssignment);

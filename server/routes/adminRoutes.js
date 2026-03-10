@@ -7,7 +7,7 @@ const {
     getSubstitutions, assignSubstitute, deleteSubstitution, getFacultyAvailability
 } = require('../controllers/adminController');
 const {
-    createStudent, updateStudent, getStudents, deleteStudent, promoteStudents, bulkUploadStudents, batchAssignRegisterNumbers, passStudentsOut
+    createStudent, updateStudent, getStudents, deleteStudent, promoteStudents, bulkUploadStudents, batchAssignRegisterNumbers, passStudentsOut, getStudentProfile
 } = require('../controllers/studentController');
 const {
     createSubject, getSubjects, deleteSubject, assignFaculty, removeFacultyAssignment
@@ -28,7 +28,7 @@ const {
     getDepartments, getSections, createSection, createDepartment, updateDepartment, deleteDepartment
 } = require('../controllers/departmentController');
 const { getAttendanceReport } = require('../controllers/attendanceController');
-const { verifyToken, isAdmin, isHod } = require('../middleware/authMiddleware');
+const { verifyToken, isAdmin, isHod, isCOE, isChiefSecretary, isPrincipal } = require('../middleware/authMiddleware');
 const { validateStudent, validateFaculty, validateSubject, validateMarks } = require('../middleware/validation');
 const { uploadArrears, getArrears, deleteArrear, autoGenerateArrears, bulkUploadPassedOutArrears } = require('../controllers/arrearController');
 
@@ -38,9 +38,8 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.use(verifyToken);
-router.use(isHod); // Base access for HODs and Admins
-
-router.get('/stats', getDashboardStats);
+// Base access: Principal, COE, HOD, and Admin can access standard reports/stats
+router.get('/stats', isPrincipal, getDashboardStats);
 
 router.get('/timetable', getTimetable);
 router.post('/timetable', saveTimetable);
@@ -51,14 +50,17 @@ router.delete('/faculty/:id', isAdmin, deleteFaculty);
 
 router.get('/departments', isHod, getDepartments);
 router.get('/sections', isHod, getSections);
-router.post('/sections', isHod, createSection);
+router.post('/sections', isCOE, createSection);
 router.post('/departments', isAdmin, createDepartment);
 router.put('/departments/:id', isAdmin, updateDepartment);
 router.delete('/departments/:id', isAdmin, deleteDepartment);
 
+const { upload } = require('../utils/uploadConfig');
+
 router.get('/students', isHod, getStudents);
-router.post('/students', isHod, validateStudent, createStudent);
-router.put('/students/:id', isHod, validateStudent, updateStudent);
+router.get('/students/:id', isHod, getStudentProfile);
+router.post('/students', isHod, upload.single('photo'), validateStudent, createStudent);
+router.put('/students/:id', isHod, upload.single('photo'), validateStudent, updateStudent);
 router.delete('/students/:id', isAdmin, deleteStudent); // Student deletion is SuperAdmin only
 
 router.get('/subjects', isHod, getSubjects);
@@ -98,7 +100,10 @@ router.get('/attendance/report', getAttendanceReport);
 router.get('/attendance/export-excel', exportAttendanceExcel);
 
 router.post('/students/promote', promoteStudents);
-router.post('/students/bulk', bulkUploadStudents);
+router.post('/students/bulk', upload.fields([
+    { name: 'file', maxCount: 1 },         // The Excel file (keeping original key for backwards compatibility if needed, or mapping)
+    { name: 'photosZip', maxCount: 1 }     // The ZIP file
+]), bulkUploadStudents);
 router.post('/students/batch-assign-register', batchAssignRegisterNumbers);
 router.post('/students/pass-out', isHod, passStudentsOut);
 
@@ -110,22 +115,22 @@ router.post('/arrears/bulk-passedout', bulkUploadPassedOutArrears);
 router.delete('/arrears/:id', deleteArrear);
 
 // Hall Allocation Routes
-router.get('/hall-allocation/sessions', getSessions);
-router.post('/hall-allocation/sessions', createSession);
-router.delete('/hall-allocation/sessions/:id', deleteSession);
-router.put('/hall-allocation/sessions/:id/subjects', updateSessionSubjects);
-router.patch('/hall-allocation/sessions/:id/lock', toggleSessionLock);
-router.get('/hall-allocation/sessions/:id/allocations', getSessionAllocations);
-router.get('/hall-allocation/halls', getHalls);
-router.post('/hall-allocation/halls', addHall);
-router.delete('/hall-allocation/halls/:id', deleteHall);
-router.post('/hall-allocation/generate', generateAllocations);
-router.get('/hall-allocation/sessions/:id/export', exportConsolidatedPlan);
-router.get('/hall-allocation/sessions/:id/export-grid', exportSeatingGrid);
+router.get('/hall-allocation/sessions', isChiefSecretary, getSessions);
+router.post('/hall-allocation/sessions', isCOE, createSession);
+router.delete('/hall-allocation/sessions/:id', isCOE, deleteSession);
+router.put('/hall-allocation/sessions/:id/subjects', isCOE, updateSessionSubjects);
+router.patch('/hall-allocation/sessions/:id/lock', isCOE, toggleSessionLock);
+router.get('/hall-allocation/sessions/:id/allocations', isChiefSecretary, getSessionAllocations);
+router.get('/hall-allocation/halls', isChiefSecretary, getHalls);
+router.post('/hall-allocation/halls', isCOE, addHall);
+router.delete('/hall-allocation/halls/:id', isCOE, deleteHall);
+router.post('/hall-allocation/generate', isCOE, generateAllocations);
+router.get('/hall-allocation/sessions/:id/export', isChiefSecretary, exportConsolidatedPlan);
+router.get('/hall-allocation/sessions/:id/export-grid', isChiefSecretary, exportSeatingGrid);
 
 // Dispatch Routes
-router.get('/dispatch/subjects', getSubjectsForDispatch);
-router.get('/dispatch/students', getStudentsForDispatch);
-router.post('/dispatch/export-pdf', exportDispatchPDF);
+router.get('/dispatch/subjects', isChiefSecretary, getSubjectsForDispatch);
+router.get('/dispatch/students', isChiefSecretary, getStudentsForDispatch);
+router.post('/dispatch/export-pdf', isChiefSecretary, exportDispatchPDF);
 
 module.exports = router;

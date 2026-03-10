@@ -25,31 +25,53 @@ const verifyToken = (req, res, next) => {
 };
 
 const isAdmin = (req, res, next) => {
-    if (req.user && req.user.role === 'ADMIN') {
-        return next();
-    }
+    if (req.user && req.user.role === 'ADMIN') return next();
     return res.status(403).json({ message: 'Require Admin Role' });
 };
 
-const isFaculty = (req, res, next) => {
-    if (req.user && (req.user.role === 'FACULTY' || req.user.role === 'ADMIN')) {
-        return next();
-    }
-    return res.status(403).json({ message: 'Require Faculty Role' });
+const isPrincipal = (req, res, next) => {
+    if (req.user && (req.user.role === 'PRINCIPAL' || req.user.role === 'ADMIN')) return next();
+    return res.status(403).json({ message: 'Require Principal Role' });
+};
+
+const isCOE = (req, res, next) => {
+    if (req.user && (req.user.role === 'COE' || req.user.role === 'ADMIN')) return next();
+    return res.status(403).json({ message: 'Require COE Role' });
+};
+
+const isChiefSecretary = (req, res, next) => {
+    if (req.user && (req.user.role === 'CHIEF_SECRETARY' || req.user.role === 'COE' || req.user.role === 'ADMIN')) return next();
+    return res.status(403).json({ message: 'Require Chief Secretary Role' });
 };
 
 const isHod = (req, res, next) => {
-    if (req.user && (req.user.role === 'HOD' || req.user.role === 'ADMIN')) {
-        return next();
-    }
+    if (req.user && (req.user.role === 'HOD' || req.user.role === 'ADMIN')) return next();
     return res.status(403).json({ message: 'Require HOD Role' });
 };
 
-const isExternalStaff = (req, res, next) => {
-    if (req.user && (req.user.role === 'EXTERNAL_STAFF' || req.user.role === 'ADMIN')) {
-        return next();
-    }
-    return res.status(403).json({ message: 'Require External Staff Role' });
+const isFaculty = (req, res, next) => {
+    if (req.user && (req.user.role === 'FACULTY' || req.user.role === 'HOD' || req.user.role === 'ADMIN')) return next();
+    return res.status(403).json({ message: 'Require Faculty Role' });
 };
 
-module.exports = { verifyToken, isAdmin, isFaculty, isExternalStaff, isHod };
+const isExternal = (req, res, next) => {
+    if (req.user && (req.user.role === 'EXTERNAL' || req.user.role === 'ADMIN')) return next();
+    return res.status(403).json({ message: 'Require External Role' });
+};
+
+const isStudent = (req, res, next) => {
+    if (req.user && (req.user.role === 'STUDENT' || req.user.role === 'ADMIN')) return next();
+    return res.status(403).json({ message: 'Require Student Role' });
+};
+
+module.exports = { 
+    verifyToken, 
+    isAdmin, 
+    isPrincipal, 
+    isCOE, 
+    isChiefSecretary, 
+    isHod, 
+    isFaculty, 
+    isExternal, 
+    isStudent 
+};

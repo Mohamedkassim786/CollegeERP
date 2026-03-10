@@ -24,7 +24,11 @@ const Login = () => {
       let target = "";
 
       if (user.forcePasswordChange) {
-        target = user.role === "ADMIN" ? "/admin/settings" : "/faculty/settings";
+        if (user.role === 'ADMIN') target = "/admin/settings";
+        else if (user.role === 'FACULTY') target = "/faculty/settings";
+        else if (user.role === 'STUDENT') target = "/student/settings";
+        else target = `/${user.role.toLowerCase()}/settings`;
+        
         setTargetPath(target);
         setShowTransition(true);
         return;
@@ -34,6 +38,14 @@ const Login = () => {
         target = "/admin";
       } else if (user.role === "EXTERNAL_STAFF") {
         target = "/external";
+      } else if (user.role === "PRINCIPAL") {
+        target = "/principal";
+      } else if (user.role === "COE") {
+        target = "/coe";
+      } else if (user.role === "HOD") {
+        target = "/hod";
+      } else if (user.role === "STUDENT") {
+        target = "/student";
       } else {
         target = "/faculty";
       }

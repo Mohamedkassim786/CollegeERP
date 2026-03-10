@@ -46,6 +46,29 @@ const updateMarksForAdmin = async (req, res) => {
 
                 const { internal } = markService.calculateInternalMarks(currentMark, safeData, subjectCategory);
 
+                // Audit Logging
+                if (currentMark && currentMark.internal !== internal) {
+                    await tx.markAuditLog.create({
+                        data: {
+                            studentId: sId,
+                            subjectId: subId,
+                            oldValue: currentMark.internal,
+                            newValue: internal,
+                            changedBy: parseInt(req.user.id)
+                        }
+                    });
+                } else if (!currentMark && internal !== null) {
+                    await tx.markAuditLog.create({
+                        data: {
+                            studentId: sId,
+                            subjectId: subId,
+                            oldValue: null,
+                            newValue: internal,
+                            changedBy: parseInt(req.user.id)
+                        }
+                    });
+                }
+
                 await tx.marks.upsert({
                     where: { studentId_subjectId: { studentId: sId, subjectId: subId } },
                     update: {

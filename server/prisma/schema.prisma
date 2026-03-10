@@ -112,6 +112,25 @@ model Student {
   academicYearId  Int?
   batchYear       String?
   status          String @default("ACTIVE")
+  admissionYear   String?
+  photo           String?
+  dateOfBirth     String?
+  gender          String?
+  bloodGroup      String?
+  nationality     String?
+  phoneNumber     String?
+  email           String?
+  address         String?
+  city            String?
+  district        String?
+  state           String?
+  pincode         String?
+  fatherName      String?
+  fatherPhone     String?
+  motherName      String?
+  motherPhone     String?
+  guardianName    String?
+  guardianPhone   String?
 
   departmentRef Department?   @relation(fields: [departmentId], references: [id])
   sectionRef    Section?      @relation(fields: [sectionId], references: [id])
@@ -541,4 +560,14 @@ model HallAllocation {
 
   @@unique([examSessionId, studentId])
   @@unique([examSessionId, hallId, seatNumber])
+}
+
+model MarkAuditLog {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  subjectId Int
+  oldValue  Float?
+  newValue  Float?
+  changedBy Int
+  timestamp DateTime @default(now())
 }

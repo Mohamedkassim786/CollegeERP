@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Users, BookOpen, Calendar, ClipboardList, TrendingUp,
     Book, Bell, FileText, GraduationCap, Building2, Award, CheckCircle, UserCheck, Layout,
-    Settings as SettingsIcon, ChevronDown, ChevronRight, Send
+    Settings as SettingsIcon, ChevronDown, ChevronRight, Activity, Send
 } from 'lucide-react';
 
 const Sidebar = ({ role, activePath }) => {
@@ -75,7 +75,101 @@ const Sidebar = ({ role, activePath }) => {
         { label: 'Dashboard', path: '/external', icon: LayoutDashboard },
     ];
 
-    const menu = role === 'ADMIN' ? adminMenu : (role === 'FACULTY' ? facultyMenu : externalStaffMenu);
+    const principalMenu = [
+        { label: 'Dashboard', path: '/principal', icon: LayoutDashboard },
+        {
+            label: 'Institutional',
+            icon: Building2,
+            isGroup: true,
+            children: [
+                { label: 'Departments', path: '/principal/departments', icon: Building2 },
+                { label: 'Faculty Roster', path: '/principal/faculty', icon: GraduationCap },
+                { label: 'Student Body', path: '/principal/students', icon: Users },
+            ]
+        },
+        {
+            label: 'Analytics',
+            icon: TrendingUp,
+            isGroup: true,
+            children: [
+                { label: 'Academic Performance', path: '/principal/performance', icon: Award },
+                { label: 'Attendance Trends', path: '/principal/attendance', icon: Activity },
+            ]
+        },
+        { label: 'Settings', path: '/principal/settings', icon: SettingsIcon },
+    ];
+
+    const coeMenu = [
+        { label: 'Dashboard', path: '/coe', icon: LayoutDashboard },
+        {
+            label: 'Examination',
+            icon: ClipboardList,
+            isGroup: true,
+            children: [
+                { label: 'Exam Sessions', path: '/coe/sessions', icon: Calendar },
+                { label: 'External Marks', path: '/coe/external-marks', icon: Award },
+                { label: 'Dummy Numbers', path: '/coe/dummy-mapping', icon: Book },
+                { label: 'Hall Allocation', path: '/coe/hall-allocation', icon: Layout },
+            ]
+        },
+        {
+            label: 'Results',
+            icon: Award,
+            isGroup: true,
+            children: [
+                { label: 'Marks Approval', path: '/coe/marks-approval', icon: CheckCircle },
+                { label: 'Result Generation', path: '/coe/generate-results', icon: TrendingUp },
+            ]
+        },
+        { label: 'Settings', path: '/coe/settings', icon: SettingsIcon },
+    ];
+
+    const hodMenu = [
+        { label: 'Dashboard', path: '/hod', icon: LayoutDashboard },
+        {
+            label: 'Department',
+            icon: Building2,
+            isGroup: true,
+            children: [
+                { label: 'Our Students', path: '/hod/students', icon: Users },
+                { label: 'Our Faculty', path: '/hod/faculty', icon: GraduationCap },
+                { label: 'Dept Timetable', path: '/hod/timetable', icon: Calendar },
+            ]
+        },
+        {
+            label: 'Academic Ops',
+            icon: ClipboardList,
+            isGroup: true,
+            children: [
+                { label: 'Attendance Check', path: '/hod/attendance', icon: UserCheck },
+                { label: 'Mark Entry Approval', path: '/hod/marks', icon: Award },
+            ]
+        },
+        { label: 'Announcements', path: '/hod/announcements', icon: Bell },
+        { label: 'Settings', path: '/hod/settings', icon: SettingsIcon },
+    ];
+
+    const studentMenu = [
+        { label: 'Dashboard', path: '/student', icon: LayoutDashboard },
+        { label: 'My Academic Profile', path: '/student/profile', icon: UserCheck },
+        { label: 'Course Materials', path: '/student/materials', icon: Book },
+        { label: 'My Attendance', path: '/student/attendance', icon: Activity },
+        { label: 'Exam Results', path: '/student/results', icon: Award },
+        { label: 'Announcements', path: '/student/announcements', icon: Bell },
+        { label: 'Settings', path: '/student/settings', icon: SettingsIcon },
+    ];
+
+    const menuSelection = {
+        ADMIN: adminMenu,
+        FACULTY: facultyMenu,
+        EXTERNAL_STAFF: externalStaffMenu,
+        PRINCIPAL: principalMenu,
+        COE: coeMenu,
+        HOD: hodMenu,
+        STUDENT: studentMenu
+    };
+
+    const menu = menuSelection[role] || facultyMenu;
 
     // Auto-expand group containing active route
     useEffect(() => {
@@ -162,7 +256,7 @@ const Sidebar = ({ role, activePath }) => {
                     <div>
                         <span className="text-xl font-black tracking-tight font-sans">MIET ERP</span>
                         <p className="text-[10px] text-blue-200 uppercase tracking-widest">
-                            {role === 'ADMIN' ? 'Administrator' : (role === 'EXTERNAL_STAFF' ? 'External Staff' : 'Faculty')}
+                            {role.replace('_', ' ')}
                         </p>
                     </div>
                 </div>

@@ -3,7 +3,17 @@ const prisma = new PrismaClient();
 const { handleError } = require('../utils/errorUtils');
 
 const createStudent = async (req, res) => {
-    let { rollNo, registerNumber, name, department, year, section, semester, regulation, batch } = req.body;
+    let { 
+        rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
+        admissionYear, dateOfBirth, gender, bloodGroup, nationality,
+        phoneNumber, email, address, city, district, state, pincode,
+        fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
+        status: studentStatus,
+    } = req.body;
+    
+    // Explicitly override photo with the uploaded filename if present
+    let photo = req.file ? req.file.filename : (req.body.photo || "default-avatar.png");
+    
     try {
         const parsedYear = parseInt(year) || 1;
         const parsedSemester = parseInt(semester) || 1;
@@ -65,7 +75,27 @@ const createStudent = async (req, res) => {
                 sectionId: targetSecId,
                 currentSemester: parseInt(semester),
                 batchYear: parsedBatchYear,
-                academicYearId: academicYearId
+                academicYearId: academicYearId,
+                admissionYear,
+                photo,
+                dateOfBirth,
+                gender,
+                bloodGroup,
+                nationality,
+                phoneNumber,
+                email,
+                address,
+                city,
+                district,
+                state,
+                pincode,
+                fatherName,
+                fatherPhone,
+                motherName,
+                motherPhone,
+                guardianName,
+                guardianPhone,
+                status: studentStatus || "ACTIVE",
             }
         });
         res.status(201).json(student);
@@ -76,7 +106,16 @@ const createStudent = async (req, res) => {
 
 const updateStudent = async (req, res) => {
     const { id } = req.params;
-    let { rollNo, registerNumber, name, department, year, section, semester, regulation, batch } = req.body;
+    let { 
+        rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
+        admissionYear, dateOfBirth, gender, bloodGroup, nationality,
+        phoneNumber, email, address, city, district, state, pincode,
+        fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
+        status: studentStatus,
+    } = req.body;
+    
+    // Explicitly override photo with the uploaded filename if present
+    let photo = req.file ? req.file.filename : req.body.photo;
     try {
         const studentId = parseInt(id);
         const parsedYear = parseInt(year) || 1;
@@ -140,7 +179,27 @@ const updateStudent = async (req, res) => {
                 sectionId: targetSecId,
                 currentSemester: parseInt(semester),
                 batchYear: parsedBatchYear,
-                academicYearId: academicYearId
+                academicYearId: academicYearId,
+                admissionYear,
+                photo,
+                dateOfBirth,
+                gender,
+                bloodGroup,
+                nationality,
+                phoneNumber,
+                email,
+                address,
+                city,
+                district,
+                state,
+                pincode,
+                fatherName,
+                fatherPhone,
+                motherName,
+                motherPhone,
+                guardianName,
+                guardianPhone,
+                status: studentStatus,
             }
         });
         res.json(student);
@@ -392,8 +451,19 @@ const promoteStudents = async (req, res) => {
     }
 };
 
+const { extractPhotosFromZip } = require('../utils/zipExtractor');
+
 const bulkUploadStudents = async (req, res) => {
-    const { students } = req.body;
+    // Note: Due to multer parsing, 'students' might come in as a stringified JSON array
+    let students = req.body.students;
+    if (typeof students === 'string') {
+        try {
+            students = JSON.parse(students);
+        } catch(e) {
+            return res.status(400).json({ message: 'Invalid students JSON format' });
+        }
+    }
+
     try {
         if (!students || !Array.isArray(students)) {
             return res.status(400).json({ message: 'Invalid student data format' });
@@ -402,12 +472,29 @@ const bulkUploadStudents = async (req, res) => {
         let createdCount = 0;
         let updatedCount = 0;
         let errors = [];
+        let zipInfo = null;
 
-        // ✅ FIX Bug #5: fetch departments ONCE before the loop (was fetching per student = N+1 queries)
+        // Process ZIP if provided
+        if (req.files && req.files['photosZip'] && req.files['photosZip'].length > 0) {
+            const zipFile = req.files['photosZip'][0];
+            try {
+                zipInfo = await extractPhotosFromZip(zipFile.buffer);
+            } catch (zipError) {
+                console.error("ZIP Extraction Failed:", zipError);
+                errors.push({ type: 'ZIP_ERROR', error: 'Failed to extract photos ZIP' });
+            }
+        }
+
         const allDepts = await prisma.department.findMany();
 
         for (const s of students) {
-            let { rollNo, registerNumber, name, department, year, section, semester, regulation, batch } = s;
+            let { 
+                rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
+                admissionYear, photo, dateOfBirth, gender, bloodGroup, nationality,
+                phoneNumber, email, address, city, district, state, pincode,
+                fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
+                status: studentStatus,
+            } = s;
 
             if (!rollNo) {
                 errors.push({ rollNo: 'MISSING', error: 'Roll Number is mandatory' });
@@ -415,26 +502,28 @@ const bulkUploadStudents = async (req, res) => {
             }
 
             rollNo = String(rollNo).trim();
+            
+            // Apply fallback photo immediately to ensure all mapped fields have a valid string.
+            // If the ZIP payload doesn't map to this string, it'll still point to the client view default.
+            photo = photo || 'default-avatar.png';
 
             try {
-                // Relational Support Resolver (Sync with createStudent)
                 let targetDeptId = null;
                 let targetSecId = null;
-                const academicYearId = 1; // Default for bulk upload
+                const academicYearId = 1;
 
                 const parsedYear = parseInt(year) || 1;
                 const parsedSemester = parseInt(semester) || 1;
 
                 if (department) {
                     const deptText = String(department).trim().toUpperCase();
-                    // ✅ Use pre-fetched allDepts — no extra DB call per student
                     const deptObj = allDepts.find(d =>
                         (d.code && d.code.toUpperCase() === deptText) ||
                         (d.name && d.name.toUpperCase() === deptText)
                     );
                     if (deptObj) {
                         targetDeptId = deptObj.id;
-                        department = deptObj.code || deptObj.name; // Standardize
+                        department = deptObj.code || deptObj.name;
                     }
                 }
 
@@ -479,7 +568,27 @@ const bulkUploadStudents = async (req, res) => {
                             departmentId: targetDeptId || existing.departmentId,
                             sectionId: targetSecId || existing.sectionId,
                             currentSemester: parseInt(semester) || existing.currentSemester,
-                            batchYear: parsedBatchYear || existing.batchYear
+                            batchYear: parsedBatchYear || existing.batchYear,
+                            admissionYear: admissionYear || existing.admissionYear,
+                            photo: photo || existing.photo,
+                            dateOfBirth: dateOfBirth || existing.dateOfBirth,
+                            gender: gender || existing.gender,
+                            bloodGroup: bloodGroup || existing.bloodGroup,
+                            nationality: nationality || existing.nationality,
+                            phoneNumber: phoneNumber || existing.phoneNumber,
+                            email: email || existing.email,
+                            address: address || existing.address,
+                            city: city || existing.city,
+                            district: district || existing.district,
+                            state: state || existing.state,
+                            pincode: pincode || existing.pincode,
+                            fatherName: fatherName || existing.fatherName,
+                            fatherPhone: fatherPhone || existing.fatherPhone,
+                            motherName: motherName || existing.motherName,
+                            motherPhone: motherPhone || existing.motherPhone,
+                            guardianName: guardianName || existing.guardianName,
+                            guardianPhone: guardianPhone || existing.guardianPhone,
+                            status: studentStatus || existing.status,
                         }
                     });
                     updatedCount++;
@@ -499,7 +608,27 @@ const bulkUploadStudents = async (req, res) => {
                             sectionId: targetSecId,
                             currentSemester: parseInt(semester) || 1,
                             batchYear: parsedBatchYear,
-                            academicYearId: academicYearId
+                            academicYearId: academicYearId,
+                            admissionYear,
+                            photo,
+                            dateOfBirth,
+                            gender,
+                            bloodGroup,
+                            nationality,
+                            phoneNumber,
+                            email,
+                            address,
+                            city,
+                            district,
+                            state,
+                            pincode,
+                            fatherName,
+                            fatherPhone,
+                            motherName,
+                            motherPhone,
+                            guardianName,
+                            guardianPhone,
+                            status: studentStatus || "ACTIVE",
                         }
                     });
                     createdCount++;
@@ -607,6 +736,57 @@ const passStudentsOut = async (req, res) => {
     }
 };
 
+const getStudentProfile = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const studentId = parseInt(id);
+        const student = await prisma.student.findUnique({
+            where: { id: studentId },
+            include: {
+                departmentRef: true,
+                sectionRef: true,
+                academicYear: true,
+                marks: {
+                    include: {
+                        subject: true,
+                        endSemMarks: true
+                    }
+                },
+                results: true,
+                arrears: {
+                    include: {
+                        subject: true,
+                        attempts: true
+                    }
+                }
+            }
+        });
+
+        if (!student) return res.status(404).json({ message: "Student not found" });
+
+        // Calculate statistics
+        const totalSubjects = student.marks.length;
+        const clearedSubjects = student.marks.filter(m => m.endSemMarks?.resultStatus === 'PASS' || m.endSemMarks?.resultStatus === 'P').length;
+        const arrearSubjects = student.arrears.filter(a => !a.isCleared).length;
+        
+        // Use latest semester result for GPA/CGPA
+        const latestResult = student.results.sort((a,b) => b.semester - a.semester)[0];
+
+        res.json({
+            ...student,
+            stats: {
+                totalSubjects,
+                clearedSubjects,
+                arrearSubjects,
+                currentGPA: latestResult?.gpa || 0,
+                cgpa: latestResult?.cgpa || 0
+            }
+        });
+    } catch (error) {
+        handleError(res, error, "Error fetching student profile");
+    }
+};
+
 module.exports = {
     createStudent,
     updateStudent,
@@ -615,5 +795,6 @@ module.exports = {
     promoteStudents,
     bulkUploadStudents,
     batchAssignRegisterNumbers,
-    passStudentsOut
+    passStudentsOut,
+    getStudentProfile
 };

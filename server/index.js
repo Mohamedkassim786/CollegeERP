@@ -36,6 +36,8 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
+const path = require('path');
+
 // Security headers
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -43,6 +45,9 @@ app.use((req, res, next) => {
     res.setHeader('X-XSS-Protection', '1; mode=block');
     next();
 });
+
+// Serve uploaded static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Basic Health Check
 app.get('/', (req, res) => {
@@ -58,6 +63,7 @@ const examRoutes = require('./routes/examRoutes');
 const externalRoutes = require('./routes/externalRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const materialRoutes = require('./routes/materialRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Routes will be imported here
 app.use('/api/auth', authRoutes);
@@ -70,6 +76,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/dummy', require('./routes/dummyRoutes'));
 app.use('/api/external/marks', require('./routes/externalMarkRoutes'));
+app.use('/api/dashboard', dashboardRoutes);
 
 const os = require('os');
 const networkInterfaces = os.networkInterfaces();

@@ -1,6 +1,6 @@
 import CustomSelect from "../../components/CustomSelect";
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Users,
   ChevronRight,
@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   BookOpen,
   ClipboardList,
+  User,
+  Search,
 } from "lucide-react";
 import ExcelJS from "exceljs";
 import api from "../../api/axios";
@@ -29,6 +31,9 @@ const StudentManager = () => {
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
   const [studentsList, setStudentsList] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [batchFilter, setBatchFilter] = useState("ALL");
 
   // Dynamic Departments & Sections
   const [departments, setDepartments] = useState([]);
@@ -45,6 +50,7 @@ const StudentManager = () => {
   // UI States
   const [loading, setLoading] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -53,7 +59,7 @@ const StudentManager = () => {
 
   // Form Inputs
   const [newStudent, setNewStudent] = useState({
-    rollNo: "", // Added Roll No
+    rollNo: "",
     registerNumber: "",
     name: "",
     department: "",
@@ -62,10 +68,31 @@ const StudentManager = () => {
     semester: "",
     regulation: "2021",
     batch: "",
+    admissionYear: "",
+    photo: "",
+    dateOfBirth: "",
+    gender: "",
+    bloodGroup: "",
+    nationality: "",
+    phoneNumber: "",
+    email: "",
+    address: "",
+    city: "",
+    district: "",
+    state: "",
+    pincode: "",
+    fatherName: "",
+    fatherPhone: "",
+    motherName: "",
+    motherPhone: "",
+    guardianName: "",
+    guardianPhone: "",
+    status: "ACTIVE",
   });
 
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkFile, setBulkFile] = useState(null);
+  const [bulkZipFile, setBulkZipFile] = useState(null);
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
   const [bulkConfig, setBulkConfig] = useState({
@@ -269,7 +296,20 @@ const StudentManager = () => {
   const handleEditStudent = async (e) => {
     e.preventDefault();
     try {
-      await api.put(`/admin/students/${editingStudent.id}`, editingStudent);
+      const formData = new FormData();
+      Object.keys(editingStudent).forEach((key) => {
+        if (key !== "photoFile" && editingStudent[key] !== null) {
+          formData.append(key, editingStudent[key]);
+        }
+      });
+      // Append physical file if newly uploaded
+      if (editingStudent.photoFile) {
+        formData.append("photo", editingStudent.photoFile);
+      }
+
+      await api.put(`/admin/students/${editingStudent.id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
       alert("Student Updated Successfully");
       setShowEditModal(false);
       setEditingStudent(null);
@@ -279,10 +319,36 @@ const StudentManager = () => {
     }
   };
 
+  // Handle Photo Upload - Stores Blob File + Object URL preview
+  const handlePhotoChange = (e, isEditing = false) => {
+    const file = e.target.files[0];
+    if (file) {
+      const previewUrl = window.URL.createObjectURL(file);
+      if (isEditing) {
+        setEditingStudent({ ...editingStudent, photoFile: file, photo: previewUrl });
+      } else {
+        setNewStudent({ ...newStudent, photoFile: file, photo: previewUrl });
+      }
+    }
+  };
+
   const handleCreateStudent = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/admin/students", newStudent);
+      const formData = new FormData();
+      Object.keys(newStudent).forEach((key) => {
+        if (key !== "photoFile" && newStudent[key] !== null) {
+          formData.append(key, newStudent[key]);
+        }
+      });
+      // Append physical file if newly uploaded
+      if (newStudent.photoFile) {
+        formData.append("photo", newStudent.photoFile);
+      }
+
+      await api.post("/admin/students", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
       alert("Student Added Successfully");
       setShowCreateModal(false);
       setNewStudent({
@@ -295,6 +361,8 @@ const StudentManager = () => {
         semester: "",
         regulation: "2021",
         batch: "",
+        photoFile: null,
+        photo: ""
       });
       if (
         selectedDept === newStudent.department &&
@@ -333,7 +401,11 @@ const StudentManager = () => {
     titleCell.font = { bold: true, size: 14 };
     titleCell.alignment = { horizontal: "center" };
 
-    worksheet.getRow(3).values = ["S.No", "Roll No", "Register No", "Student Name"];
+    worksheet.getRow(3).values = [
+      "S.No", "Roll No", "Register No", "Student Name", "Admission Year", 
+      "DOB", "Gender", "Blood Group", "Nationality", "Phone", "Email", 
+      "Address", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Photo URL"
+    ];
     worksheet.getRow(3).font = { bold: true };
     worksheet.getRow(3).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF00B0F0" } };
 
@@ -342,6 +414,19 @@ const StudentManager = () => {
       { key: "rollNo", width: 15 },
       { key: "registerNumber", width: 20 },
       { key: "name", width: 30 },
+      { key: "admissionYear", width: 15 },
+      { key: "dateOfBirth", width: 15 },
+      { key: "gender", width: 10 },
+      { key: "bloodGroup", width: 10 },
+      { key: "nationality", width: 15 },
+      { key: "phoneNumber", width: 15 },
+      { key: "email", width: 25 },
+      { key: "address", width: 40 },
+      { key: "fatherName", width: 25 },
+      { key: "fatherPhone", width: 15 },
+      { key: "motherName", width: 25 },
+      { key: "motherPhone", width: 15 },
+      { key: "photo", width: 30 },
     ];
 
     worksheet.addRow({
@@ -349,6 +434,13 @@ const StudentManager = () => {
       rollNo: "E1225001",
       registerNumber: "812422104001",
       name: "ABHILASH S",
+      admissionYear: "2022",
+      dateOfBirth: "01/01/2004",
+      gender: "Male",
+      bloodGroup: "O+",
+      phoneNumber: "9876543210",
+      email: "abhilash@example.com",
+      photo: "E1225001.jpg"
     });
 
     worksheet.addRow({
@@ -356,6 +448,11 @@ const StudentManager = () => {
       rollNo: "E1225002",
       registerNumber: "812422104002",
       name: "ABINAYA K",
+      admissionYear: "2022",
+      dateOfBirth: "02/02/2004",
+      gender: "Female",
+      bloodGroup: "A+",
+      photo: "E1225002.png"
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -405,17 +502,41 @@ const StudentManager = () => {
         EEE: "Electrical and Electronics Engineering",
       };
 
-      let headerKeys = { name: -1, rollNo: -1, registerNumber: -1 };
+      let headerKeys = { 
+        name: -1, rollNo: -1, registerNumber: -1, admissionYear: -1,
+        dateOfBirth: -1, gender: -1, bloodGroup: -1, nationality: -1,
+        phoneNumber: -1, email: -1, address: -1, 
+        fatherName: -1, fatherPhone: -1, motherName: -1, motherPhone: -1, photoURL: -1
+      };
       let headersFound = false;
 
       worksheet.eachRow((row, rowNumber) => {
         if (!headersFound) {
-          let tempMap = { name: -1, rollNo: -1, registerNumber: -1 };
+          let tempMap = { 
+            name: -1, rollNo: -1, registerNumber: -1, admissionYear: -1,
+            dateOfBirth: -1, gender: -1, bloodGroup: -1, nationality: -1,
+            phoneNumber: -1, email: -1, address: -1, 
+            fatherName: -1, fatherPhone: -1, motherName: -1, motherPhone: -1, photoURL: -1
+          };
           row.eachCell((cell, colNumber) => {
             const text = String(cell.text || "").toLowerCase().replace(/[^a-z]/g, '');
-            if (text.includes("name") || text.includes("student")) tempMap.name = colNumber;
+            if (text === "name" || text === "studentname") tempMap.name = colNumber;
             else if (text.includes("roll")) tempMap.rollNo = colNumber;
             else if (text.includes("reg") && !text.includes("regulation")) tempMap.registerNumber = colNumber;
+            else if (text.includes("admissionyear")) tempMap.admissionYear = colNumber;
+            else if (text.includes("dob") || text.includes("birth")) tempMap.dateOfBirth = colNumber;
+            else if (text.includes("gender")) tempMap.gender = colNumber;
+            else if (text.includes("blood")) tempMap.bloodGroup = colNumber;
+            else if (text.includes("nation")) tempMap.nationality = colNumber;
+            else if (text.includes("phone") || text.includes("mobile")) {
+              if (text.includes("father")) tempMap.fatherPhone = colNumber;
+              else if (text.includes("mother")) tempMap.motherPhone = colNumber;
+              else tempMap.phoneNumber = colNumber;
+            }
+            else if (text.includes("email")) tempMap.email = colNumber;
+            else if (text.includes("address")) tempMap.address = colNumber;
+            else if (text.includes("mother") && text.includes("name")) tempMap.motherName = colNumber;
+            else if (text.includes("photo") || text.includes("image")) tempMap.photoURL = colNumber;
           });
 
           if (tempMap.name !== -1 && (tempMap.rollNo !== -1 || tempMap.registerNumber !== -1)) {
@@ -439,6 +560,24 @@ const StudentManager = () => {
         const nameVal = headerKeys.name !== -1 ? String(row.getCell(headerKeys.name).text || "").trim() : "";
         const rollVal = headerKeys.rollNo !== -1 ? String(row.getCell(headerKeys.rollNo).text || "").trim() : "";
         const regVal = headerKeys.registerNumber !== -1 ? String(row.getCell(headerKeys.registerNumber).text || "").trim() : "";
+        const admissionYear = headerKeys.admissionYear !== -1 ? String(row.getCell(headerKeys.admissionYear).text || "").trim() : "";
+        const dob = headerKeys.dateOfBirth !== -1 ? String(row.getCell(headerKeys.dateOfBirth).text || "").trim() : "";
+        const gender = headerKeys.gender !== -1 ? String(row.getCell(headerKeys.gender).text || "").trim() : "";
+        const blood = headerKeys.bloodGroup !== -1 ? String(row.getCell(headerKeys.bloodGroup).text || "").trim() : "";
+        const nation = headerKeys.nationality !== -1 ? String(row.getCell(headerKeys.nationality).text || "").trim() : "";
+        const phone = headerKeys.phoneNumber !== -1 ? String(row.getCell(headerKeys.phoneNumber).text || "").trim() : "";
+        const email = headerKeys.email !== -1 ? String(row.getCell(headerKeys.email).text || "").trim() : "";
+        const addr = headerKeys.address !== -1 ? String(row.getCell(headerKeys.address).text || "").trim() : "";
+        const fName = headerKeys.fatherName !== -1 ? String(row.getCell(headerKeys.fatherName).text || "").trim() : "";
+        const fPhone = headerKeys.fatherPhone !== -1 ? String(row.getCell(headerKeys.fatherPhone).text || "").trim() : "";
+        const mName = headerKeys.motherName !== -1 ? String(row.getCell(headerKeys.motherName).text || "").trim() : "";
+        const mPhone = headerKeys.motherPhone !== -1 ? String(row.getCell(headerKeys.motherPhone).text || "").trim() : "";
+        
+        let photo = "";
+        const photoCell = row.getCell(headerKeys.photoURL);
+        if (photoCell && photoCell.value) {
+           photo = String(photoCell.value).trim();
+        }
 
         if (!nameVal && !rollVal && !regVal) return;
         if (nameVal.toLowerCase().includes("name") && (rollVal.toLowerCase().includes("roll") || regVal.toLowerCase().includes("reg"))) return;
@@ -463,6 +602,19 @@ const StudentManager = () => {
             semester: parseInt(bulkConfig.semester),
             regulation: bulkConfig.regulation || "2021",
             batch: bulkConfig.batch || "",
+            admissionYear: admissionYear || "",
+            dateOfBirth: dob || "",
+            gender: gender || "",
+            bloodGroup: blood || "",
+            nationality: nation || "",
+            phoneNumber: phone || "",
+            email: email || "",
+            address: addr || "",
+            fatherName: fName || "",
+            fatherPhone: fPhone || "",
+            motherName: mName || "",
+            motherPhone: mPhone || "",
+            photo: photo || "",
           });
         }
       });
@@ -470,7 +622,17 @@ const StudentManager = () => {
       if (students.length === 0)
         throw new Error("No valid student records found in file");
 
-      const res = await api.post("/admin/students/bulk", { students });
+      const formData = new FormData();
+      formData.append('students', JSON.stringify(students));
+      if (bulkZipFile) {
+        formData.append('photosZip', bulkZipFile);
+      }
+
+      const res = await api.post("/admin/students/bulk", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       setBulkResult(res.data);
       if (res.data?.errors && res.data.errors.length > 0) {
         toast.error(`Imported with ${res.data.errors.length} errors. Check console.`);
@@ -1136,68 +1298,161 @@ const StudentManager = () => {
               </div>
             ) : (
               <div className="overflow-hidden bg-gray-50/30 rounded-3xl border border-gray-100">
+                {/* Advanced Filters */}
+                <div className="p-6 bg-white/50 border-b border-gray-100 flex flex-wrap items-center gap-4">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Search Name or Roll Number..."
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#003B73]/10 transition-all"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <CustomSelect
+                    className="min-w-[150px]"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="ALL">All Status</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="ARREAR">Arrear</option>
+                    <option value="PASSED_OUT">Passed Out</option>
+                    <option value="DETENTION">Detention</option>
+                    <option value="DROPOUT">Dropout</option>
+                  </CustomSelect>
+                  <CustomSelect
+                    className="min-w-[150px]"
+                    value={batchFilter}
+                    onChange={(e) => setBatchFilter(e.target.value)}
+                  >
+                    <option value="ALL">All Batches</option>
+                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </CustomSelect>
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('ALL');
+                      setBatchFilter('ALL');
+                    }}
+                    className="p-3 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200 transition-all"
+                    title="Clear Filters"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
                 <table className="w-full text-center border-collapse">
                   <thead className="bg-gray-100/50 text-[#003B73] text-[10px] font-black uppercase tracking-[0.2em]">
                     <tr>
-                      <th className="px-8 py-6 text-left">Student Profile</th>
-                      <th className="px-8 py-6">Roll Number</th>
-                      <th className="px-8 py-6">Register Number</th>
-                      <th className="px-8 py-6">Batch</th>
-                      <th className="px-8 py-6">Current Sem</th>
-                      <th className="px-8 py-6 text-right">Settings</th>
+                      <th className="px-6 py-6 text-left">Photo</th>
+                      <th className="px-6 py-6 text-left">Student Details</th>
+                      <th className="px-6 py-6">Roll No</th>
+                      <th className="px-6 py-6">Dept/Sec</th>
+                      <th className="px-6 py-6">Batch/Sem</th>
+                      <th className="px-6 py-6">Phone</th>
+                      <th className="px-6 py-6">Status</th>
+                      <th className="px-6 py-6 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100/50">
-                    {studentsList.map((s) => (
-                      <tr
-                        key={s.id}
-                        className="group hover:bg-white transition-all duration-300"
-                      >
-                        <td className="px-8 py-6 text-left">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-[#003B73] shadow-sm border border-gray-100 group-hover:scale-110 transition-all duration-500 group-hover:shadow-indigo-100">
-                              {s.name.charAt(0)}
+                    {studentsList
+                      .filter(s => {
+                        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          s.rollNo.toLowerCase().includes(searchTerm.toLowerCase());
+                        const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter;
+                        const matchesBatch = batchFilter === 'ALL' || s.batch?.includes(batchFilter);
+                        return matchesSearch && matchesStatus && matchesBatch;
+                      })
+                      .map((s) => (
+                        <tr
+                          key={s.id}
+                          className="group hover:bg-white transition-all duration-300"
+                        >
+                          <td className="px-6 py-6 text-left">
+                            {s.photo ? (
+                              <img src={s.photo} alt={s.name} className="w-12 h-12 rounded-2xl object-cover border border-gray-100 shadow-sm" />
+                            ) : (
+                              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-[#003B73] shadow-sm border border-gray-100 group-hover:scale-110 transition-all duration-500 group-hover:shadow-indigo-100">
+                                {s.name.charAt(0)}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-6 text-left">
+                            <div className="flex flex-col">
+                              <span className="font-extrabold text-gray-800 text-lg group-hover:text-[#003B73] transition-colors">
+                                {s.name}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-400 font-mono tracking-wider">
+                                {s.registerNumber || "NO REGISTER NO"}
+                              </span>
                             </div>
-                            <span className="font-extrabold text-gray-800 text-lg group-hover:text-[#003B73] transition-colors">
-                              {s.name}
+                          </td>
+                          <td className="px-6 py-6 font-mono font-bold text-[#003B73] text-sm group-hover:text-blue-600">
+                            {s.rollNo}
+                          </td>
+                          <td className="px-6 py-6">
+                            <div className="flex flex-col items-center">
+                              <span className="font-bold text-gray-700 text-sm">{s.department || "-"}</span>
+                              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Sec {s.section || "-"}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-6">
+                            <div className="flex flex-col items-center">
+                              <span className="font-bold text-emerald-600 text-sm">{s.batch || "-"}</span>
+                              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-lg font-black text-[9px] border border-indigo-100 mt-1">
+                                Sem {s.semester}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-6 font-bold text-gray-600 text-sm">
+                            {s.phoneNumber || "-"}
+                          </td>
+                          <td className="px-6 py-6">
+                            <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest border ${s.status === 'ACTIVE' ? 'bg-green-50 text-green-600 border-green-100' :
+                                s.status === 'ARREAR' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                  s.status === 'PASSED_OUT' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                    'bg-red-50 text-red-600 border-red-100'
+                              }`}>
+                              {s.status || 'ACTIVE'}
                             </span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6 font-mono font-bold text-[#003B73] text-sm group-hover:text-blue-600">
-                          {s.rollNo}
-                        </td>
-                        <td className="px-8 py-6 font-mono font-bold text-gray-400 text-sm group-hover:text-gray-600">
-                          {s.registerNumber || "-"}
-                        </td>
-                        <td className="px-8 py-6 font-bold text-emerald-600 text-sm">
-                          {s.batch || "-"}
-                        </td>
-                        <td className="px-8 py-6">
-                          <span className="px-5 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs border border-indigo-100 shadow-sm">
-                            Semester {s.semester}
-                          </span>
-                        </td>
-                        <td className="px-8 py-6 text-right">
-                          <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-                            <button
-                              onClick={() => {
-                                setEditingStudent(s);
-                                setShowEditModal(true);
-                              }}
-                              className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStudent(s.id)}
-                              className="p-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-6 py-6 text-right">
+                            <div className="flex justify-end gap-2 transition-all duration-300">
+                              <button
+                                onClick={() => {
+                                  const basePath = location.pathname.split('/')[1];
+                                  navigate(`/${basePath}/students/profile/${s.id}`);
+                                }}
+                                className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                title="View Profile"
+                              >
+                                <User size={16} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingStudent(s);
+                                  setShowEditModal(true);
+                                }}
+                                className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                title="Edit"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStudent(s.id)}
+                                className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     {studentsList.length === 0 && (
                       <tr>
                         <td colSpan="4" className="py-32 text-center">
@@ -1224,7 +1479,7 @@ const StudentManager = () => {
       {
         showCreateModal && (
           <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-center mb-10">
                 <div>
                   <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
@@ -1243,6 +1498,30 @@ const StudentManager = () => {
               </div>
 
               <form onSubmit={handleCreateStudent} className="space-y-6">
+                {/* Photo Upload Section */}
+                <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 hover:border-[#003B73] transition-all group relative overflow-hidden">
+                  {newStudent.photo ? (
+                    <div className="relative w-32 h-32">
+                      <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover rounded-[24px] shadow-lg" />
+                      <button 
+                        type="button"
+                        onClick={() => setNewStudent({ ...newStudent, photo: '' })}
+                        className="absolute -top-2 -right-2 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer flex flex-col items-center">
+                      <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-all duration-500 mb-4">
+                        <Upload className="w-8 h-8 text-[#003B73]" />
+                      </div>
+                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Upload Photo</span>
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoChange(e)} />
+                    </label>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
@@ -1435,6 +1714,57 @@ const StudentManager = () => {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                      Admission Year
+                    </label>
+                    <input
+                      className="input-field w-full"
+                      placeholder="2021"
+                      value={newStudent.admissionYear}
+                      onChange={(e) =>
+                        setNewStudent({ ...newStudent, admissionYear: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Personal Information */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Personal Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="date" className="input-field" placeholder="DOB" value={newStudent.dateOfBirth || ''} onChange={e => setNewStudent({ ...newStudent, dateOfBirth: e.target.value })} />
+                    <CustomSelect value={newStudent.gender} onChange={e => setNewStudent({ ...newStudent, gender: e.target.value })}>
+                      <option value="">Gender</option>
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                      <option value="OTHER">Other</option>
+                    </CustomSelect>
+                    <input className="input-field" placeholder="Blood Group" value={newStudent.bloodGroup} onChange={e => setNewStudent({ ...newStudent, bloodGroup: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Contact Details</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input className="input-field" placeholder="Phone Number" value={newStudent.phoneNumber} onChange={e => setNewStudent({ ...newStudent, phoneNumber: e.target.value })} />
+                    <input className="input-field" placeholder="Email Address" value={newStudent.email} onChange={e => setNewStudent({ ...newStudent, email: e.target.value })} />
+                    <input className="input-field col-span-2" placeholder="Full Address" value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Parent Details */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Parent Details</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input className="input-field" placeholder="Father's Name" value={newStudent.fatherName} onChange={e => setNewStudent({ ...newStudent, fatherName: e.target.value })} />
+                    <input className="input-field" placeholder="Father's Phone" value={newStudent.fatherPhone} onChange={e => setNewStudent({ ...newStudent, fatherPhone: e.target.value })} />
+                    <input className="input-field" placeholder="Mother's Name" value={newStudent.motherName} onChange={e => setNewStudent({ ...newStudent, motherName: e.target.value })} />
+                    <input className="input-field" placeholder="Mother's Phone" value={newStudent.motherPhone} onChange={e => setNewStudent({ ...newStudent, motherPhone: e.target.value })} />
+                  </div>
+                </div>
 
                 <div className="flex gap-4 pt-6">
                   <button
@@ -1461,7 +1791,7 @@ const StudentManager = () => {
       {
         showEditModal && editingStudent && (
           <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100">
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-xl shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-center mb-10">
                 <div>
                   <h3 className="text-3xl font-black text-[#003B73] tracking-tight">
@@ -1480,6 +1810,30 @@ const StudentManager = () => {
               </div>
 
               <form onSubmit={handleEditStudent} className="space-y-6">
+                {/* Photo Upload Section */}
+                <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 hover:border-[#003B73] transition-all group relative overflow-hidden">
+                  {editingStudent.photo ? (
+                    <div className="relative w-32 h-32">
+                      <img src={editingStudent.photo} alt="Preview" className="w-full h-full object-cover rounded-[24px] shadow-lg" />
+                      <button
+                        type="button"
+                        onClick={() => setEditingStudent({ ...editingStudent, photo: '' })}
+                        className="absolute -top-2 -right-2 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer flex flex-col items-center">
+                      <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-all duration-500 mb-4">
+                        <Upload className="w-8 h-8 text-[#003B73]" />
+                      </div>
+                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Update Photo</span>
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handlePhotoChange(e, true)} />
+                    </label>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
@@ -1711,7 +2065,7 @@ const StudentManager = () => {
       {
         showBulkModal && (
           <div className="fixed inset-0 bg-emerald-900/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-            <div className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl border border-gray-100 relative">
+            <div className="bg-white rounded-[48px] p-10 w-full max-w-2xl shadow-2xl border border-gray-100 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
               {/* Status bar */}
               {bulkUploading && (
                 <div className="absolute top-0 left-0 h-1.5 bg-emerald-500 animate-pulse w-full"></div>
@@ -1895,34 +2249,62 @@ const StudentManager = () => {
 
                 {!bulkResult ? (
                   <form onSubmit={handleBulkUpload} className="space-y-6">
-                    <div className="group relative">
-                      <input
-                        type="file"
-                        accept=".xlsx, .xls"
-                        onChange={(e) => setBulkFile(e.target.files[0])}
-                        className="hidden"
-                        id="bulk-file-input"
-                      />
-                      <label
-                        htmlFor="bulk-file-input"
-                        className={`flex flex-col items-center justify-center w-full py-16 border-4 border-dashed rounded-[40px] cursor-pointer transition-all ${bulkFile ? "border-emerald-200 bg-emerald-50" : "border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30"}`}
-                      >
-                        <Upload
-                          size={48}
-                          className={`mb-4 ${bulkFile ? "text-emerald-500" : "text-gray-300 group-hover:text-blue-400"}`}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Excel File Input */}
+                      <div className="group relative">
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls"
+                          onChange={(e) => setBulkFile(e.target.files[0])}
+                          className="hidden"
+                          id="bulk-file-input"
                         />
-                        <p
-                          className={`font-black uppercase tracking-[0.2em] text-xs ${bulkFile ? "text-emerald-600" : "text-gray-400 group-hover:text-blue-900/40"}`}
+                        <label
+                          htmlFor="bulk-file-input"
+                          className={`flex flex-col items-center justify-center w-full py-10 border-4 border-dashed rounded-[32px] cursor-pointer transition-all ${bulkFile ? "border-emerald-200 bg-emerald-50" : "border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30"}`}
                         >
-                          {bulkFile ? bulkFile.name : "Select or Drop Excel File"}
-                        </p>
-                        {bulkFile && (
-                          <p className="text-[10px] font-bold text-emerald-400 mt-2">
-                            {(bulkFile.size / 1024).toFixed(1)} KB ready for
-                            processing
+                          <FileSpreadsheet
+                            size={40}
+                            className={`mb-3 ${bulkFile ? "text-emerald-500" : "text-gray-300 group-hover:text-blue-400"}`}
+                          />
+                          <p className={`font-black uppercase tracking-[0.15em] text-[10px] text-center px-4 ${bulkFile ? "text-emerald-600" : "text-gray-400 group-hover:text-blue-900/40"}`}>
+                            {bulkFile ? bulkFile.name : "1. SELECT STUDENT EXCEL SHEET"}
                           </p>
-                        )}
-                      </label>
+                          {bulkFile && (
+                            <p className="text-[9px] font-bold text-emerald-400 mt-2">
+                              {(bulkFile.size / 1024).toFixed(1)} KB Ready
+                            </p>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* ZIP Photo Input */}
+                      <div className="group relative">
+                        <input
+                          type="file"
+                          accept=".zip"
+                          onChange={(e) => setBulkZipFile(e.target.files[0])}
+                          className="hidden"
+                          id="bulk-zip-input"
+                        />
+                        <label
+                          htmlFor="bulk-zip-input"
+                          className={`flex flex-col items-center justify-center w-full py-10 border-4 border-dashed rounded-[32px] cursor-pointer transition-all ${bulkZipFile ? "border-blue-200 bg-blue-50" : "border-gray-100 bg-gray-50/50 hover:border-blue-200 hover:bg-blue-50/30"}`}
+                        >
+                          <Upload
+                            size={40}
+                            className={`mb-3 ${bulkZipFile ? "text-blue-500" : "text-gray-300 group-hover:text-blue-400"}`}
+                          />
+                          <p className={`font-black uppercase tracking-[0.15em] text-[10px] text-center px-4 ${bulkZipFile ? "text-blue-600" : "text-gray-400 group-hover:text-blue-900/40"}`}>
+                            {bulkZipFile ? bulkZipFile.name : "2. SELECT PHOTOS ZIP (OPTIONAL)"}
+                          </p>
+                          {bulkZipFile && (
+                            <p className="text-[9px] font-bold text-blue-400 mt-2">
+                              {(bulkZipFile.size / (1024 * 1024)).toFixed(2)} MB Ready
+                            </p>
+                          )}
+                        </label>
+                      </div>
                     </div>
 
                     <button
