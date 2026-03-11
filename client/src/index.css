@@ -6,18 +6,21 @@
 
 @layer base {
   :root {
-    /* Premium Color Palette - MIET Theme */
+    /* High-Fidelity ERP Color Palette */
     --color-primary: #003B73;
-    --color-primary-dark: #002850;
-    --color-primary-light: #0F2C59;
+    --color-primary-dark: #001D3D;
+    --color-primary-light: #004e92;
     --color-secondary: #00A8E8;
-    /* Light Blue accent */
-    --color-accent: #FFD700;
+    --color-bg-light: #F1F5F9;
+    --color-accent: #60A5FA;
     /* Gold/Yellow for hints */
     --color-danger: #ef4444;
     --color-success: #22c55e;
 
-    /* Gradients */
+    /* Premium Gradients */
+    --gradient-dashboard: linear-gradient(135deg, #003B73 0%, #001D3D 100%);
+    --gradient-card-glow: radial-gradient(circle at top left, rgba(255,255,255,0.1) 0%, transparent 70%);
+    --gradient-profile-banner: linear-gradient(110deg, #003B73 0%, #004e92 100%);
     --gradient-primary: linear-gradient(135deg, #003B73 0%, #002850 100%);
     --gradient-success: linear-gradient(135deg, #0cebeb 0%, #20e3b2 100%);
     --gradient-warm: linear-gradient(135deg, #FFD700 0%, #FDB931 100%);
@@ -25,11 +28,9 @@
     --gradient-sunset: linear-gradient(135deg, #002850 0%, #004e92 100%);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+    --shadow-soft: 0 4px 20px -2px rgba(0, 59, 115, 0.08);
+    --shadow-premium: 0 20px 40px -12px rgba(0, 29, 61, 0.15);
+    --shadow-glow: 0 0 30px rgba(96, 165, 250, 0.4);
   }
 
   * {

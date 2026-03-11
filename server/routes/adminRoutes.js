@@ -35,7 +35,7 @@ const { uploadArrears, getArrears, deleteArrear, autoGenerateArrears, bulkUpload
 const { getSubjectsForDispatch, getStudentsForDispatch, exportDispatchPDF } = require('../controllers/dispatchController');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const uploadMemory = multer({ storage: multer.memoryStorage() });
 
 router.use(verifyToken);
 // Base access: Principal, COE, HOD, and Admin can access standard reports/stats
@@ -100,7 +100,7 @@ router.get('/attendance/report', getAttendanceReport);
 router.get('/attendance/export-excel', exportAttendanceExcel);
 
 router.post('/students/promote', promoteStudents);
-router.post('/students/bulk', upload.fields([
+router.post('/students/bulk', uploadMemory.fields([
     { name: 'file', maxCount: 1 },         // The Excel file (keeping original key for backwards compatibility if needed, or mapping)
     { name: 'photosZip', maxCount: 1 }     // The ZIP file
 ]), bulkUploadStudents);
@@ -109,7 +109,7 @@ router.post('/students/pass-out', isHod, passStudentsOut);
 
 // Arrears
 router.get('/arrears', getArrears);
-router.post('/arrears/upload', upload.single('file'), uploadArrears);
+router.post('/arrears/upload', uploadMemory.single('file'), uploadArrears);
 router.post('/arrears/auto-generate', isAdmin, autoGenerateArrears);
 router.post('/arrears/bulk-passedout', bulkUploadPassedOutArrears);
 router.delete('/arrears/:id', deleteArrear);

@@ -5,7 +5,7 @@ const { handleError } = require('../utils/errorUtils');
 const createStudent = async (req, res) => {
     let { 
         rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
-        admissionYear, dateOfBirth, gender, bloodGroup, nationality,
+        dateOfBirth, gender, bloodGroup, nationality,
         phoneNumber, email, address, city, district, state, pincode,
         fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
         status: studentStatus,
@@ -76,7 +76,6 @@ const createStudent = async (req, res) => {
                 currentSemester: parseInt(semester),
                 batchYear: parsedBatchYear,
                 academicYearId: academicYearId,
-                admissionYear,
                 photo,
                 dateOfBirth,
                 gender,
@@ -108,7 +107,7 @@ const updateStudent = async (req, res) => {
     const { id } = req.params;
     let { 
         rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
-        admissionYear, dateOfBirth, gender, bloodGroup, nationality,
+        dateOfBirth, gender, bloodGroup, nationality,
         phoneNumber, email, address, city, district, state, pincode,
         fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
         status: studentStatus,
@@ -180,7 +179,6 @@ const updateStudent = async (req, res) => {
                 currentSemester: parseInt(semester),
                 batchYear: parsedBatchYear,
                 academicYearId: academicYearId,
-                admissionYear,
                 photo,
                 dateOfBirth,
                 gender,
@@ -490,7 +488,7 @@ const bulkUploadStudents = async (req, res) => {
         for (const s of students) {
             let { 
                 rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
-                admissionYear, photo, dateOfBirth, gender, bloodGroup, nationality,
+                photo, dateOfBirth, gender, bloodGroup, nationality,
                 phoneNumber, email, address, city, district, state, pincode,
                 fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
                 status: studentStatus,
@@ -569,7 +567,6 @@ const bulkUploadStudents = async (req, res) => {
                             sectionId: targetSecId || existing.sectionId,
                             currentSemester: parseInt(semester) || existing.currentSemester,
                             batchYear: parsedBatchYear || existing.batchYear,
-                            admissionYear: admissionYear || existing.admissionYear,
                             photo: photo || existing.photo,
                             dateOfBirth: dateOfBirth || existing.dateOfBirth,
                             gender: gender || existing.gender,
@@ -609,7 +606,6 @@ const bulkUploadStudents = async (req, res) => {
                             currentSemester: parseInt(semester) || 1,
                             batchYear: parsedBatchYear,
                             academicYearId: academicYearId,
-                            admissionYear,
                             photo,
                             dateOfBirth,
                             gender,

@@ -25,11 +25,11 @@ import toast from "react-hot-toast";
 import { handleApiError } from "../../utils/errorHandler";
 
 const StudentManager = () => {
-  const [selectedCategory, setSelectedCategory] = useState(null); // 'FIRST_YEAR' | 'DEPARTMENTS'
-  const [selectedDept, setSelectedDept] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null);
-  const [selectedSemester, setSelectedSemester] = useState(null);
-  const [selectedSection, setSelectedSection] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(() => sessionStorage.getItem('std_category') || null);
+  const [selectedDept, setSelectedDept] = useState(() => sessionStorage.getItem('std_dept') || null);
+  const [selectedYear, setSelectedYear] = useState(() => sessionStorage.getItem('std_year') || null);
+  const [selectedSemester, setSelectedSemester] = useState(() => sessionStorage.getItem('std_semester') || null);
+  const [selectedSection, setSelectedSection] = useState(() => sessionStorage.getItem('std_section') || null);
   const [studentsList, setStudentsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -68,7 +68,6 @@ const StudentManager = () => {
     semester: "",
     regulation: "2021",
     batch: "",
-    admissionYear: "",
     photo: "",
     dateOfBirth: "",
     gender: "",
@@ -117,11 +116,51 @@ const StudentManager = () => {
   const [addingSection, setAddingSection] = useState(false);
 
   useEffect(() => {
-    fetchDepartments();
-    if (location.state?.openAddModal) {
-      setShowCreateModal(true);
-    }
+    const initializeManager = async () => {
+      const { depts, secs } = await fetchDepartments();
+      
+      if (location.state?.openAddModal) {
+        setShowCreateModal(true);
+      }
+
+      // Restore student list if filters were previously set
+      const savedSection = sessionStorage.getItem('std_section');
+      const savedDept = sessionStorage.getItem('std_dept');
+      const savedCategory = sessionStorage.getItem('std_category');
+
+      if ((savedSection || savedDept || savedCategory) && studentsList.length === 0) {
+        fetchStudents(savedSection || "", depts, secs);
+      }
+    };
+
+    initializeManager();
   }, [location]);
+
+  // Sync state to sessionStorage
+  useEffect(() => {
+    if (selectedCategory) sessionStorage.setItem('std_category', selectedCategory);
+    else sessionStorage.removeItem('std_category');
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    if (selectedDept) sessionStorage.setItem('std_dept', selectedDept);
+    else sessionStorage.removeItem('std_dept');
+  }, [selectedDept]);
+
+  useEffect(() => {
+    if (selectedYear) sessionStorage.setItem('std_year', selectedYear);
+    else sessionStorage.removeItem('std_year');
+  }, [selectedYear]);
+
+  useEffect(() => {
+    if (selectedSemester) sessionStorage.setItem('std_semester', selectedSemester);
+    else sessionStorage.removeItem('std_semester');
+  }, [selectedSemester]);
+
+  useEffect(() => {
+    if (selectedSection) sessionStorage.setItem('std_section', selectedSection);
+    else sessionStorage.removeItem('std_section');
+  }, [selectedSection]);
 
   const fetchDepartments = async () => {
     setLoadingDepts(true);
@@ -130,10 +169,14 @@ const StudentManager = () => {
         api.get("/admin/departments"),
         api.get("/admin/sections")
       ]);
-      setDepartments(Array.isArray(deptRes.data) ? deptRes.data : []);
-      setDbSections(Array.isArray(secRes.data) ? secRes.data : []);
+      const depts = Array.isArray(deptRes.data) ? deptRes.data : [];
+      const secs = Array.isArray(secRes.data) ? secRes.data : [];
+      setDepartments(depts);
+      setDbSections(secs);
+      return { depts, secs };
     } catch (err) {
       console.error("Failed to fetch departments");
+      return { depts: [], secs: [] };
     } finally {
       setLoadingDepts(false);
     }
@@ -196,7 +239,10 @@ const StudentManager = () => {
     }
   }, [selectedCategory, passedOutSubview]);
 
-  const fetchStudents = async (section) => {
+  const fetchStudents = async (section, overrideDepts = null, overrideSections = null) => {
+    const activeDepts = overrideDepts || departments;
+    const activeSections = overrideSections || dbSections;
+    
     setSelectedSection(section);
     setLoading(true);
     try {
@@ -204,24 +250,23 @@ const StudentManager = () => {
 
       if (selectedCategory === 'PASSED_OUT') {
         queryParams = `?status=PASSED_OUT`;
-        if (section) queryParams += `&batch=${section}`; // Reusing 'section' state for batch for simplicity in this view
+        if (section) queryParams += `&batch=${section}`; 
       } else if (selectedSemester <= 2 && selectedSemester) {
-        const sectionObj = dbSections.find(s => s.name === section && s.semester === selectedSemester && s.type === "COMMON");
+        const sectionObj = activeSections.find(s => s.name === section && s.semester === selectedSemester && s.type === "COMMON");
         if (sectionObj) {
           queryParams = `?semester=${selectedSemester}&sectionId=${sectionObj.id}`;
         }
       } else {
-        const matchingDept = departments.find(d => d.name === selectedDept || d.code === selectedDept);
+        const matchingDept = activeDepts.find(d => d.name === selectedDept || d.code === selectedDept);
         if (matchingDept) {
-          const targetSemester = selectedYear * 2 - 1; // Base semester for the year
-          const sectionObj = dbSections.find(s => s.name === section && s.semester >= targetSemester && s.semester <= targetSemester + 1 && s.departmentId === matchingDept.id);
+          const targetSemester = selectedYear * 2 - 1;
+          const sectionObj = activeSections.find(s => s.name === section && s.semester >= targetSemester && s.semester <= targetSemester + 1 && s.departmentId === matchingDept.id);
           if (sectionObj) {
             queryParams = `?semester=${sectionObj.semester}&departmentId=${matchingDept.id}&sectionId=${sectionObj.id}`;
           }
         }
       }
 
-      // Support legacy string filtering if DB structure isn't perfect yet
       const res = await api.get(`/admin/students${queryParams}`);
       let allStudents = Array.isArray(res.data) ? res.data : [];
 
@@ -230,16 +275,14 @@ const StudentManager = () => {
           const yearMatch = !selectedYear || String(s.year) === String(selectedYear);
           const sectionMatch = !section || s.section === section;
 
-          const matchingDept = departments.find(d => d.code === selectedDept || d.name === selectedDept);
+          const matchingDept = activeDepts.find(d => d.code === selectedDept || d.name === selectedDept);
           const deptMatch = matchingDept && (
             s.departmentId === matchingDept.id ||
             s.department === matchingDept.code ||
             s.department === matchingDept.name
           );
 
-          const statusMatch = s.status !== 'PASSED_OUT';
-
-          return yearMatch && sectionMatch && deptMatch && statusMatch;
+          return yearMatch && sectionMatch && deptMatch && (s.status !== 'PASSED_OUT');
         });
         setStudentsList(filtered);
       } else {
@@ -402,7 +445,7 @@ const StudentManager = () => {
     titleCell.alignment = { horizontal: "center" };
 
     worksheet.getRow(3).values = [
-      "S.No", "Roll No", "Register No", "Student Name", "Admission Year", 
+      "S.No", "Roll No", "Register No", "Student Name", 
       "DOB", "Gender", "Blood Group", "Nationality", "Phone", "Email", 
       "Address", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Photo URL"
     ];
@@ -414,7 +457,6 @@ const StudentManager = () => {
       { key: "rollNo", width: 15 },
       { key: "registerNumber", width: 20 },
       { key: "name", width: 30 },
-      { key: "admissionYear", width: 15 },
       { key: "dateOfBirth", width: 15 },
       { key: "gender", width: 10 },
       { key: "bloodGroup", width: 10 },
@@ -434,7 +476,6 @@ const StudentManager = () => {
       rollNo: "E1225001",
       registerNumber: "812422104001",
       name: "ABHILASH S",
-      admissionYear: "2022",
       dateOfBirth: "01/01/2004",
       gender: "Male",
       bloodGroup: "O+",
@@ -448,7 +489,6 @@ const StudentManager = () => {
       rollNo: "E1225002",
       registerNumber: "812422104002",
       name: "ABINAYA K",
-      admissionYear: "2022",
       dateOfBirth: "02/02/2004",
       gender: "Female",
       bloodGroup: "A+",
@@ -502,8 +542,9 @@ const StudentManager = () => {
         EEE: "Electrical and Electronics Engineering",
       };
 
+      let sessionBatch = bulkConfig.batch || "";
       let headerKeys = { 
-        name: -1, rollNo: -1, registerNumber: -1, admissionYear: -1,
+        name: -1, rollNo: -1, registerNumber: -1,
         dateOfBirth: -1, gender: -1, bloodGroup: -1, nationality: -1,
         phoneNumber: -1, email: -1, address: -1, 
         fatherName: -1, fatherPhone: -1, motherName: -1, motherPhone: -1, photoURL: -1
@@ -513,7 +554,7 @@ const StudentManager = () => {
       worksheet.eachRow((row, rowNumber) => {
         if (!headersFound) {
           let tempMap = { 
-            name: -1, rollNo: -1, registerNumber: -1, admissionYear: -1,
+            name: -1, rollNo: -1, registerNumber: -1,
             dateOfBirth: -1, gender: -1, bloodGroup: -1, nationality: -1,
             phoneNumber: -1, email: -1, address: -1, 
             fatherName: -1, fatherPhone: -1, motherName: -1, motherPhone: -1, photoURL: -1
@@ -523,7 +564,6 @@ const StudentManager = () => {
             if (text === "name" || text === "studentname") tempMap.name = colNumber;
             else if (text.includes("roll")) tempMap.rollNo = colNumber;
             else if (text.includes("reg") && !text.includes("regulation")) tempMap.registerNumber = colNumber;
-            else if (text.includes("admissionyear")) tempMap.admissionYear = colNumber;
             else if (text.includes("dob") || text.includes("birth")) tempMap.dateOfBirth = colNumber;
             else if (text.includes("gender")) tempMap.gender = colNumber;
             else if (text.includes("blood")) tempMap.bloodGroup = colNumber;
@@ -546,13 +586,19 @@ const StudentManager = () => {
             return;
           }
 
-          // Check for department header if headers not yet found
-          let possibleDeptStr = "";
+          // Auto-detect Batch from header row (Row 2 usually contains it)
+          let headerText = "";
           row.eachCell((cell) => {
-            if (String(cell.text).length > 5 && isNaN(String(cell.text))) possibleDeptStr += " " + String(cell.text);
+            headerText += " " + String(cell.text || "");
           });
-          // Note: Ignoring Excel's dynamic department string as requested by the user.
-          // We will strictly rely on `bulkConfig.department` or `selectedDept`.
+          
+          const batchMatch = headerText.match(/(\d{4})[^\d](\d{4})/);
+          if (batchMatch) {
+            const detectedBatch = `${batchMatch[1]}-${batchMatch[2]}`;
+            console.log(`[BulkDebug] Detected Batch: ${detectedBatch}`);
+            sessionBatch = detectedBatch;
+            setBulkConfig(prev => ({ ...prev, batch: detectedBatch }));
+          }
           return;
         }
 
@@ -560,7 +606,6 @@ const StudentManager = () => {
         const nameVal = headerKeys.name !== -1 ? String(row.getCell(headerKeys.name).text || "").trim() : "";
         const rollVal = headerKeys.rollNo !== -1 ? String(row.getCell(headerKeys.rollNo).text || "").trim() : "";
         const regVal = headerKeys.registerNumber !== -1 ? String(row.getCell(headerKeys.registerNumber).text || "").trim() : "";
-        const admissionYear = headerKeys.admissionYear !== -1 ? String(row.getCell(headerKeys.admissionYear).text || "").trim() : "";
         const dob = headerKeys.dateOfBirth !== -1 ? String(row.getCell(headerKeys.dateOfBirth).text || "").trim() : "";
         const gender = headerKeys.gender !== -1 ? String(row.getCell(headerKeys.gender).text || "").trim() : "";
         const blood = headerKeys.bloodGroup !== -1 ? String(row.getCell(headerKeys.bloodGroup).text || "").trim() : "";
@@ -601,8 +646,7 @@ const StudentManager = () => {
             section: bulkConfig.section,
             semester: parseInt(bulkConfig.semester),
             regulation: bulkConfig.regulation || "2021",
-            batch: bulkConfig.batch || "",
-            admissionYear: admissionYear || "",
+            batch: sessionBatch || "",
             dateOfBirth: dob || "",
             gender: gender || "",
             bloodGroup: blood || "",
@@ -1370,13 +1414,15 @@ const StudentManager = () => {
                       .map((s) => (
                         <tr
                           key={s.id}
-                          className="group hover:bg-white transition-all duration-300"
+                          className="group relative hover:bg-slate-50/50 transition-all duration-500 hover:shadow-xl hover:-translate-y-1 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-[#003B73] before:scale-y-0 hover:before:scale-y-100 before:transition-transform before:duration-300 before:origin-top"
                         >
                           <td className="px-6 py-6 text-left">
                             {s.photo ? (
-                              <img src={s.photo} alt={s.name} className="w-12 h-12 rounded-2xl object-cover border border-gray-100 shadow-sm" />
+                              <div className="w-12 h-12 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group-hover:shadow-lg transition-all duration-500">
+                                <img src={s.photo} alt={s.name} className="w-full h-full object-cover group-hover:scale-150 transition-transform duration-700" />
+                              </div>
                             ) : (
-                              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-[#003B73] shadow-sm border border-gray-100 group-hover:scale-110 transition-all duration-500 group-hover:shadow-indigo-100">
+                              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-[#003B73] shadow-sm border border-gray-100 group-hover:scale-125 transition-all duration-500 group-hover:shadow-blue-100">
                                 {s.name.charAt(0)}
                               </div>
                             )}
@@ -1421,7 +1467,7 @@ const StudentManager = () => {
                             </span>
                           </td>
                           <td className="px-6 py-6 text-right">
-                            <div className="flex justify-end gap-2 transition-all duration-300">
+                            <div className="flex justify-end gap-2 opacity-0 translate-x-8 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500 ease-out">
                               <button
                                 onClick={() => {
                                   const basePath = location.pathname.split('/')[1];
@@ -1714,21 +1760,7 @@ const StudentManager = () => {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
-                      Admission Year
-                    </label>
-                    <input
-                      className="input-field w-full"
-                      placeholder="2021"
-                      value={newStudent.admissionYear}
-                      onChange={(e) =>
-                        setNewStudent({ ...newStudent, admissionYear: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
+
 
                 {/* Personal Information */}
                 <div className="border-t border-gray-100 pt-6">
@@ -2232,19 +2264,7 @@ const StudentManager = () => {
                       <option value="2023">2023</option>
                     </CustomSelect>
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                      Default Batch
-                    </label>
-                    <input
-                      value={bulkConfig.batch}
-                      onChange={(e) =>
-                        setBulkConfig({ ...bulkConfig, batch: e.target.value })
-                      }
-                      placeholder="e.g. 2021-2025"
-                      className="input-field w-full"
-                    />
-                  </div>
+
                 </div>
 
                 {!bulkResult ? (

@@ -231,31 +231,37 @@ const Sidebar = ({ role, activePath }) => {
             <li key={idx} className="animate-fadeIn" style={{ animationDelay: `${idx * 50}ms` }}>
                 <Link
                     to={item.path}
-                    className={`flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 group relative overflow-hidden
+                    className={`flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden
                         ${isActive
-                            ? 'bg-white text-[#003B73] shadow-lg'
-                            : 'text-blue-100 hover:bg-[#0F2C59] hover:text-white'
+                            ? 'bg-white text-[#003B73] shadow-xl shadow-blue-900/20'
+                            : 'text-blue-100/90 hover:bg-white/10 hover:text-white'
                         } ${isChild ? 'py-2 px-3' : ''}`}
                 >
-                    <Icon className={`w-5 h-5 mr-3 transition-transform duration-300 ${isActive ? '' : 'group-hover:scale-110'
-                        }`} />
-                    {item.label}
+                    <Icon className={`w-5 h-5 mr-3 transition-transform duration-300 ${isActive ? 'text-[#003B73]' : 'group-hover:scale-110 group-hover:text-white'}`} />
+                    <span className="relative z-10">{item.label}</span>
+                    {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#003B73] rounded-r-full"></div>
+                    )}
                 </Link>
             </li>
         );
     };
 
     return (
-        <div className="w-64 bg-[#003B73] text-white min-h-screen flex flex-col shadow-2xl fixed left-0 top-0 bottom-0 z-50">
+        <div className="w-64 bg-[#003B73] text-white min-h-screen flex flex-col shadow-2xl fixed left-0 top-0 bottom-0 z-50 overflow-hidden">
+            {/* Background Texture Overlay */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#003B73] via-[#002850] to-[#001D3D] opacity-90"></div>
+
             {/* Logo Area */}
-            <div className="h-24 flex items-center px-6 bg-[#002850] border-b border-blue-800/30">
+            <div className="h-24 flex items-center px-6 relative z-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white text-[#003B73] flex items-center justify-center shadow-lg font-bold text-xl">
+                    <div className="w-11 h-11 rounded-xl bg-white text-[#003B73] flex items-center justify-center shadow-xl font-black text-2xl group cursor-pointer hover:rotate-3 transition-transform">
                         M
                     </div>
-                    <div>
-                        <span className="text-xl font-black tracking-tight font-sans">MIET ERP</span>
-                        <p className="text-[10px] text-blue-200 uppercase tracking-widest">
+                    <div className="leading-tight">
+                        <span className="text-xl font-black tracking-tighter text-white">MIET ERP</span>
+                        <p className="text-[9px] text-blue-300 font-bold uppercase tracking-[0.2em]">
                             {role.replace('_', ' ')}
                         </p>
                     </div>
@@ -263,17 +269,17 @@ const Sidebar = ({ role, activePath }) => {
             </div>
 
             {/* Menu Items */}
-            <div className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
-                <ul className="space-y-1">
+            <div className="flex-1 overflow-y-auto py-4 px-4 custom-scrollbar relative z-10">
+                <ul className="space-y-1.5">
                     {menu.map((item, idx) => renderMenuItem(item, idx))}
                 </ul>
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-[#002850] border-t border-blue-800/30">
-                <div className="text-xs text-blue-300 text-center space-y-1">
-                    <p className="font-semibold">© 2026 MIET ERP</p>
-                    <p className="text-blue-400">v2.0.0</p>
+            <div className="p-6 bg-black/10 backdrop-blur-sm relative z-10">
+                <div className="text-[10px] text-blue-300 font-bold text-center space-y-1">
+                    <p className="uppercase tracking-[0.2em] opacity-60">© 2026 MIET ERP</p>
+                    <p className="text-white/40">Build Version 1.4.0</p>
                 </div>
             </div>
         </div>
