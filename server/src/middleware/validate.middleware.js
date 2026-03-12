@@ -16,7 +16,7 @@
  */
 
 const { validationResult } = require('express-validator');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 /**
  * Middleware that reads express-validator results and returns 422 on failure.

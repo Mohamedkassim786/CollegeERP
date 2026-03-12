@@ -2,7 +2,7 @@ import CustomSelect from "../../../components/CustomSelect";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getApprovalStatus, getSubjectMarks, approveMarks, unlockMarks, unapproveMarks } from "../../../services/marks.service";
-import { getDepartments } from "../../../services/student.service";
+import { getDepartments } from "../../../services/department.service";
 import {
   CheckCircle,
   Lock,

@@ -1,4 +1,8 @@
+import React, { useState, useEffect } from 'react';
+import { Printer, FileText, Download, AlertCircle } from 'lucide-react';
+import { exportProvisionalPortrait, exportProvisionalLandscape } from '../../../services/results.service';
 import { getDepartments } from '../../../services/department.service';
+import CustomSelect from '../../../components/CustomSelect';
 import { SEMESTER_OPTIONS } from '../../../utils/constants';
 
 const ProvisionalResults = () => {
@@ -7,7 +11,7 @@ const ProvisionalResults = () => {
     const [error, setError] = useState('');
     const [departments, setDepartments] = useState([]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const loadDepts = async () => {
             try {
                 const res = await getDepartments();
@@ -34,6 +38,7 @@ const ProvisionalResults = () => {
                 : await exportProvisionalLandscape(form);
             const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
             const a = document.createElement('a');
+            const filename = `Provisional_Results_${form.department}_Sem${form.semester}_${new Date().getTime()}.pdf`;
             a.href = url;
             a.download = filename;
             a.click();

@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
+const { logger } = require('../utils/logger');
 const { handleError } = require('../utils/errorUtils');
 const { checkTimetableClash, checkFacultyAvailability } = require('../utils/clashUtils');
 

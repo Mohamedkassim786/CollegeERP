@@ -7,7 +7,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const pdfService = require('../services/pdf.service.js');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 /**
  * GET /api/hall-ticket/generate?department=CSE&semester=4&section=A&examSessionId=1

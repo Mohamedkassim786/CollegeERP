@@ -20,8 +20,8 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/unauthorized" element={<div className="p-8">Unauthorized Access</div>} />
 
-            {/* Admin */}
-            <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+            {/* Admin & COE (Merged) */}
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'COE']} />}>
                 <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 
@@ -49,13 +49,6 @@ function App() {
                 <Route path="/principal/*" element={<DashboardLayout role="PRINCIPAL" title="Principal Portal"><PrincipalDashboard /></DashboardLayout>} />
             </Route>
 
-            {/* COE */}
-            <Route element={<ProtectedRoute allowedRoles={['COE']} />}>
-                <Route path="/coe" element={<DashboardLayout role="COE" title="COE Portal"><AdminHome /></DashboardLayout>} />
-                <Route path="/coe/students" element={<DashboardLayout role="COE" title="COE Portal"><StudentManager /></DashboardLayout>} />
-                <Route path="/coe/students/profile/:id" element={<DashboardLayout role="COE" title="COE Portal"><StudentProfile /></DashboardLayout>} />
-                <Route path="/coe/*" element={<DashboardLayout role="COE" title="COE Portal"><AdminHome /></DashboardLayout>} />
-            </Route>
 
             {/* Chief Secretary */}
             <Route element={<ProtectedRoute allowedRoles={['CHIEF_SECRETARY']} />}>
@@ -69,6 +62,10 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
                 <Route path="/student/*" element={<StudentDashboard />} />
             </Route>
+
+            {/* Fallback & Redirects */}
+            <Route path="/login" element={<Login />} />
+            <Route path="*" element={<Login />} />
         </Routes>
     );
 }

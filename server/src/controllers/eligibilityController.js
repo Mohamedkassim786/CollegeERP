@@ -7,7 +7,7 @@
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 const { ELIGIBILITY_STATUS, ATTENDANCE_THRESHOLDS } = require('../utils/constants');
 
 /**

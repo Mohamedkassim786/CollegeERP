@@ -1,4 +1,9 @@
+import React, { useState, useEffect, useContext } from 'react';
+import { Shield, Lock, Search, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { getEligibility, calculateAndSaveEligibility, grantEligibilityException, lockEligibility } from '../../../services/eligibility.service';
 import { getDepartments, getSections } from '../../../services/department.service';
+import AuthContext from '../../../context/AuthProvider';
+import CustomSelect from '../../../components/CustomSelect';
 import { SEMESTER_OPTIONS } from '../../../utils/constants';
 
 const statusBadge = (status) => {
@@ -20,7 +25,7 @@ const AttendanceEligibility = () => {
     const [departments, setDepartments] = useState([]);
     const [dbSections, setDbSections] = useState([]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const loadInfo = async () => {
             try {
                 const [deptRes, secRes] = await Promise.all([

@@ -1,4 +1,8 @@
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, AlertTriangle, Eye, CheckCheck } from 'lucide-react';
+import { getPromotionPreview, promoteAllStudents } from '../../../services/student.service';
 import { getDepartments, getSections } from '../../../services/department.service';
+import CustomSelect from '../../../components/CustomSelect';
 import { SEMESTER_OPTIONS } from '../../../utils/constants';
 
 const AutoPromote = () => {
@@ -11,7 +15,7 @@ const AutoPromote = () => {
     const [departments, setDepartments] = useState([]);
     const [dbSections, setDbSections] = useState([]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const loadInfo = async () => {
             try {
                 const [deptRes, secRes] = await Promise.all([

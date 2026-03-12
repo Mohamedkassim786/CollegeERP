@@ -5,8 +5,13 @@ const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
     const [auth, setAuth] = useState(() => {
-        const storedUser = localStorage.getItem('user');
-        return storedUser ? JSON.parse(storedUser) : null;
+        try {
+            const storedUser = localStorage.getItem('user');
+            return storedUser ? JSON.parse(storedUser) : null;
+        } catch (_) {
+            localStorage.removeItem('user');
+            return null;
+        }
     });
 
     useEffect(() => {
@@ -17,6 +22,10 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await authLogin(username, password);
             const user = response.data;
+            // Normalize COE role to ADMIN so COE users get full admin portal
+            if (user.role === 'COE') {
+                user.role = 'ADMIN';
+            }
             localStorage.setItem('user', JSON.stringify(user));
             setAuth(user);
             return user;

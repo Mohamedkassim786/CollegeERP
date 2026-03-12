@@ -1,4 +1,8 @@
+import React, { useState, useEffect } from 'react';
+import { FileText, Download } from 'lucide-react';
+import { generateHallTickets } from '../../../services/examination.service';
 import { getDepartments, getSections } from '../../../services/department.service';
+import CustomSelect from '../../../components/CustomSelect';
 import { SEMESTER_OPTIONS } from '../../../utils/constants';
 
 const HallTicket = () => {
@@ -8,7 +12,7 @@ const HallTicket = () => {
     const [departments, setDepartments] = useState([]);
     const [dbSections, setDbSections] = useState([]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const loadInfo = async () => {
             try {
                 const [deptRes, secRes] = await Promise.all([

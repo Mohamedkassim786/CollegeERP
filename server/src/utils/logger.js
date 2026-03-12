@@ -10,7 +10,16 @@ const logFile = path.join(logDir, 'app.log');
 
 const formatLog = (level, message, data) => {
   const timestamp = new Date().toISOString();
-  const extra = data ? ' ' + JSON.stringify(data) : '';
+  let extra = '';
+  
+  if (data instanceof Error) {
+    extra = ` ${data.message}\n${data.stack}`;
+  } else if (data) {
+    extra = ' ' + JSON.stringify(data, (key, value) => 
+      value instanceof Error ? { message: value.message, stack: value.stack } : value
+    );
+  }
+  
   const logMessage = `[${timestamp}] [${level}] ${message}${extra}\n`;
   
   // Append to file

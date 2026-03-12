@@ -5,9 +5,8 @@ import {
     BookOpen, Award, AlertCircle, ArrowLeft, Download, Edit,
     Heart, Home, Upload, X, Fingerprint, ExternalLink, Search
 } from 'lucide-react';
-import { getStudent, updateStudent } from '../../../services/student.service';
+import { getStudent, updateStudent, getGradeSheet } from '../../../services/student.service';
 import { getDepartments } from '../../../services/department.service';
-import { getGradeSheet } from '../../../services/student.service';
 import { handleApiError } from '../../../utils/errorHandler';
 import toast from 'react-hot-toast';
 

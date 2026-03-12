@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const pdfService = require('../services/pdf.service.js');
+const { logger } = require('../utils/logger');
 const { getDeptCriteria } = require('../utils/deptUtils');
 const calcService = require('../services/calculation.service.js');
 

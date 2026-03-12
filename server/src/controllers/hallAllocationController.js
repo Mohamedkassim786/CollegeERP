@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const PDFDocument = require('pdfkit');
+const { logger } = require('../utils/logger');
 const { calculateSeatingCIA, calculateSeatingENDSEM } = require('../services/seatingService');
 const { getDeptCriteria } = require('../utils/deptUtils');
 
