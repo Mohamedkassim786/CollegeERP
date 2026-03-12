@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import api from "../../api/axios";
+import { getClassDetails, getClassStudents, getClassAttendanceLogs, exportClassAttendance } from "../../services/class.service";
+import { getAttendanceReport } from "../../services/attendance.service";
 import {
   BookOpen,
   Users,
@@ -87,8 +88,9 @@ const StudentsTab = ({ subjectId, details }) => {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const res = await api.get(`/faculty/class/${subjectId}/students`, {
-          params: { section: details.section, department: details.department },
+        const res = await getClassStudents(subjectId, { 
+          section: details.section, 
+          department: details.department 
         });
         setStudents(res.data);
       } catch (error) {
@@ -238,22 +240,19 @@ const AttendanceTab = ({ subjectId, details }) => {
   const [viewMode, setViewMode] = useState("logs"); // 'logs' or 'detailed'
 
   useEffect(() => {
-    api
-      .get(`/faculty/class/${subjectId}/attendance`)
+    getClassAttendanceLogs(subjectId)
       .then((res) => setAttendance(res.data));
   }, [subjectId]);
 
   const fetchDetailedReport = async () => {
     setFetchingReport(true);
     try {
-      const res = await api.get("/faculty/attendance/report", {
-        params: {
-          subjectId,
-          fromDate,
-          toDate,
-          section: details.section,
-          department: details.department || subject.department,
-        },
+      const res = await getAttendanceReport({
+        subjectId,
+        fromDate,
+        toDate,
+        section: details.section,
+        department: details.department || subject.department,
       });
       setDetailedReport(res.data);
       setViewMode("detailed");
@@ -268,18 +267,12 @@ const AttendanceTab = ({ subjectId, details }) => {
   const exportToExcel = async () => {
     setExporting(true);
     try {
-      const response = await api.get(
-        `/faculty/class/${subjectId}/attendance/export-excel`,
-        {
-          responseType: "blob",
-          params: {
-            fromDate,
-            toDate,
-            section: details.section,
-            department: details.department || subject.department,
-          },
-        },
-      );
+      const response = await exportClassAttendance(subjectId, {
+        fromDate,
+        toDate,
+        section: details.section,
+        department: details.department || subject.department,
+      });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
@@ -561,8 +554,9 @@ const ClassDetails = () => {
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const res = await api.get(`/faculty/class/${subjectId}/details`, {
-          params: { section: sectionQuery, department: deptQuery },
+        const res = await getClassDetails(subjectId, { 
+          section: sectionQuery, 
+          department: deptQuery 
         });
         setDetails(res.data);
       } catch (error) {

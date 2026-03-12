@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
 import Header from "../../components/Header";
 import { Clock, ClipboardList, Shield } from "lucide-react";
-import api from "../../api/axios";
+import { getMyExternalAssignments } from "../../services/external.service";
 import toast from "react-hot-toast";
 
 const ExternalDashboard = () => {
@@ -17,7 +17,7 @@ const ExternalDashboard = () => {
 
   const fetchAssignments = async () => {
     try {
-      const res = await api.get("/external/assignments");
+      const res = await getMyExternalAssignments();
       setAssignments(res.data);
     } catch (err) {
       toast.error("Failed to fetch assigned mark entry assignments");

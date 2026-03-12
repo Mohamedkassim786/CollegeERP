@@ -1,6 +1,7 @@
 import CustomSelect from "../../components/CustomSelect";
 import { useState, useEffect } from "react";
-import api from "../../api/axios";
+import { getFacultyAssignments } from "../../services/faculty.service";
+import { getFacultyMarks, submitFacultyMarks } from "../../services/marks.service";
 import {
   Search,
   Save,
@@ -40,7 +41,7 @@ const EnterMarks = () => {
 
   const fetchAssignments = async () => {
     try {
-      const res = await api.get("/faculty/assignments");
+      const res = await getFacultyAssignments();
       setAssignments(res.data);
       if (res.data.length > 0) {
         setSelectedAssignmentId(res.data[0].id);
@@ -65,7 +66,7 @@ const EnterMarks = () => {
 
       setCurrentCategory(assignment.subject.subjectCategory || "THEORY");
 
-      const res = await api.get(`/faculty/marks/${assignment.subject.id}`);
+      const res = await getFacultyMarks(assignment.subject.id);
       setStudents(res.data);
 
       // Check if marks are locked
@@ -161,7 +162,7 @@ const EnterMarks = () => {
           payload[`${selectedExam}_attendance`] = toVal(s.marks[`${selectedExam}_attendance`]);
         }
 
-        return api.post("/faculty/marks", payload);
+        return submitFacultyMarks(payload);
       });
 
       await Promise.all(promises);

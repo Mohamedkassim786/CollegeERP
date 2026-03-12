@@ -1,7 +1,8 @@
 import CustomSelect from "../../components/CustomSelect";
 import React, { useState, useEffect } from "react";
 import { Award, Search, AlertCircle, FileText } from "lucide-react";
-import api from "../../api/axios";
+import { getFacultyAssignments } from "../../services/faculty.service";
+import { getFacultyPublishedResults } from "../../services/results.service";
 
 const PublishedResults = () => {
   const [assignments, setAssignments] = useState([]);
@@ -16,7 +17,7 @@ const PublishedResults = () => {
 
   const fetchAssignments = async () => {
     try {
-      const res = await api.get("/faculty/assignments");
+      const res = await getFacultyAssignments();
       setAssignments(res.data);
       if (res.data.length > 0) setSelectedAssignmentId(res.data[0].id);
     } catch (err) {
@@ -34,14 +35,12 @@ const PublishedResults = () => {
       );
       if (!assignment) return;
 
-      const res = await api.get("/exam/faculty-results", {
-        params: {
+      const res = await getFacultyPublishedResults({
           department: assignment.subject.department,
           year: assignment.studentYear || 2, // Assuming from assignment or student record
           semester: assignment.subject.semester,
           section: assignment.section,
           subjectId: assignment.subject.id,
-        },
       });
       setStudents(res.data);
     } catch (err) {

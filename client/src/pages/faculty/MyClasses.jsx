@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../api/axios";
+import { getFacultyAssignments } from "../../services/faculty.service";
 import {
   BookOpen,
   Users,
@@ -21,7 +21,7 @@ const MyClasses = () => {
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get("/faculty/assignments");
+      const res = await getFacultyAssignments();
       setClasses(res.data);
     } catch (error) {
       console.error("Error fetching classes:", error);

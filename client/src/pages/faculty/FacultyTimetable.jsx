@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "../../api/axios";
+import { getFacultyTimetable } from "../../services/timetable.service";
 import { Loader, Calendar, User } from "lucide-react";
 
 const FacultyTimetable = () => {
@@ -54,9 +54,7 @@ const FacultyTimetable = () => {
   const fetchMyTimetable = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/faculty/timetable", {
-        params: { date: selectedDate },
-      });
+      const res = await getFacultyTimetable({ date: selectedDate });
       console.log("[DEBUG] Faculty Timetable API Response:", res.data);
       setTimetable(res.data);
     } catch (err) {

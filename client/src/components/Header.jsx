@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Bell, Search, Menu } from 'lucide-react';
 import { useContext, useState } from 'react';
 import AuthContext from '../context/AuthProvider';
+import NotificationCenter from './NotificationCenter';
 
 const Header = ({ title }) => {
     const { auth, logout } = useContext(AuthContext);
@@ -41,10 +42,7 @@ const Header = ({ title }) => {
                     </div>
 
                     {/* Notifications */}
-                    <button className="relative w-11 h-11 flex items-center justify-center bg-white hover:bg-gray-50 rounded-xl transition-all border border-gray-100 shadow-sm group">
-                        <Bell size={18} className="text-gray-500 group-hover:text-[#003B73] transition-colors" />
-                        <span className="absolute top-3 right-3 w-2 h-2 bg-blue-500 rounded-full ring-2 ring-white"></span>
-                    </button>
+                    <NotificationCenter />
 
                     {/* User Profile */}
                     <div className="relative">

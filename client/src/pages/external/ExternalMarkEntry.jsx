@@ -13,7 +13,7 @@ import {
   BookOpen,
   Download,
 } from "lucide-react";
-import api from "../../api/axios";
+import { getExternalMarksByAssignment, submitExternalMarks, getExternalMarksPDF } from "../../services/external.service";
 import toast from "react-hot-toast";
 
 const ExternalMarkEntry = () => {
@@ -41,7 +41,7 @@ const ExternalMarkEntry = () => {
       const params = {};
       if (component) params.component = component;
 
-      const res = await api.get(`/external/marks/assignment/${assignmentId}`, { params });
+      const res = await getExternalMarksByAssignment(assignmentId, params);
       const d = res.data;
 
       // Use the component from response (or the one we asked for, or default)
@@ -113,7 +113,7 @@ const ExternalMarkEntry = () => {
         payload.component = activeComponent;
       }
 
-      await api.post("/external/marks/submit", payload);
+      await submitExternalMarks(payload);
       toast.success(`${activeComponent === "LAB" ? "Lab" : "Theory"} marks submitted successfully`);
       setShowPdfModal(true); // Prompt PDF download
     } catch (err) {
@@ -136,10 +136,7 @@ const ExternalMarkEntry = () => {
       if (data.subjectCategory === "INTEGRATED") {
         params.component = activeComponent;
       }
-      const response = await api.get("/external/marks/statement-pdf", {
-        params,
-        responseType: "blob",
-      });
+      const response = await getExternalMarksPDF(params);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;

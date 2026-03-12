@@ -1,6 +1,8 @@
 import CustomSelect from "../../components/CustomSelect";
 import { useState, useEffect } from "react";
-import api from "../../api/axios";
+import { getFacultyAssignments } from "../../services/faculty.service";
+import { getFacultyTimetable } from "../../services/timetable.service";
+import { getAttendanceStudents, submitAttendance } from "../../services/attendance.service";
 import {
   Save,
   Calendar,
@@ -40,7 +42,7 @@ const AttendanceManager = () => {
 
   const fetchAssignments = async () => {
     try {
-      const res = await api.get("/faculty/assignments");
+      const res = await getFacultyAssignments();
       setAssignments(res.data);
       if (res.data.length > 0) {
         // Auto select first
@@ -58,9 +60,7 @@ const AttendanceManager = () => {
       );
       if (!assignment) return;
 
-      const res = await api.get("/faculty/timetable", {
-        params: { date: selectedDate },
-      });
+      const res = await getFacultyTimetable({ date: selectedDate });
 
       // Calculate day name for filtering (e.g., 'MON')
       const dateObj = new Date(selectedDate);
@@ -97,13 +97,11 @@ const AttendanceManager = () => {
       );
       if (!assignment) return;
 
-      const res = await api.get("/faculty/attendance/students", {
-        params: {
+      const res = await getAttendanceStudents({
           subjectId: assignment.subjectId,
           section: assignment.section,
           date: selectedDate,
           period: selectedPeriod,
-        },
       });
 
       // Add 'status' field to local state if not present (default PRESENT)
@@ -155,7 +153,7 @@ const AttendanceManager = () => {
         status: s.status,
       }));
 
-      await api.post("/faculty/attendance", {
+      await submitAttendance({
         subjectId: assignment.subjectId,
         date: selectedDate,
         period: parseInt(selectedPeriod),

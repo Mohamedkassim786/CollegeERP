@@ -1,17 +1,18 @@
 import { Routes, Route } from 'react-router-dom';
-import Login from './pages/Login';
-import AdminDashboard from './pages/AdminDashboard';
-import FacultyDashboard from './pages/FacultyDashboard';
+import Login from './pages/auth/Login';
+import AdminDashboard from './pages/admin/AdminPortal';
+import FacultyDashboard from './pages/faculty/FacultyPortal';
+import HODDashboard from './pages/hod/HODPortal';
 import ExternalDashboard from './pages/external/ExternalDashboard';
 import ExternalMarkEntry from './pages/external/ExternalMarkEntry';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/DashboardLayout';
-import PrincipalDashboard from './pages/dashboards/PrincipalDashboard';
-import COEDashboard from './pages/dashboards/COEDashboard';
-import HODDashboard from './pages/dashboards/HODDashboard';
-import StudentDashboard from './pages/dashboards/StudentDashboard';
-import StudentManager from './pages/admin/StudentManager';
-import StudentProfile from './pages/admin/StudentProfile';
+import PrincipalDashboard from './pages/principal/Dashboard';
+import AdminHome from './pages/admin/Dashboard'; // COE redirected to Admin Dashboard
+import ChiefSecretaryDashboard from './pages/chiefsecretary/Dashboard';
+import StudentDashboard from './pages/student/StudentPortal';
+import StudentManager from './pages/admin/academics/StudentManager';
+import StudentProfile from './pages/admin/academics/StudentProfile';
 
 function App() {
     return (
@@ -19,21 +20,28 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/unauthorized" element={<div className="p-8">Unauthorized Access</div>} />
 
-            {/* Admin Routes */}
+            {/* Admin */}
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
                 <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 
+            {/* Faculty */}
             <Route element={<ProtectedRoute allowedRoles={['FACULTY']} />}>
                 <Route path="/faculty/*" element={<FacultyDashboard />} />
             </Route>
 
+            {/* HOD — full sidebar with nested routes */}
+            <Route element={<ProtectedRoute allowedRoles={['HOD']} />}>
+                <Route path="/hod/*" element={<HODDashboard />} />
+            </Route>
+
+            {/* External Staff */}
             <Route element={<ProtectedRoute allowedRoles={['EXTERNAL_STAFF']} />}>
                 <Route path="/external" element={<DashboardLayout role="EXTERNAL_STAFF" title="External Portal"><ExternalDashboard /></DashboardLayout>} />
                 <Route path="/external/marks/:assignmentId" element={<ExternalMarkEntry />} />
             </Route>
 
-            {/* Principal Routes */}
+            {/* Principal */}
             <Route element={<ProtectedRoute allowedRoles={['PRINCIPAL']} />}>
                 <Route path="/principal" element={<DashboardLayout role="PRINCIPAL" title="Principal Portal"><PrincipalDashboard /></DashboardLayout>} />
                 <Route path="/principal/students" element={<DashboardLayout role="PRINCIPAL" title="Principal Portal"><StudentManager /></DashboardLayout>} />
@@ -41,25 +49,25 @@ function App() {
                 <Route path="/principal/*" element={<DashboardLayout role="PRINCIPAL" title="Principal Portal"><PrincipalDashboard /></DashboardLayout>} />
             </Route>
 
-            {/* COE Routes */}
+            {/* COE */}
             <Route element={<ProtectedRoute allowedRoles={['COE']} />}>
-                <Route path="/coe" element={<DashboardLayout role="COE" title="COE Portal"><COEDashboard /></DashboardLayout>} />
+                <Route path="/coe" element={<DashboardLayout role="COE" title="COE Portal"><AdminHome /></DashboardLayout>} />
                 <Route path="/coe/students" element={<DashboardLayout role="COE" title="COE Portal"><StudentManager /></DashboardLayout>} />
                 <Route path="/coe/students/profile/:id" element={<DashboardLayout role="COE" title="COE Portal"><StudentProfile /></DashboardLayout>} />
-                <Route path="/coe/*" element={<DashboardLayout role="COE" title="COE Portal"><COEDashboard /></DashboardLayout>} />
+                <Route path="/coe/*" element={<DashboardLayout role="COE" title="COE Portal"><AdminHome /></DashboardLayout>} />
             </Route>
 
-            {/* HOD Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['HOD']} />}>
-                <Route path="/hod" element={<DashboardLayout role="HOD" title="Department Portal"><HODDashboard /></DashboardLayout>} />
-                <Route path="/hod/students" element={<DashboardLayout role="HOD" title="Department Portal"><StudentManager /></DashboardLayout>} />
-                <Route path="/hod/students/profile/:id" element={<DashboardLayout role="HOD" title="Department Portal"><StudentProfile /></DashboardLayout>} />
-                <Route path="/hod/*" element={<DashboardLayout role="HOD" title="Department Portal"><HODDashboard /></DashboardLayout>} />
+            {/* Chief Secretary */}
+            <Route element={<ProtectedRoute allowedRoles={['CHIEF_SECRETARY']} />}>
+                <Route path="/chief-secretary" element={<DashboardLayout role="CHIEF_SECRETARY" title="Chief Secretary Portal"><ChiefSecretaryDashboard /></DashboardLayout>} />
+                <Route path="/chief-secretary/students" element={<DashboardLayout role="CHIEF_SECRETARY" title="Institutional Intel"><StudentManager /></DashboardLayout>} />
+                <Route path="/chief-secretary/students/profile/:id" element={<DashboardLayout role="CHIEF_SECRETARY" title="Institutional Intel"><StudentProfile /></DashboardLayout>} />
+                <Route path="/chief-secretary/*" element={<DashboardLayout role="CHIEF_SECRETARY" title="Chief Secretary Portal"><ChiefSecretaryDashboard /></DashboardLayout>} />
             </Route>
 
-            {/* Student Routes */}
+            {/* Student */}
             <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
-                <Route path="/student/*" element={<DashboardLayout role="STUDENT" title="Student Portal"><StudentDashboard /></DashboardLayout>} />
+                <Route path="/student/*" element={<StudentDashboard />} />
             </Route>
         </Routes>
     );

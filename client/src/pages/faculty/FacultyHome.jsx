@@ -27,7 +27,8 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import api from "../../api/axios";
+import { getFacultyDashboard } from "../../services/dashboard.service";
+import { getFacultyTimetable } from "../../services/timetable.service";
 
 const FacultyHome = () => {
   const [statsData, setStatsData] = useState({
@@ -52,7 +53,7 @@ const FacultyHome = () => {
   const fetchTodaySchedule = async () => {
     try {
       const today = new Date().toISOString().split("T")[0];
-      const res = await api.get(`/faculty/timetable?date=${today}`);
+      const res = await getFacultyTimetable({ date: today });
       if (res.data) {
         setTodaySchedule(res.data);
       }
@@ -64,7 +65,7 @@ const FacultyHome = () => {
   const fetchDashboardData = async () => {
     try {
       console.log("[FacultyHome] Fetching dashboard stats...");
-      const res = await api.get("/faculty/stats");
+      const res = await getFacultyDashboard();
       console.log("[FacultyHome] Stats response:", res.data);
 
       if (res.data) {
