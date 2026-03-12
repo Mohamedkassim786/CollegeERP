@@ -4,6 +4,9 @@ const markService = require('../services/markService');
 const { getDeptCriteria } = require('../utils/deptUtils');
 
 const prisma = new PrismaClient();
+const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
 
 // Get subjects assigned to the logged-in faculty
 const getAssignedSubjects = async (req, res) => {
@@ -270,7 +273,7 @@ const getSubjectMarks = async (req, res) => {
 };
 
 const updateMarks = async (req, res) => {
-    const { studentId, subjectId } = req.body;
+    const { studentId, subjectId, fieldMarks } = req.body;
     try {
         const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
@@ -280,39 +283,24 @@ const updateMarks = async (req, res) => {
             where: { studentId_subjectId: { studentId: parseInt(studentId), subjectId: parseInt(subjectId) } }
         });
 
-        const updates = {};
-        const allowedFields = [
-            'cia1_test', 'cia1_assignment', 'cia1_attendance',
-            'cia2_test', 'cia2_assignment', 'cia2_attendance',
-            'cia3_test', 'cia3_assignment', 'cia3_attendance',
-            'lab_assessment', 'lab_attendance', 'lab_observation', 'lab_record', 'lab_model'
-        ];
-
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                const valStr = req.body[field];
-                const val = valStr === '' || valStr === null ? null : parseFloat(valStr);
-                if (val !== null && (val < -1 || val > 100)) {
-                    throw new Error(`Invalid mark value for ${field}: ${val}. Must be between -1 and 100.`);
-                }
-                updates[field] = val;
-            }
-        });
-
-        // 🧱 LOCK ENFORCEMENT & CALCULATIONS (via service)
-        const lockError = await markService.checkLockStatus(parseInt(studentId), currentMark, Object.keys(updates));
+        const touchingFields = Object.keys(fieldMarks).filter(f => fieldMarks[f] !== undefined);
+        
+        // Lock Check
+        const lockError = await markService.checkLockStatus(parseInt(studentId), currentMark, touchingFields);
         if (lockError) return res.status(403).json({ message: lockError });
 
-        const { internal, isApproved_cia1, isApproved_cia2, isApproved_cia3 } = markService.calculateInternalMarks(currentMark, updates, subjectCategory);
+        // Calculation
+        const { internal, isApproved_cia1, isApproved_cia2, isApproved_cia3 } = markService.calculateInternalMarks(currentMark, fieldMarks, subjectCategory);
+        
         const finalUpdates = {
-            ...updates,
+            ...fieldMarks,
             internal,
-            isApproved_cia1,
-            isApproved_cia2,
-            isApproved_cia3
+            isApproved_cia1: isApproved_cia1 ?? false,
+            isApproved_cia2: isApproved_cia2 ?? false,
+            isApproved_cia3: isApproved_cia3 ?? false
         };
 
-        const marks = await prisma.marks.upsert({
+        const updated = await prisma.marks.upsert({
             where: { studentId_subjectId: { studentId: parseInt(studentId), subjectId: parseInt(subjectId) } },
             update: finalUpdates,
             create: {
@@ -322,8 +310,72 @@ const updateMarks = async (req, res) => {
             }
         });
 
-        res.json(marks);
+        res.json(updated);
     } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const bulkUpdateMarks = async (req, res) => {
+    const { updates, subjectId } = req.body; // updates = [{ studentId, ...fieldMarks }]
+    try {
+        const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
+        if (!subject) return res.status(404).json({ message: 'Subject not found' });
+        const subjectCategory = subject.subjectCategory || 'THEORY';
+
+        const results = [];
+        const errors = [];
+
+        // Run in a transaction for atomicity and performance
+        await prisma.$transaction(async (tx) => {
+            for (const item of updates) {
+                const { studentId, ...fieldUpdates } = item;
+                
+                const currentMark = await tx.marks.findUnique({
+                    where: { studentId_subjectId: { studentId: parseInt(studentId), subjectId: parseInt(subjectId) } }
+                });
+
+                const touchingFields = Object.keys(fieldUpdates).filter(f => fieldUpdates[f] !== undefined);
+                if (touchingFields.length === 0) continue;
+
+                // Lock Check
+                const lockError = await markService.checkLockStatus(parseInt(studentId), currentMark, touchingFields);
+                if (lockError) {
+                    errors.push({ studentId, error: lockError });
+                    continue;
+                }
+
+                // Calculation
+                const { internal, isApproved_cia1, isApproved_cia2, isApproved_cia3 } = markService.calculateInternalMarks(currentMark, fieldUpdates, subjectCategory);
+                const finalUpdates = {
+                    ...fieldUpdates,
+                    internal,
+                    isApproved_cia1: isApproved_cia1 ?? false,
+                    isApproved_cia2: isApproved_cia2 ?? false,
+                    isApproved_cia3: isApproved_cia3 ?? false
+                };
+
+                const updated = await tx.marks.upsert({
+                    where: { studentId_subjectId: { studentId: parseInt(studentId), subjectId: parseInt(subjectId) } },
+                    update: finalUpdates,
+                    create: {
+                        studentId: parseInt(studentId),
+                        subjectId: parseInt(subjectId),
+                        ...finalUpdates
+                    }
+                });
+                results.push(updated);
+            }
+        });
+
+        res.json({
+            message: `Successfully processed ${results.length} records.`,
+            updatedCount: results.length,
+            errorCount: errors.length,
+            errors
+        });
+    } catch (error) {
+        console.error("Bulk update failed:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -575,7 +627,254 @@ const exportClassAttendanceExcel = async (req, res) => {
 };
 
 
+const getFaculties = async (req, res) => {
+    try {
+        const { role, departmentId } = req.query;
+        const faculty = await prisma.faculty.findMany({
+            where: {
+                isActive: true, // only active
+                ...(role && { role }),
+                ...(departmentId && { departmentId: parseInt(departmentId) })
+            },
+            orderBy: { fullName: 'asc' },
+            select: {
+                id: true, staffId: true, fullName: true, department: true, departmentId: true,
+                role: true, photo: true, designation: true, qualification: true,
+                phone: true, email: true, isActive: true, createdAt: true
+            }
+        });
+        res.json(faculty);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const getFacultyProfile = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const faculty = await prisma.faculty.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+                assignments: { include: { subject: true } },
+                timetables: { include: { subject: true } }
+            }
+        });
+        if (!faculty) return res.status(404).json({ message: 'Faculty not found' });
+        
+        // Remove password from response
+        const { password, ...safeFaculty } = faculty;
+        res.json(safeFaculty);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const createFaculty = async (req, res) => {
+    try {
+        const facultyData = { ...req.body };
+        if (!facultyData.staffId) return res.status(400).json({ message: 'Staff Roll No (staffId) is required' });
+
+        const existing = await prisma.faculty.findUnique({ where: { staffId: facultyData.staffId } });
+        if (existing) return res.status(400).json({ message: 'Staff Roll No already exists' });
+
+        // Auto-set password to hashed "password123"
+        const hashedPassword = await bcrypt.hash('password123', 10);
+        
+        // Photo handling
+        let photoPath = null;
+        if (req.file) {
+            photoPath = req.file.filename;
+        }
+
+        // Convert departmentId to Int if present
+        if (facultyData.departmentId) facultyData.departmentId = parseInt(facultyData.departmentId);
+
+        const faculty = await prisma.faculty.create({
+            data: {
+                ...facultyData,
+                photo: photoPath,
+                password: hashedPassword,
+                isActive: true
+            }
+        });
+
+        // HOD Logic
+        if (faculty.role === 'HOD' && faculty.departmentId) {
+            // If another HOD exists in this department, change them to FACULTY
+            await prisma.faculty.updateMany({
+                where: { 
+                    departmentId: faculty.departmentId, 
+                    role: 'HOD',
+                    id: { not: faculty.id }
+                },
+                data: { role: 'FACULTY' }
+            });
+
+            // Update Department model
+            await prisma.department.update({
+                where: { id: faculty.departmentId },
+                data: { 
+                    hodId: faculty.id,
+                    hodName: faculty.fullName
+                }
+            });
+        }
+
+        const { password, ...safeFaculty } = faculty;
+        res.status(201).json(safeFaculty);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const updateFaculty = async (req, res) => {
+    const { id } = req.params;
+    const fId = parseInt(id);
+    try {
+        const facultyData = { ...req.body };
+        
+        // NEVER update password here
+        delete facultyData.password;
+
+        if (req.file) {
+            facultyData.photo = req.file.filename;
+        }
+
+        if (facultyData.departmentId) facultyData.departmentId = parseInt(facultyData.departmentId);
+
+        const faculty = await prisma.faculty.update({
+            where: { id: fId },
+            data: facultyData
+        });
+
+        // HOD Logic update if role changed
+        if (faculty.role === 'HOD' && faculty.departmentId) {
+             await prisma.faculty.updateMany({
+                where: { 
+                    departmentId: faculty.departmentId, 
+                    role: 'HOD',
+                    id: { not: fId }
+                },
+                data: { role: 'FACULTY' }
+            });
+
+            await prisma.department.update({
+                where: { id: faculty.departmentId },
+                data: { 
+                    hodId: fId,
+                    hodName: faculty.fullName
+                }
+            });
+        }
+
+        const { password, ...safeFaculty } = faculty;
+        res.json(safeFaculty);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const deleteFaculty = async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Soft delete
+        await prisma.faculty.update({ 
+            where: { id: parseInt(id) },
+            data: { isActive: false }
+        });
+        res.json({ message: 'Faculty deactivated successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const bulkUploadFaculty = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(req.file.buffer);
+        const worksheet = workbook.worksheets[0];
+
+        const hashedPassword = await bcrypt.hash('password123', 10);
+        let createdCount = 0;
+        const failed = [];
+
+        // Skip header
+        const rows = [];
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber > 1) rows.push({ rowNumber, row });
+        });
+
+        for (const { rowNumber, row } of rows) {
+            const staffId = row.getCell(1).text?.trim();
+            const fullName = row.getCell(2).text?.trim();
+            const deptName = row.getCell(3).text?.trim();
+            const role = row.getCell(4).text?.trim()?.toUpperCase() || 'FACULTY';
+            const designation = row.getCell(5).text?.trim();
+            const qualification = row.getCell(6).text?.trim();
+            const phone = row.getCell(7).text?.trim();
+            const email = row.getCell(8).text?.trim();
+            const dateOfBirth = row.getCell(9).text?.trim();
+            const gender = row.getCell(10).text?.trim();
+            const bloodGroup = row.getCell(11).text?.trim();
+            const address = row.getCell(12).text?.trim();
+
+            if (!staffId || !fullName) {
+                failed.push({ row: rowNumber, staffId: staffId || 'N/A', reason: 'Missing Staff ID or Full Name' });
+                continue;
+            }
+
+            try {
+                // Find department ID if possible
+                let deptId = null;
+                if (deptName) {
+                    const dept = await prisma.department.findFirst({
+                        where: { OR: [{ name: deptName }, { code: deptName }] }
+                    });
+                    if (dept) deptId = dept.id;
+                }
+
+                const faculty = await prisma.faculty.upsert({
+                    where: { staffId },
+                    update: {
+                        fullName, department: deptName, departmentId: deptId, role,
+                        designation, qualification, phone, email, dateOfBirth,
+                        gender, bloodGroup, address, isActive: true
+                    },
+                    create: {
+                        staffId, fullName, department: deptName, departmentId: deptId, role,
+                        designation, qualification, phone, email, dateOfBirth,
+                        gender, bloodGroup, address, password: hashedPassword, isActive: true
+                    }
+                });
+
+                // HOD logic for bulk upload
+                if (role === 'HOD' && deptId) {
+                    await prisma.faculty.updateMany({
+                        where: { departmentId: deptId, role: 'HOD', id: { not: faculty.id } },
+                        data: { role: 'FACULTY' }
+                    });
+                    await prisma.department.update({
+                        where: { id: deptId },
+                        data: { hodId: faculty.id, hodName: faculty.fullName }
+                    });
+                }
+
+                createdCount++;
+            } catch (err) {
+                failed.push({ row: rowNumber, staffId, reason: err.message });
+            }
+        }
+
+        res.json({ created: createdCount, failed });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
-    getAssignedSubjects, getSubjectMarks, updateMarks, getFacultyDashboardStats,
-    getMyTimetable, getClassDetails, getClassStudents, getClassAttendance, exportClassAttendanceExcel
+    getAssignedSubjects, getSubjectMarks, updateMarks, bulkUpdateMarks, getFacultyDashboardStats,
+    getMyTimetable, getClassDetails, getClassStudents, getClassAttendance, exportClassAttendanceExcel,
+    getFaculties, getFacultyProfile, createFaculty, updateFaculty, deleteFaculty, bulkUploadFaculty
 };

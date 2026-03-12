@@ -61,13 +61,13 @@ const HallTicket = () => {
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-5">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Exam Session ID *</label>
                         <input type="number" 
                                value={form.examSessionId} 
                                onChange={e => set('examSessionId', e.target.value)}
-                               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#003B73]" />
+                               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#003B73] transition-all" />
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Department</label>
@@ -90,23 +90,6 @@ const HallTicket = () => {
                                 return (SEMESTER_OPTIONS[degree] || [1, 2, 3, 4, 5, 6, 7, 8]).map(s => (
                                     <option key={s} value={s}>Sem {s}</option>
                                 ));
-                            })()}
-                        </CustomSelect>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Section</label>
-                        <CustomSelect value={form.section} onChange={e => set('section', e.target.value)}>
-                            <option value="">All Sections</option>
-                            {(() => {
-                                const dept = departments.find(d => (d.code || d.name) === form.department);
-                                const filtered = dbSections.filter(s => {
-                                    if (dept && s.departmentId !== dept.id) return false;
-                                    if (form.semester && s.semester !== parseInt(form.semester)) return false;
-                                    return true;
-                                });
-                                const names = [...new Set(filtered.map(s => s.name))];
-                                if (names.length === 0) return ['A', 'B', 'C'].map(s => <option key={s} value={s}>{s}</option>);
-                                return names.map(s => <option key={s} value={s}>{s}</option>);
                             })()}
                         </CustomSelect>
                     </div>

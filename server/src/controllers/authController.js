@@ -19,7 +19,7 @@ const login = async (req, res) => {
     }
 
     try {
-        // ── 1. Try User table first (Staff/Admin) ─────────────────────────────
+        // ── 1. Try User table first (System Admin/Principal) ─────────────────
         const user = await prisma.user.findUnique({ where: { username } });
 
         if (user) {
@@ -56,9 +56,54 @@ const login = async (req, res) => {
                 role: user.role,
                 fullName: user.fullName,
                 department: user.department,
-                photoUrl: user.photoUrl || null,
                 forcePasswordChange: user.forcePasswordChange,
-                isFirstLogin: user.isFirstLogin,
+                accessToken: token
+            });
+        }
+
+        // ── 2. Try Faculty table (staffId = username) ────────────────────────
+        const faculty = await prisma.faculty.findUnique({
+            where: { staffId: username }
+        });
+
+        if (faculty) {
+            if (!faculty.isActive) {
+                return res.status(403).json({ message: 'Account inactive. Contact administrator.' });
+            }
+
+            // For faculty, password123 is plain default, or hashed if changed
+            let valid = false;
+            if (faculty.password === 'password123') {
+                valid = (password === 'password123');
+            } else {
+                valid = await bcrypt.compare(password, faculty.password);
+            }
+
+            if (!valid) {
+                return res.status(401).json({ message: 'Invalid credentials.' });
+            }
+
+            const token = jwt.sign(
+                {
+                    id: faculty.id,
+                    username: faculty.staffId,
+                    role: faculty.role,
+                    department: faculty.department
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '8h' }
+            );
+
+            logger.info(`Faculty Login: ${faculty.staffId} (${faculty.role})`);
+
+            return res.status(200).json({
+                id: faculty.id,
+                username: faculty.staffId,
+                role: faculty.role,
+                fullName: faculty.fullName,
+                department: faculty.department,
+                photo: faculty.photo,
+                isFirstLogin: faculty.isFirstLogin,
                 accessToken: token
             });
         }
@@ -165,6 +210,28 @@ const changePassword = async (req, res) => {
             await prisma.student.update({
                 where: { id },
                 data: { password: hashed }
+            });
+        } else if (role === 'FACULTY' || role === 'HOD') {
+            const faculty = await prisma.faculty.findUnique({ where: { id } });
+            if (!faculty) return res.status(404).json({ message: 'Faculty not found.' });
+
+            let valid = false;
+            if (faculty.password === 'password123') {
+                valid = currentPassword === 'password123';
+            } else {
+                valid = await bcrypt.compare(currentPassword, faculty.password);
+            }
+
+            if (!valid) {
+                return res.status(401).json({ message: 'Current password is incorrect.' });
+            }
+
+            await prisma.faculty.update({
+                where: { id },
+                data: {
+                    password: hashed,
+                    isFirstLogin: false
+                }
             });
         } else {
             const user = await prisma.user.findUnique({ where: { id } });

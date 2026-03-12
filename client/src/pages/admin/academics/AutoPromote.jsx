@@ -17,6 +17,7 @@ const AutoPromote = () => {
 
     useEffect(() => {
         const loadInfo = async () => {
+            setLoading(true);
             try {
                 const [deptRes, secRes] = await Promise.all([
                     getDepartments(),
@@ -26,6 +27,9 @@ const AutoPromote = () => {
                 setDbSections(secRes.data || []);
             } catch (err) {
                 console.error("Failed to load info", err);
+                setError("Failed to load department structure. Please refresh.");
+            } finally {
+                setLoading(false);
             }
         };
         loadInfo();
@@ -38,6 +42,9 @@ const AutoPromote = () => {
         try {
             const res = await getPromotionPreview(form);
             setPreview(res.data);
+            if (!res.data.students || res.data.students.length === 0) {
+                setError("No students found matching these criteria for promotion.");
+            }
         } catch (e) {
             setError(e.response?.data?.message || 'Failed to load preview.');
         }
@@ -57,137 +64,180 @@ const AutoPromote = () => {
         setPromoting(false);
     };
 
+    // Derived options
+    const filteredSections = (() => {
+        const dept = departments.find(d => (d.code || d.name) === form.department);
+        const filtered = dbSections.filter(s => {
+            if (dept && s.departmentId !== dept.id) return false;
+            // Removed semester filter for section to show all sections of the dept
+            return true;
+        });
+        return [...new Set(filtered.map(s => s.name))];
+    })();
+
+    const semesterOptions = (() => {
+        const dept = departments.find(d => (d.code || d.name) === form.department);
+        const degree = dept?.degree || 'B.E. (Default)';
+        return SEMESTER_OPTIONS[dept?.degree] || [1, 2, 3, 4, 5, 6, 7, 8];
+    })();
+
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
-            <div className="flex items-center gap-3">
-                <ArrowRight className="text-blue-600" size={28} />
-                <div>
-                    <h1 className="text-2xl font-black text-[#003B73]">Auto Promote Students</h1>
-                    <p className="text-gray-500 text-sm">Promote all active students to the next semester. Requires marks to be locked first.</p>
+        <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-blue-50 rounded-2xl text-[#003B73]">
+                        <ArrowRight size={32} strokeWidth={3} />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-black text-[#003B73] tracking-tighter text-left">Auto Promote Base</h1>
+                        <p className="text-gray-500 font-bold text-sm uppercase tracking-widest text-left">Mass Student Progression Engine</p>
+                    </div>
                 </div>
             </div>
 
             {/* Warning */}
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 flex gap-4">
-                <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={22} />
-                <div className="text-sm text-orange-800">
-                    <strong>Requirements before promoting:</strong>
-                    <ul className="list-disc ml-4 mt-1 space-y-1">
-                        <li>All faculty marks must be approved and locked in Semester Control.</li>
-                        <li>Results must have been generated (GPA calculated).</li>
-                        <li>Students with arrears will be promoted but arrear records are preserved.</li>
-                        <li>Semester 8 students will be marked as <strong>Passed Out</strong>.</li>
-                    </ul>
+            <div className="bg-amber-50/50 backdrop-blur-sm border-2 border-amber-100/50 rounded-[32px] p-8 flex gap-6 shadow-xl shadow-amber-900/5 items-center">
+                <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center flex-shrink-0 animate-pulse">
+                    <AlertTriangle className="text-amber-600" size={32} />
+                </div>
+                <div className="space-y-1">
+                    <h3 className="font-black text-amber-900 text-lg uppercase tracking-tight text-left">Critical Migration Check</h3>
+                    <div className="text-amber-800/80 text-sm font-bold flex flex-wrap gap-x-6 gap-y-2 text-left">
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Approved Marks</span>
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Generated GPA</span>
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Arrear Sync</span>
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Final Year Exit</span>
+                    </div>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-end">
-                <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Department</label>
-                    <CustomSelect value={form.department} onChange={e => set('department', e.target.value)}>
-                        <option value="">All</option>
-                        {departments.map(d => (
-                            <option key={d.id} value={d.code || d.name}>
-                                {d.code || d.name}
-                            </option>
-                        ))}
-                    </CustomSelect>
+            <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-2xl shadow-gray-200/50">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Select Department</label>
+                        <CustomSelect value={form.department} onChange={e => set('department', e.target.value)}>
+                            <option value="">Choose Department...</option>
+                            {departments.map(d => (
+                                <option key={d.id} value={d.code || d.name}>
+                                    {d.code || d.name}
+                                </option>
+                            ))}
+                        </CustomSelect>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Academic Year</label>
+                        <CustomSelect value={form.year} onChange={e => set('year', e.target.value)}>
+                            <option value="">Current Years...</option>
+                            {[1, 2, 3, 4].map(y => <option key={y} value={y}>Year {y}</option>)}
+                        </CustomSelect>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Target Semester</label>
+                        <CustomSelect value={form.semester} onChange={e => set('semester', e.target.value)}>
+                            <option value="">Select Semester...</option>
+                            {semesterOptions.map(s => (
+                                <option key={s} value={s}>Semester {s}</option>
+                            ))}
+                        </CustomSelect>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Section Filter</label>
+                        <CustomSelect value={form.section} onChange={e => set('section', e.target.value)}>
+                            <option value="">All Sections</option>
+                            {filteredSections.map(s => <option key={s} value={s}>{s}</option>)}
+                        </CustomSelect>
+                    </div>
                 </div>
-                <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Year</label>
-                    <CustomSelect value={form.year} onChange={e => set('year', e.target.value)}>
-                        <option value="">All</option>
-                        {[1, 2, 3, 4].map(y => <option key={y} value={y}>Year {y}</option>)}
-                    </CustomSelect>
+                
+                <div className="mt-8 flex justify-end gap-4 border-t border-gray-50 pt-8">
+                    <button 
+                        onClick={loadPreview} 
+                        disabled={loading || !form.department || !form.semester}
+                        className="bg-blue-50 text-[#003B73] px-10 h-[56px] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                    >
+                        {loading ? 'Initializing...' : <><Eye size={18} /> Run Preview Analysis</>}
+                    </button>
                 </div>
-                <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Semester</label>
-                    <CustomSelect value={form.semester} onChange={e => set('semester', e.target.value)}>
-                        <option value="">All</option>
-                        {(() => {
-                            const dept = departments.find(d => (d.code || d.name) === form.department);
-                            const degree = dept?.degree || 'B.E.';
-                            return (SEMESTER_OPTIONS[degree] || [1, 2, 3, 4, 5, 6, 7, 8]).map(s => (
-                                <option key={s} value={s}>Sem {s}</option>
-                            ));
-                        })()}
-                    </CustomSelect>
-                </div>
-                <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Section</label>
-                    <CustomSelect value={form.section} onChange={e => set('section', e.target.value)}>
-                        <option value="">All</option>
-                        {(() => {
-                            const dept = departments.find(d => (d.code || d.name) === form.department);
-                            const filtered = dbSections.filter(s => {
-                                if (dept && s.departmentId !== dept.id) return false;
-                                if (form.semester && s.semester !== parseInt(form.semester)) return false;
-                                return true;
-                            });
-                            const names = [...new Set(filtered.map(s => s.name))];
-                            if (names.length === 0) return ['A', 'B', 'C'].map(s => <option key={s} value={s}>{s}</option>);
-                            return names.map(s => <option key={s} value={s}>{s}</option>);
-                        })()}
-                    </CustomSelect>
-                </div>
-                <button onClick={loadPreview} disabled={loading || !form.department || !form.semester}
-                    className="h-[52px] px-6 bg-blue-50 text-blue-700 border border-blue-200 rounded-[14px] font-black text-sm hover:bg-blue-100 transition-all flex items-center gap-2 disabled:opacity-50">
-                    <Eye size={16} /> PREVIEW
-                </button>
             </div>
 
             {error && <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">{error}</div>}
 
             {/* Result */}
             {result && (
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
-                    <CheckCheck className="mx-auto text-green-600 mb-3" size={36} />
-                    <p className="text-lg font-black text-green-800">{result.message}</p>
+                <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[32px] p-10 text-center shadow-xl shadow-emerald-900/5 animate-scaleIn">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCheck className="text-emerald-600" size={40} />
+                    </div>
+                    <h2 className="text-2xl font-black text-emerald-900 mb-2">Operation Successful</h2>
+                    <p className="text-emerald-700 font-medium max-w-md mx-auto">{result.message}</p>
+                    <button onClick={() => setResult(null)} className="mt-8 px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all">DISMISS</button>
                 </div>
             )}
 
             {/* Preview Table */}
             {preview && !result && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                        <div>
-                            <p className="font-black text-gray-800 text-lg">
-                                {preview.totalStudents} students will be
-                                {preview.isGraduating ? <span className="text-purple-700"> graduated (Passed Out)</span> : <span className="text-blue-700"> promoted to Sem {preview.nextSemester}</span>}
+                <div className="bg-white rounded-[40px] shadow-2xl shadow-gray-200/50 border border-gray-100 overflow-hidden animate-fadeInUp">
+                    <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-gray-50/50 to-transparent">
+                        <div className="space-y-1">
+                            <p className="font-black text-gray-900 text-2xl tracking-tight text-left">
+                                {preview.totalStudents} Students Detected
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">Review before committing. This action cannot be undone.</p>
+                            <p className="font-bold text-sm text-gray-400 uppercase tracking-widest flex items-center gap-2 text-left">
+                                {preview.isGraduating ? (
+                                    <><span className="text-purple-600">Action: Final Graduation (Passed Out)</span></>
+                                ) : (
+                                    <><span>Target: Progression to</span> <span className="text-blue-600">Semester {preview.nextSemester}</span></>
+                                )}
+                            </p>
                         </div>
-                        <button onClick={doPromote} disabled={promoting}
-                            className="px-6 py-3 bg-[#003B73] text-white rounded-xl font-black text-sm hover:bg-[#002850] transition-all disabled:opacity-60 flex items-center gap-2">
-                            {promoting ? 'Promoting...' : <><ArrowRight size={16} /> {preview.isGraduating ? 'GRADUATE ALL' : 'PROMOTE ALL'}</>}
+                        <button 
+                            onClick={doPromote} 
+                            disabled={promoting}
+                            className="px-10 h-[60px] bg-[#003B73] text-white rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-[#002850] transition-all disabled:opacity-60 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/20 active:scale-95"
+                        >
+                            {promoting ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <><ArrowRight size={18} /> {preview.isGraduating ? 'CONFIRM GRADUATION' : 'EXECUTE PROMOTION'}</>
+                            )}
                         </button>
                     </div>
-                    <table className="w-full text-sm">
-                        <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                            <tr>
-                                <th className="px-4 py-3 text-left">#</th>
-                                <th className="px-4 py-3 text-left">Roll No</th>
-                                <th className="px-4 py-3 text-left">Name</th>
-                                <th className="px-4 py-3 text-center">Section</th>
-                                <th className="px-4 py-3 text-center">Current Sem</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {preview.students.slice(0, 50).map((s, i) => (
-                                <tr key={s.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2.5 text-gray-400">{i + 1}</td>
-                                    <td className="px-4 py-2.5 font-mono text-[#003B73] font-bold">{s.rollNo}</td>
-                                    <td className="px-4 py-2.5 font-medium text-gray-800">{s.name}</td>
-                                    <td className="px-4 py-2.5 text-center">{s.section}</td>
-                                    <td className="px-4 py-2.5 text-center font-bold">{s.semester}</td>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">
+                                    <th className="px-8 py-5">Roll Number</th>
+                                    <th className="px-8 py-5 text-left">Student Name</th>
+                                    <th className="px-8 py-5 text-center">Section</th>
+                                    <th className="px-8 py-5 text-center font-black text-blue-600">Current Sem</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {preview.students.slice(0, 50).map((s, i) => (
+                                    <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
+                                        <td className="px-8 py-5 font-mono text-sm text-[#003B73] font-bold group-hover:scale-105 transition-transform origin-left">{s.rollNo}</td>
+                                        <td className="px-8 py-5 font-bold text-gray-800 text-sm">{s.name}</td>
+                                        <td className="px-8 py-5 text-center">
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 font-bold text-xs">
+                                                {s.section}
+                                            </span>
+                                        </td>
+                                        <td className="px-8 py-5 text-center">
+                                            <span className="font-black text-gray-900 bg-gray-50 px-3 py-1 rounded-md border border-gray-100 italic">
+                                                {s.semester}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    
                     {preview.students.length > 50 && (
-                        <div className="px-5 py-3 bg-gray-50 text-xs text-gray-400 text-center">
-                            Showing first 50 of {preview.students.length} students.
+                        <div className="p-6 bg-gray-50/50 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center border-t border-gray-100">
+                            + {preview.students.length - 50} more students in queue
                         </div>
                     )}
                 </div>

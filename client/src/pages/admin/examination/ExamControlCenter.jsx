@@ -11,7 +11,7 @@ import {
   Search,
   Printer
 } from "lucide-react";
-import { getConsolidatedResults, calculateBulkGPA, exportPortraitResults, exportLandscapeResults } from "../../../services/results.service";
+import { getConsolidatedResults, calculateBulkGPA, exportPortraitResults, exportLandscapeResults, getPublishStatus, publishResult, unpublishResult } from "../../../services/results.service";
 import { getDepartments } from "../../../services/department.service";
 import toast from "react-hot-toast";
 
@@ -20,11 +20,14 @@ const ExamControlCenter = () => {
     department: "",
     semester: "",
     regulation: "2021",
+    year: new Date().getFullYear(), // Added year for publishing
+    section: "A" // Default section for publishing
   });
 
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [resultsData, setResultsData] = useState(null);
+  const [isPublished, setIsPublished] = useState(false);
 
   const fetchInitialData = async () => {
     try {
@@ -38,6 +41,20 @@ const ExamControlCenter = () => {
     }
   };
 
+  const checkPublishStatus = async (currentFilters) => {
+    try {
+      const res = await getPublishStatus({
+        department: currentFilters.department,
+        semester: currentFilters.semester,
+        year: currentFilters.year,
+        section: currentFilters.section
+      });
+      setIsPublished(res.data.isPublished);
+    } catch (error) {
+      console.error("Status check failed", error);
+    }
+  };
+
   const fetchResults = async () => {
     if (!filters.department || !filters.semester) {
       toast.error("Please select Department and Semester");
@@ -48,6 +65,7 @@ const ExamControlCenter = () => {
     try {
       const res = await getConsolidatedResults(filters);
       setResultsData(res.data);
+      await checkPublishStatus(filters);
       toast.success("Results loaded successfully");
     } catch (error) {
       console.error(error);
@@ -74,6 +92,34 @@ const ExamControlCenter = () => {
     } catch (error) {
       console.error(error);
       toast.error("Failed to calculate GPAs", { id: toastId });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePublishToggle = async () => {
+    const action = isPublished ? 'unpublish' : 'publish';
+    const confirmMsg = isPublished 
+      ? "Are you sure you want to UNPUBLISH these results? Students will no longer be able to see them."
+      : "Are you sure you want to PUBLISH these results? They will be visible to students.";
+    
+    if (!window.confirm(confirmMsg)) return;
+
+    setLoading(true);
+    const toastId = toast.loading(`${isPublished ? 'Unpublishing' : 'Publishing'} results...`);
+    try {
+      if (isPublished) {
+        await unpublishResult(filters);
+        setIsPublished(false);
+        toast.success("Results unpublished successfully", { id: toastId });
+      } else {
+        await publishResult(filters);
+        setIsPublished(true);
+        toast.success("Results published successfully", { id: toastId });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(`Failed to ${action} results`, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -113,6 +159,11 @@ const ExamControlCenter = () => {
         <div>
           <h1 className="text-4xl font-black text-[#003B73] tracking-tight flex items-center gap-3">
             <Award className="text-blue-600" size={32} /> Provisional Results
+            {isPublished && (
+              <span className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full uppercase tracking-widest font-black ml-2 animate-pulse">
+                Published
+              </span>
+            )}
           </h1>
           <p className="text-gray-500 font-medium mt-1">
             Consolidated visualization and management of semester examinations.
@@ -159,7 +210,7 @@ const ExamControlCenter = () => {
           </CustomSelect>
         </div>
 
-        <div className="w-48">
+        <div className="w-32">
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
             Semester
           </label>
@@ -171,13 +222,13 @@ const ExamControlCenter = () => {
             <option value="">Choose...</option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
               <option key={s} value={s}>
-                Semester {s}
+                Sem {s}
               </option>
             ))}
           </CustomSelect>
         </div>
 
-        <div className="w-48">
+        <div className="w-32">
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
             Regulation
           </label>
@@ -186,27 +237,55 @@ const ExamControlCenter = () => {
             value={filters.regulation}
             onChange={(e) => setFilters({ ...filters, regulation: e.target.value })}
           >
-            <option value="2021">2021 Regulation</option>
-            <option value="2023">2023 Regulation</option>
+            <option value="2021">2021</option>
+            <option value="2023">2023</option>
+          </CustomSelect>
+        </div>
+
+        <div className="w-32">
+          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+            Section
+          </label>
+          <CustomSelect
+            className="w-full"
+            value={filters.section}
+            onChange={(e) => setFilters({ ...filters, section: e.target.value })}
+          >
+            {['A', 'B', 'C', 'D'].map(sec => (
+              <option key={sec} value={sec}>Section {sec}</option>
+            ))}
           </CustomSelect>
         </div>
 
         <button
           onClick={fetchResults}
           disabled={loading || !filters.department || !filters.semester}
-          className="bg-white border-2 border-[#003B73] text-[#003B73] h-[52px] px-8 rounded-2xl hover:bg-blue-50 disabled:bg-gray-100 disabled:text-gray-400 transition-all font-black flex items-center gap-2"
+          className="bg-white border-2 border-[#003B73] text-[#003B73] h-[52px] px-8 rounded-2xl hover:bg-blue-50 disabled:bg-gray-100 disabled:text-gray-400 transition-all font-black flex items-center gap-2 text-sm"
         >
-          {loading ? <RefreshCw className="animate-spin" size={20} /> : <Search size={20} />}
-          Fetch Results
+          {loading ? <RefreshCw className="animate-spin" size={18} /> : <Search size={18} />}
+          Fetch
         </button>
 
         <button
           onClick={handleCalculateGPAs}
           disabled={loading || !filters.department || !filters.semester}
-          className="bg-[#003B73] text-white h-[52px] px-8 rounded-2xl hover:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400 transition-all font-black flex items-center gap-2 shadow-lg shadow-blue-900/20"
+          className="bg-[#003B73] text-white h-[52px] px-8 rounded-2xl hover:bg-blue-800 disabled:bg-gray-100 disabled:text-gray-400 transition-all font-black flex items-center gap-2 shadow-lg shadow-blue-900/20 text-sm"
         >
-          {loading ? <RefreshCw className="animate-spin" size={20} /> : <Award size={20} />}
-          Process GPAs
+          {loading ? <RefreshCw className="animate-spin" size={18} /> : <Award size={18} />}
+          Process GPA
+        </button>
+
+        <button
+          onClick={handlePublishToggle}
+          disabled={loading || !resultsData}
+          className={`h-[52px] px-8 rounded-2xl transition-all font-black flex items-center gap-2 shadow-lg text-sm ${
+            isPublished 
+              ? 'bg-red-50 text-red-600 border-2 border-red-200 hover:bg-red-100 shadow-red-900/10' 
+              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20'
+          }`}
+        >
+          {isPublished ? <XCircle size={18} /> : <CheckCircle size={18} />}
+          {isPublished ? 'Unpublish' : 'Publish Result'}
         </button>
       </div>
 

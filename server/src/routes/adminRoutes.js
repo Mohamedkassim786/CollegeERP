@@ -1,11 +1,14 @@
 const express = require('express');
 const multer = require('multer');
 const {
-    getAllFaculty, createFaculty, deleteFaculty,
     getTimetable, saveTimetable,
     getAbsences, markFacultyAbsent, removeFacultyAbsence,
-    getSubstitutions, assignSubstitute, deleteSubstitution, getFacultyAvailability
+    getSubstitutions, assignSubstitute, deleteSubstitution, getFacultyAvailability,
+    getSystemUsers, createSystemUser, resetSystemUserPassword, toggleUserStatus, deleteUser
 } = require('../controllers/adminController');
+const {
+    getFaculties, createFaculty, deleteFaculty, updateFaculty, bulkUploadFaculty, getFacultyProfile
+} = require('../controllers/facultyController');
 const {
     createStudent, updateStudent, getStudents, deleteStudent, promoteStudents, bulkUploadStudents, batchAssignRegisterNumbers, passStudentsOut, getStudentProfile
 } = require('../controllers/studentController');
@@ -45,9 +48,14 @@ router.get('/stats', isPrincipal, getDashboardStats);
 router.get('/timetable', getTimetable);
 router.post('/timetable', saveTimetable);
 
-router.get('/faculty', isAdmin, getAllFaculty); // Faculty management is SuperAdmin only
-router.post('/faculty', isAdmin, validateFaculty, createFaculty);
-router.delete('/faculty/:id', isAdmin, deleteFaculty);
+// Faculty routes moved to section below
+
+// System User Management
+router.get('/users', isAdmin, getSystemUsers);
+router.post('/users', isAdmin, createSystemUser);
+router.patch('/users/:id/reset-password', isAdmin, resetSystemUserPassword);
+router.patch('/users/:id/status', isAdmin, toggleUserStatus);
+router.delete('/users/:id', isAdmin, deleteUser);
 
 router.get('/departments', isHod, getDepartments);
 router.get('/sections', isHod, getSections);
@@ -82,6 +90,14 @@ router.get('/faculty/availability', getFacultyAvailability);
 router.get('/substitutions', getSubstitutions);
 router.post('/substitutions', assignSubstitute);
 router.delete('/substitutions/:id', deleteSubstitution);
+
+// Admin Faculty Management
+router.get('/faculty', isAdmin, getFaculties);
+router.post('/faculty/bulk-upload', isAdmin, upload.single('file'), bulkUploadFaculty);
+router.get('/faculty/:id', isAdmin, getFacultyProfile);
+router.post('/faculty', isAdmin, upload.single('photo'), createFaculty);
+router.patch('/faculty/:id', isAdmin, upload.single('photo'), updateFaculty);
+router.delete('/faculty/:id', isAdmin, deleteFaculty);
 
 // Admin Marks Management
 router.get('/marks/:subjectId', getSubjectMarksForAdmin);

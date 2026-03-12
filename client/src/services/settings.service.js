@@ -1,7 +1,9 @@
 import api from './api.js'
-export const getSystemUsers = () => api.get('/admin/settings/system-users')
-export const createSystemUser = (data) => api.post('/admin/settings/create-system-user', data)
-export const resetSystemUser = (data) => api.put('/admin/settings/reset-system-user', data)
+export const getSystemUsers = () => api.get('/admin/users')
+export const createSystemUser = (data) => api.post('/admin/users', data)
+export const resetSystemUserPassword = (id, data) => api.patch(`/admin/users/${id}/reset-password`, data)
+export const toggleUserStatus = (id, data) => api.patch(`/admin/users/${id}/status`, data)
+export const deleteSystemUser = (id) => api.delete(`/admin/users/${id}`)
 export const getActivityLogs = (params) => api.get('/admin/settings/activity-logs', { params })
 export const passOutStudents = (data) => api.post('/admin/students/pass-out', data)
 export const getDepartments = () => api.get('/admin/departments')

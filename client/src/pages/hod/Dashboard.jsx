@@ -41,7 +41,7 @@ const HODDashboard = () => {
             </div>
 
             {/* HOD Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-xl shadow-gray-200/50 group hover:border-emerald-500 transition-all duration-500">
                     <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4"><Users size={24}/></div>
                     <h3 className="text-3xl font-black text-[#003B73] mb-1">{data?.studentCount || 0}</h3>
@@ -50,17 +50,17 @@ const HODDashboard = () => {
                 <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-xl shadow-gray-200/50 group hover:border-emerald-500 transition-all duration-500">
                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4"><UserCheck size={24}/></div>
                     <h3 className="text-3xl font-black text-[#003B73] mb-1">{data?.activeStudents || 0}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Attendance</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">In-Progress Attendance</p>
                 </div>
                 <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-xl shadow-gray-200/50 group hover:border-emerald-500 transition-all duration-500">
                     <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4"><ShieldCheck size={24}/></div>
                     <h3 className="text-3xl font-black text-[#003B73] mb-1">{data?.avgAttendance || 0}%</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Daily Average %</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dept. Avg Attendance</p>
                 </div>
                 <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-xl shadow-gray-200/50 group hover:border-emerald-500 transition-all duration-500">
                     <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center mb-4"><FileCheck size={24}/></div>
                     <h3 className="text-3xl font-black text-[#003B73] mb-1">{data?.pendingApprovals || 0}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pending Approvals</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pending Mark Approvals</p>
                 </div>
             </div>
 

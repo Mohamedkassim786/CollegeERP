@@ -5,12 +5,14 @@ import {
     MoreVertical, Edit3, Trash2, Key, Activity
 } from 'lucide-react';
 import { 
-    getFaculty as getSystemUsers, 
-    createFaculty as createSystemUser, 
-    toggleFacultyStatus, 
-    resetFacultyPassword 
-} from '../../../services/faculty.service';
+    getSystemUsers, 
+    createSystemUser, 
+    toggleUserStatus, 
+    resetSystemUserPassword,
+    deleteSystemUser
+} from '../../../services/settings.service';
 import { handleApiError } from '../../../utils/errorHandler';
+import { toast } from 'react-hot-toast';
 
 const UserManager = () => {
     const [users, setUsers] = useState([]);
@@ -19,18 +21,17 @@ const UserManager = () => {
     const [filterRole, setFilterRole] = useState('ALL');
     const [showModal, setShowModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
-    const [modalMode, setModalMode] = useState('CREATE'); // CREATE | EDIT | RESET_PASSWORD
+    const [modalMode, setModalMode] = useState('CREATE'); // CREATE | RESET_PASSWORD
 
-    // Form states
+    const ROLES = ['ADMIN', 'PRINCIPAL', 'CHIEF_SECRETARY'];
+
     const [formData, setFormData] = useState({
         username: '',
-        password: '',
         fullName: '',
         email: '',
-        phoneNumber: '',
-        role: 'FACULTY',
-        department: '',
-        designation: ''
+        phone: '',
+        role: 'ADMIN',
+        password: ''
     });
 
     useEffect(() => {
@@ -39,7 +40,8 @@ const UserManager = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await getSystemUsers(); // Reusing existing faculty endpoint which typically returns all system users
+            setLoading(true);
+            const response = await getSystemUsers();
             setUsers(response.data);
         } catch (error) {
             handleApiError(error, "Failed to fetch users");
@@ -51,53 +53,51 @@ const UserManager = () => {
     const handleToggleStatus = async (user) => {
         if (!confirm(`Are you sure you want to ${user.isDisabled ? 'ENABLE' : 'DISABLE'} this account?`)) return;
         try {
-            await toggleFacultyStatus({ 
-                facultyId: user.id, 
-                isDisabled: !user.isDisabled 
-            });
+            await toggleUserStatus(user.id, { isDisabled: !user.isDisabled });
+            toast.success(`Account ${user.isDisabled ? 'enabled' : 'disabled'}`);
             fetchUsers();
         } catch (error) {
             handleApiError(error, "Action failed");
         }
     };
 
-    const handleCreateUser = async (e) => {
+    const handleDeleteUser = async (user) => {
+        if (!confirm(`Permanently delete account @${user.username}? This cannot be undone.`)) return;
+        try {
+            await deleteSystemUser(user.id);
+            toast.success("User deleted");
+            fetchUsers();
+        } catch (error) {
+            handleApiError(error, "Deletion failed");
+        }
+    };
+
+    const handleFormSubmit = async (e) => {
         e.preventDefault();
         try {
-            await createSystemUser(formData);
+            if (modalMode === 'CREATE') {
+                await createSystemUser(formData);
+                toast.success("User account created");
+            } else if (modalMode === 'RESET_PASSWORD') {
+                await resetSystemUserPassword(selectedUser.id, { password: formData.password });
+                toast.success("Password reset successful");
+            }
             setShowModal(false);
             fetchUsers();
             resetForm();
         } catch (error) {
-            handleApiError(error, "Failed to create user");
-        }
-    };
-
-    const handleResetPassword = async (e) => {
-        e.preventDefault();
-        try {
-            await resetFacultyPassword({
-                facultyId: selectedUser.id,
-                newPassword: formData.password
-            });
-            setShowModal(false);
-            alert("Password reset successfully");
-            resetForm();
-        } catch (error) {
-            handleApiError(error, "Reset failed");
+            handleApiError(error, "Operation failed");
         }
     };
 
     const resetForm = () => {
         setFormData({
             username: '',
-            password: '',
             fullName: '',
             email: '',
-            phoneNumber: '',
-            role: 'FACULTY',
-            department: '',
-            designation: ''
+            phone: '',
+            role: 'ADMIN',
+            password: ''
         });
         setSelectedUser(null);
     };
@@ -111,20 +111,18 @@ const UserManager = () => {
 
     if (loading) return <div className="h-96 flex items-center justify-center"><div className="w-12 h-12 border-4 border-[#003B73] border-t-transparent rounded-full animate-spin"></div></div>;
 
-    const roles = ['ADMIN', 'PRINCIPAL', 'CHIEF_SECRETARY', 'COE', 'HOD', 'FACULTY'];
-
     return (
         <div className="space-y-8 animate-fadeIn">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-3xl font-black text-[#003B73] tracking-tight">System User Management</h2>
-                    <p className="text-gray-500 font-bold text-sm mt-1 uppercase tracking-widest">Administrative Control Panel</p>
+                    <h2 className="text-3xl font-black text-[#003B73] tracking-tight text-left">System User Management</h2>
+                    <p className="text-gray-500 font-bold text-sm mt-1 uppercase tracking-widest text-left">Administrative Accounts Control</p>
                 </div>
                 <button 
-                    onClick={() => { setModalMode('CREATE'); setShowModal(true); }}
+                    onClick={() => { setModalMode('CREATE'); resetForm(); setShowModal(true); }}
                     className="bg-[#003B73] text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center gap-2 hover:scale-105 transition-all active:scale-95"
                 >
-                    <Plus size={18} /> Add New User
+                    <Plus size={18} /> Add New Admin
                 </button>
             </div>
 
@@ -140,7 +138,7 @@ const UserManager = () => {
                     />
                 </div>
                 <div className="flex gap-2 bg-gray-50 p-1.5 rounded-2xl overflow-x-auto">
-                    {['ALL', ...roles].map(role => (
+                    {['ALL', ...ROLES].map(role => (
                         <button
                             key={role}
                             onClick={() => setFilterRole(role)}
@@ -159,9 +157,8 @@ const UserManager = () => {
                         <thead className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
                             <tr>
                                 <th className="px-8 py-5">User Account</th>
-                                <th className="px-8 py-5">Role & Access</th>
-                                <th className="px-8 py-5">Department</th>
-                                <th className="px-8 py-5">Account Status</th>
+                                <th className="px-8 py-5">Role</th>
+                                <th className="px-8 py-5">Status</th>
                                 <th className="px-8 py-5 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -180,25 +177,19 @@ const UserManager = () => {
                                         </div>
                                     </td>
                                     <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest border ${
-                                                user.role === 'ADMIN' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                user.role === 'CHIEF_SECRETARY' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                                                'bg-blue-50 text-blue-600 border-blue-100'
-                                            }`}>
-                                                {user.role}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <p className="font-bold text-gray-500 text-sm">{user.department || 'All Departments'}</p>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{user.designation || 'System User'}</p>
+                                        <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest border ${
+                                            user.role === 'ADMIN' ? 'bg-red-50 text-red-600 border-red-100' :
+                                            user.role === 'CHIEF_SECRETARY' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                            'bg-blue-50 text-blue-600 border-blue-100'
+                                        }`}>
+                                            {user.role}
+                                        </span>
                                     </td>
                                     <td className="px-8 py-6">
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-full ${user.isDisabled ? 'bg-red-500' : 'bg-emerald-500'} shadow-[0_0_10px_rgba(16,185,129,0.3)]`}></div>
+                                            <div className={`w-2 h-2 rounded-full ${user.isDisabled ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
                                             <span className={`text-[10px] font-black uppercase tracking-widest ${user.isDisabled ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                {user.isDisabled ? 'Deactivated' : 'Active Access'}
+                                                {user.isDisabled ? 'Disabled' : 'Active'}
                                             </span>
                                         </div>
                                     </td>
@@ -213,13 +204,17 @@ const UserManager = () => {
                                             </button>
                                             <button 
                                                 onClick={() => handleToggleStatus(user)}
-                                                className={`p-3 rounded-xl transition-all ${user.isDisabled ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}
+                                                className={`p-3 rounded-xl transition-all ${user.isDisabled ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white'}`}
                                                 title={user.isDisabled ? 'Enable' : 'Disable'}
                                             >
                                                 {user.isDisabled ? <UserCheck size={16} /> : <UserMinus size={16} />}
                                             </button>
-                                            <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#003B73] hover:text-white transition-all">
-                                                <Edit3 size={16} />
+                                            <button 
+                                                onClick={() => handleDeleteUser(user)}
+                                                className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                                                title="Delete Account"
+                                            >
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -233,82 +228,72 @@ const UserManager = () => {
             {/* User Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-                    <div className="bg-white rounded-[40px] w-full max-w-2xl overflow-hidden shadow-2xl animate-scaleIn">
+                    <div className="bg-white rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl animate-scaleIn">
                         <div className="p-10">
                             <h3 className="text-3xl font-black text-[#003B73] mb-2 uppercase tracking-tight">
-                                {modalMode === 'CREATE' ? 'Provision New Account' : modalMode === 'RESET_PASSWORD' ? 'Security Protocol: PW Reset' : 'Update Credentials'}
+                                {modalMode === 'CREATE' ? 'Create System Account' : 'Reset Password'}
                             </h3>
                             <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-10">
-                                {modalMode === 'RESET_PASSWORD' ? `Modifying access for ${selectedUser?.fullName}` : 'All fields are strictly required for system integrity'}
+                                {modalMode === 'CREATE' ? 'Add a new administrative user to the system' : `Changing access for ${selectedUser?.fullName}`}
                             </p>
 
-                            <form onSubmit={modalMode === 'CREATE' ? handleCreateUser : handleResetPassword} className="space-y-6">
-                                {modalMode === 'RESET_PASSWORD' ? (
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New System Password</label>
-                                        <div className="relative">
-                                            <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                            <input 
-                                                required
-                                                type="password"
-                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-indigo-500 transition-all"
-                                                placeholder="Enter secure password..."
-                                                value={formData.password}
-                                                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                            />
-                                        </div>
-                                    </div>
-                                ) : (
+                            <form onSubmit={handleFormSubmit} className="space-y-6">
+                                {modalMode === 'CREATE' && (
                                     <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Legal Name</label>
-                                                <input required className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold" placeholder="E.g. Dr. John Carter" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name *</label>
+                                                <input required className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold" placeholder="E.g. Admin User" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Unique Username</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-mono">@</span>
-                                                    <input required className="w-full pl-10 pr-4 py-4 bg-gray-50 border-none rounded-2xl font-bold font-mono" placeholder="jcarter_101" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} />
-                                                </div>
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Username *</label>
+                                                <input required className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold font-mono" placeholder="admin_username" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} />
                                             </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Official Role</label>
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Role *</label>
                                                 <select className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-black text-[#003B73] uppercase text-xs tracking-widest" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})}>
-                                                    {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                                                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                                                 </select>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Initial Password</label>
-                                                <input required type="password" className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email</label>
+                                                <input className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold" type="email" placeholder="admin@miet.edu" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Communication Channel (Email)</label>
-                                                <input className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold" type="email" placeholder="john.c@institution.edu" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Emergency Contact</label>
-                                                <input className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold font-mono" placeholder="+91 98765 43210" value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} />
-                                            </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
+                                            <input className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold font-mono" placeholder="+91 00000 00000" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+                                        </div>
+                                        
+                                        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Password Information</p>
+                                            <p className="text-xs text-blue-500 font-bold">Default password: <span className="font-mono text-blue-700">password123</span>. User must change after first login.</p>
                                         </div>
                                     </>
+                                )}
+
+                                {modalMode === 'RESET_PASSWORD' && (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
+                                        <input required type="password" className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl font-bold" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+                                    </div>
                                 )}
 
                                 <div className="flex gap-4 pt-4">
                                     <button 
                                         type="button"
                                         onClick={() => { setShowModal(false); resetForm(); }}
-                                        className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+                                        className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-3xl font-black text-xs uppercase tracking-widest"
                                     >
-                                        Abort Request
+                                        Cancel
                                     </button>
                                     <button 
                                         type="submit"
-                                        className="flex-1 py-4 bg-[#003B73] text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 hover:scale-105 transition-all"
+                                        className="flex-1 py-4 bg-[#003B73] text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100"
                                     >
-                                        {modalMode === 'CREATE' ? 'Authorize & Create' : 'Execute Update'}
+                                        {modalMode === 'CREATE' ? 'Create Account' : 'Reset Password'}
                                     </button>
                                 </div>
                             </form>

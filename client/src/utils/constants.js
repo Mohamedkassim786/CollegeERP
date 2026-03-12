@@ -7,7 +7,6 @@
 export const ROLES = {
     ADMIN: 'ADMIN',
     PRINCIPAL: 'PRINCIPAL',
-    COE: 'COE',
     CHIEF_SECRETARY: 'CHIEF_SECRETARY',
     HOD: 'HOD',
     FACULTY: 'FACULTY',

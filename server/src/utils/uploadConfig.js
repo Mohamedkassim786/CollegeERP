@@ -2,23 +2,31 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directory exists
-const defaultUploadDir = path.join(__dirname, '..', 'uploads', 'students');
-if (!fs.existsSync(defaultUploadDir)) {
-    fs.mkdirSync(defaultUploadDir, { recursive: true });
-}
+// Ensure upload directories exist
+const uploadBase = path.join(__dirname, '..', '..', 'uploads');
+const studentDir = path.join(uploadBase, 'students');
+const facultyDir = path.join(uploadBase, 'faculty');
 
-// Multer storage configuration for saving files exactly as {rollNo}.[ext]
+[studentDir, facultyDir].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
+
+const defaultUploadDir = studentDir;
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, defaultUploadDir);
+        if (req.originalUrl.includes('/faculty')) {
+            cb(null, facultyDir);
+        } else {
+            cb(null, studentDir);
+        }
     },
     filename: (req, file, cb) => {
-        const rollNo = req.body.rollNo ? String(req.body.rollNo).trim().toUpperCase() : 'UNKNOWN';
+        const id = (req.body.rollNo || req.body.staffId || 'UNKNOWN').trim().toUpperCase();
         const activeExt = path.extname(file.originalname).toLowerCase();
-        
-        // Save as {RollNo}.jpg  / png etc
-        cb(null, `${rollNo}${activeExt}`);
+        cb(null, `${id}${activeExt}`);
     }
 });
 

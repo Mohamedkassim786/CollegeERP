@@ -9,11 +9,14 @@ const prisma = new PrismaClient();
  */
 const getProfile = async (req, res) => {
     try {
-        const { id, role } = req.user;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
 
-        if (role === 'STUDENT') {
+        if (!userId) return res.status(401).json({ message: 'Unauthorized: User ID missing' });
+
+        if (userRole === 'STUDENT') {
             const student = await prisma.student.findUnique({
-                where: { id },
+                where: { id: userId },
                 include: {
                     departmentRef: true,
                     sectionRef: true,
@@ -25,8 +28,34 @@ const getProfile = async (req, res) => {
         }
 
         // Staff roles
+        if (userRole === 'FACULTY' || userRole === 'HOD') {
+            const faculty = await prisma.faculty.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    staffId: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                    department: true,
+                    designation: true,
+                    photo: true,
+                    role: true,
+                }
+            });
+            if (!faculty) return res.status(404).json({ message: 'Faculty not found' });
+            // Map for consistency
+            return res.json({
+                ...faculty,
+                username: faculty.staffId,
+                phoneNumber: faculty.phone,
+                photoUrl: faculty.photo
+            });
+        }
+
+        // Admin / External / Principal / Chief Secretary roles (stored in User table)
         const user = await prisma.user.findUnique({
-            where: { id },
+            where: { id: userId },
             select: {
                 id: true,
                 username: true,
@@ -40,7 +69,6 @@ const getProfile = async (req, res) => {
                 dateOfBirth: true,
                 photoUrl: true,
                 isHOD: true,
-                isFirstLogin: true,
                 lastPasswordChange: true,
                 lastLogin: true
             }
@@ -59,15 +87,17 @@ const getProfile = async (req, res) => {
  */
 const updateProfile = async (req, res) => {
     const { fullName, phoneNumber, email, designation, employeeId, dateOfBirth } = req.body;
-    const { id, role } = req.user;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    if (!userId) return res.status(401).json({ message: 'Unauthorized: User ID missing' });
 
     try {
-        if (role === 'STUDENT') {
-            // Students can currently only update phoneNumber/email locally if allowed
-            // Typically student updates are restricted
+        if (userRole === 'STUDENT') {
             const updatedStudent = await prisma.student.update({
-                where: { id },
+                where: { id: userId },
                 data: {
+                    name: fullName || undefined,
                     phoneNumber: phoneNumber || undefined,
                     email: email || undefined
                 }
@@ -75,26 +105,32 @@ const updateProfile = async (req, res) => {
             return res.json(updatedStudent);
         }
 
-        // Staff updates
+        // Faculty/HOD updates
+        if (userRole === 'FACULTY' || userRole === 'HOD') {
+            const updateData = {};
+            if (fullName) updateData.fullName = fullName;
+            if (phoneNumber) updateData.phone = phoneNumber;
+            if (email) updateData.email = email;
+            if (designation) updateData.designation = designation;
+
+            const updatedFaculty = await prisma.faculty.update({
+                where: { id: userId },
+                data: updateData
+            });
+            return res.json(updatedFaculty);
+        }
+
+        // Admin/Admin-like updates
         const updateData = {};
         if (fullName) updateData.fullName = fullName;
         if (phoneNumber) updateData.phoneNumber = phoneNumber;
         if (designation) updateData.designation = designation;
         if (employeeId) updateData.employeeId = employeeId;
         if (dateOfBirth) updateData.dateOfBirth = new Date(dateOfBirth);
-
-        // Functional requirements:
-        // Admin: Email is editable
-        // Others: Email might be restricted (using role-based check if needed)
-        if (role === 'ADMIN' && email) {
-            updateData.email = email;
-        } else if (email) {
-            // Default: allow others to update email too for now unless specifically restricted
-            updateData.email = email;
-        }
+        if (email) updateData.email = email;
 
         const updatedUser = await prisma.user.update({
-            where: { id },
+            where: { id: userId },
             data: updateData
         });
 

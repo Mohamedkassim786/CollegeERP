@@ -92,13 +92,14 @@ const getHODDashboard = async (req, res) => {
         const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
         
         // Average attendance for the department
+        const studentIdsInDept = students.map(s => s.id);
         const attendanceRecords = await prisma.studentAttendance.findMany({
-            where: { student: { department: department } }
+            where: { studentId: { in: studentIdsInDept } }
         });
         const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT' || a.status === 'OD').length;
-        const avgAttendance = attendanceRecords.length > 0 ? (presentCount / attendanceRecords.length * 100).toFixed(2) : 0;
+        const avgAttendance = attendanceRecords.length > 0 ? ((presentCount / attendanceRecords.length) * 100).toFixed(2) : 0;
 
-        // NEW: Pending Approvals for this department
+        // Pending Approvals for this department
         const pendingApprovals = await prisma.marks.count({
             where: {
                 student: { department: department },
@@ -154,11 +155,14 @@ const getStudentDashboard = async (req, res) => {
         const attendanceRecords = await prisma.studentAttendance.findMany({
             where: { studentId: student.id }
         });
-        const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT').length;
-        const attendancePercentage = attendanceRecords.length > 0 ? (presentCount / attendanceRecords.length * 100).toFixed(2) : 0;
+        const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT' || a.status === 'OD').length;
+        const attendancePercentage = attendanceRecords.length > 0 ? ((presentCount / attendanceRecords.length) * 100).toFixed(2) : 0;
 
         res.json({
-            profile: student,
+            profile: {
+                ...student,
+                fullName: student.name // Map for consistency
+            },
             stats: {
                 attendancePercentage,
                 arrearsCount: student.arrears.filter(a => !a.isCleared).length,

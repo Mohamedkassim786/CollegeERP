@@ -16,10 +16,6 @@ const StudentPortal = () => {
         <main className="flex-1 p-8 mt-24 overflow-y-auto animate-fadeIn">
           <Routes>
             <Route path="/" element={<StudentHome />} />
-            <Route path="/profile" element={<StudentProfile />} />
-            <Route path="/results" element={<StudentResult />} />
-            <Route path="/announcements" element={<Announcements role="STUDENT" />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/student" replace />} />
           </Routes>
         </main>

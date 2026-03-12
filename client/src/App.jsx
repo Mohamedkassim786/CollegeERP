@@ -8,7 +8,7 @@ import ExternalMarkEntry from './pages/external/ExternalMarkEntry';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/DashboardLayout';
 import PrincipalDashboard from './pages/principal/Dashboard';
-import AdminHome from './pages/admin/Dashboard'; // COE redirected to Admin Dashboard
+import AdminHome from './pages/admin/Dashboard';
 import ChiefSecretaryDashboard from './pages/chiefsecretary/Dashboard';
 import StudentDashboard from './pages/student/StudentPortal';
 import StudentManager from './pages/admin/academics/StudentManager';
@@ -20,8 +20,8 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/unauthorized" element={<div className="p-8">Unauthorized Access</div>} />
 
-            {/* Admin & COE (Merged) */}
-            <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'COE']} />}>
+            {/* Admin Portal */}
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
                 <Route path="/admin/*" element={<AdminDashboard />} />
             </Route>
 

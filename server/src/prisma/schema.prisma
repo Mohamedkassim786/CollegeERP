@@ -22,26 +22,49 @@ model User {
   forcePasswordChange    Boolean                  @default(false)
   lastLogin              DateTime?
   createdAt              DateTime                 @default(now())
-  // New fields added in v1.5
-  employeeId             String?                  @unique
-  dateOfBirth            DateTime?
-  photoUrl               String?
-  isHOD                  Boolean                  @default(false)
-  isFirstLogin           Boolean                  @default(true)
+  
+  // System user relations
   activityPerformed      ActivityLog[]            @relation("PerformedBy")
   announcements          Announcement[]           @relation("PostedBy")
   externalStaffTasks     ExternalMarkAssignment[] @relation("ExternalStaffAssignments")
-  facultyAbsences        FacultyAbsence[]
   marksApproved          Marks[]                  @relation("MarksApprover")
-  materials              Material[]               @relation("Instructor")
-  takenAttendance        StudentAttendance[]
-  substitutions          Substitution[]
-  timetables             Timetable[]
   externalMarksSubmitted ExternalMark[]           @relation("ExternalEvaluator")
   examSessions           ExamSession[]            @relation("CreatedSessions")
-  facultyAssignments     FacultyAssignment[]      @relation("FacultyToAssignment")
-  hodNotifications       Notification[]           @relation("HODNotifications")
-  facultyNotifications   Notification[]           @relation("FacultyNotifications")
+}
+
+model Faculty {
+  id              Int      @id @default(autoincrement())
+  staffId         String   @unique // used as username
+  password        String   @default("password123")
+  fullName        String
+  department      String?
+  role            String   @default("FACULTY") // FACULTY or HOD
+  photo           String?
+  dateOfBirth     String?
+  gender          String?
+  bloodGroup      String?
+  phone           String?
+  email           String?
+  designation     String?
+  qualification   String?
+  address         String?
+  departmentId    Int?
+  isActive        Boolean  @default(true)
+  isFirstLogin    Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Faculty specific relations
+  assignments     FacultyAssignment[]
+  absences        FacultyAbsence[]
+  materials       Material[]          @relation("FacultyMaterials")
+  takenAttendance StudentAttendance[]
+  timetables      Timetable[]
+  substitutions   Substitution[]      @relation("SubstituteFaculty")
+  
+  // HOD specific relations
+  hodNotifications     Notification[]     @relation("HODNotifications")
+  facultyNotifications Notification[]     @relation("FacultyNotifications")
 }
 
 model ActivityLog {
@@ -59,6 +82,7 @@ model Department {
   name      String   @unique
   code      String?  @unique
   hodId     Int?
+  hodName   String?
   degree    String   @default("B.E.")
   sections  String   @default("A,B,C")
   years     String   @default("2,3,4")
@@ -169,7 +193,7 @@ model Timetable {
   facultyId     Int?
   updatedAt     DateTime       @updatedAt
   substitutions Substitution[]
-  faculty       User?          @relation(fields: [facultyId], references: [id])
+  faculty       Faculty?       @relation(fields: [facultyId], references: [id])
   subject       Subject?       @relation(fields: [subjectId], references: [id])
 
   @@unique([department, year, semester, section, day, period])
@@ -226,7 +250,7 @@ model Material {
   instructorId Int
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  instructor   User     @relation("Instructor", fields: [instructorId], references: [id])
+  instructor   Faculty  @relation("FacultyMaterials", fields: [instructorId], references: [id])
   subject      Subject  @relation(fields: [subjectId], references: [id])
 }
 
@@ -237,7 +261,7 @@ model FacultyAssignment {
   section    String
   department String?
   subject    Subject @relation(fields: [subjectId], references: [id])
-  faculty    User    @relation("FacultyToAssignment", fields: [facultyId], references: [id])
+  faculty    Faculty @relation(fields: [facultyId], references: [id])
 }
 
 model Marks {
@@ -403,7 +427,7 @@ model FacultyAbsence {
   period    Int      @default(0)
   reason    String?
   createdAt DateTime @default(now())
-  faculty   User     @relation(fields: [facultyId], references: [id])
+  faculty   Faculty  @relation(fields: [facultyId], references: [id])
 
   @@unique([facultyId, date, period])
 }
@@ -414,7 +438,7 @@ model Substitution {
   substituteFacultyId Int
   date                String
   createdAt           DateTime  @default(now())
-  substituteFaculty   User      @relation(fields: [substituteFacultyId], references: [id])
+  substituteFaculty   Faculty   @relation("SubstituteFaculty", fields: [substituteFacultyId], references: [id])
   timetable           Timetable @relation(fields: [timetableId], references: [id])
 
   @@unique([timetableId, date])
@@ -429,7 +453,7 @@ model StudentAttendance {
   period    Int      @default(0)
   status    String
   createdAt DateTime @default(now())
-  faculty   User     @relation(fields: [facultyId], references: [id])
+  faculty   Faculty  @relation(fields: [facultyId], references: [id])
   subject   Subject  @relation(fields: [subjectId], references: [id])
   student   Student  @relation(fields: [studentId], references: [id])
 
@@ -618,8 +642,8 @@ model Notification {
   /// ATTENDANCE_MISSING | MARKS_PENDING | GENERAL
   type      String   @default("ATTENDANCE_MISSING")
   createdAt DateTime @default(now())
-  hod       User     @relation("HODNotifications", fields: [hodId], references: [id], onDelete: Cascade)
-  faculty   User     @relation("FacultyNotifications", fields: [facultyId], references: [id], onDelete: Cascade)
+  hod       Faculty     @relation("HODNotifications", fields: [hodId], references: [id], onDelete: Cascade)
+  faculty   Faculty     @relation("FacultyNotifications", fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@index([hodId, isRead])
 }

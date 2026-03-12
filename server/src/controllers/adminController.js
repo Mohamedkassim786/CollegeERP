@@ -7,44 +7,80 @@ const { checkTimetableClash, checkFacultyAvailability } = require('../utils/clas
 
 // --- Faculty Management ---
 
-const getAllFaculty = async (req, res) => {
+const getSystemUsers = async (req, res) => {
     try {
-        const faculty = await prisma.user.findMany({
-            where: { role: 'FACULTY' },
-            select: { id: true, username: true, fullName: true, department: true, createdAt: true }
+        const users = await prisma.user.findMany({
+            where: {
+                role: { in: ['ADMIN', 'PRINCIPAL', 'CHIEF_SECRETARY'] }
+            },
+            select: {
+                id: true, fullName: true, username: true,
+                role: true, email: true, phoneNumber: true,
+                isDisabled: true, createdAt: true
+            }
         });
-        res.json(faculty);
+        res.json(users);
     } catch (error) {
-        handleError(res, error, "Error fetching faculty");
+        handleError(res, error, "Error fetching system users");
     }
 };
 
-const createFaculty = async (req, res) => {
-    const { username, password, fullName, department } = req.body;
+const createSystemUser = async (req, res) => {
+    const { username, password, fullName, role, email, phone } = req.body;
     try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newFaculty = await prisma.user.create({
+        const hashedPassword = await bcrypt.hash(password || 'password123', 10);
+        const newUser = await prisma.user.create({
             data: {
                 username,
                 password: hashedPassword,
-                role: 'FACULTY',
+                role,
                 fullName,
-                department
+                email,
+                phoneNumber: phone
             }
         });
-        res.status(201).json({ message: 'Faculty created', faculty: { username, fullName } });
+        res.status(201).json({ message: 'System user created', user: { username, fullName, role } });
     } catch (error) {
-        handleError(res, error, "Error creating faculty");
+        handleError(res, error, "Error creating system user");
     }
 };
 
-const deleteFaculty = async (req, res) => {
+const resetSystemUserPassword = async (req, res) => {
+    const { id } = req.params;
+    const { password } = req.body;
+    try {
+        const hashedPassword = await bcrypt.hash(password || 'password123', 10);
+        await prisma.user.update({
+            where: { id: parseInt(id) },
+            data: { password: hashedPassword, forcePasswordChange: true }
+        });
+        res.json({ message: 'Password reset successfully' });
+    } catch (error) {
+        handleError(res, error, "Error resetting password");
+    }
+};
+
+const toggleUserStatus = async (req, res) => {
+    const { id } = req.params;
+    const { isDisabled } = req.body;
+    try {
+        await prisma.user.update({
+            where: { id: parseInt(id) },
+            data: { isDisabled }
+        });
+        res.json({ message: `User ${isDisabled ? 'disabled' : 'enabled'}` });
+    } catch (error) {
+        handleError(res, error, "Error toggling user status");
+    }
+};
+
+const deleteUser = async (req, res) => {
     const { id } = req.params;
     try {
         await prisma.user.delete({ where: { id: parseInt(id) } });
-        res.json({ message: 'Faculty deleted' });
+        res.json({ message: 'User deleted' });
     } catch (error) {
-        handleError(res, error, "Error deleting faculty");
+        handleError(res, error, "Error deleting user");
     }
 };
 // --- Timetable Management ---
@@ -351,9 +387,11 @@ const getFacultyAvailability = async (req, res) => {
 };
 
 module.exports = {
-    getAllFaculty,
-    createFaculty,
-    deleteFaculty,
+    getSystemUsers,
+    createSystemUser,
+    resetSystemUserPassword,
+    toggleUserStatus,
+    deleteUser,
     getTimetable,
     saveTimetable,
     getAbsences,

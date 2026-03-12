@@ -70,7 +70,7 @@ const Settings = () => {
       const res = await getProfile();
       setProfile(res.data);
       setPersonalInfo({
-        fullName: res.data.fullName || "",
+        fullName: res.data.fullName || res.data.name || "",
         email: res.data.email || "",
         phoneNumber: res.data.phoneNumber || "",
       });
@@ -287,7 +287,7 @@ const Settings = () => {
                         Role
                       </label>
                       <div className="input-field bg-gray-50 flex items-center gap-2 font-black text-blue-700">
-                        <Shield size={16} /> {profile.role}
+                        <Shield size={16} /> {profile?.role || 'User'}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -295,7 +295,7 @@ const Settings = () => {
                         Username
                       </label>
                       <div className="input-field bg-gray-50 font-mono text-gray-600">
-                        {profile.username}
+                        {profile?.username || profile?.staffId || profile?.rollNo}
                       </div>
                     </div>
                   </div>
@@ -401,29 +401,33 @@ const Settings = () => {
                   </form>
 
                   <div className="space-y-6">
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <p className="text-sm font-bold text-gray-500 uppercase">
-                        Last Password Change
-                      </p>
-                      <p className="text-lg font-black text-gray-800 mt-1">
-                        {profile.lastPasswordChange
-                          ? new Date(
-                              profile.lastPasswordChange,
-                            ).toLocaleDateString()
-                          : "Never"}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                      <h4 className="font-bold text-red-800 flex items-center gap-2">
-                        <AlertTriangle size={18} /> Danger Zone
-                      </h4>
-                      <p className="text-xs text-red-600 mt-1 mb-4">
-                        You can force logout all sessions from here.
-                      </p>
-                      <button className="w-full py-2 bg-red-100 text-red-700 rounded-lg text-sm font-bold hover:bg-red-200 transition-colors">
-                        Logout from all devices (Optional)
-                      </button>
-                    </div>
+                    {!isAdmin && profile?.role !== 'STUDENT' && (
+                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <p className="text-sm font-bold text-gray-500 uppercase">
+                          Last Password Change
+                        </p>
+                        <p className="text-lg font-black text-gray-800 mt-1">
+                          {profile?.lastPasswordChange
+                            ? new Date(
+                                profile.lastPasswordChange,
+                              ).toLocaleDateString()
+                            : "Never"}
+                        </p>
+                      </div>
+                    )}
+                    {!isAdmin && profile?.role !== 'STUDENT' && (
+                      <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                        <h4 className="font-bold text-red-800 flex items-center gap-2">
+                          <AlertTriangle size={18} /> Danger Zone
+                        </h4>
+                        <p className="text-xs text-red-600 mt-1 mb-4">
+                          You can force logout all sessions from here.
+                        </p>
+                        <button className="w-full py-2 bg-red-100 text-red-700 rounded-lg text-sm font-bold hover:bg-red-200 transition-colors">
+                          Logout from all devices (Optional)
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -505,7 +509,7 @@ const Settings = () => {
                         Designation
                       </p>
                       <p className="text-xl font-black text-gray-800">
-                        {profile.designation || "Faculty Member"}
+                        {profile?.designation || (profile?.role === 'STUDENT' ? 'Student' : 'Faculty Member')}
                       </p>
                     </div>
                   </div>

@@ -132,14 +132,6 @@ export const principalMenu = [
     { key: 'settings',    label: 'Settings',             path: '/principal/settings',    icon: SettingsIcon },
 ];
 
-// ─── COE MENU ────────────────────────────────────────────────────────────────
-export const coeMenu = [
-    { key: 'dashboard',       label: 'Dashboard',              path: '/coe',                       icon: LayoutDashboard },
-    { key: 'marks-approval',  label: 'Mark Approval Status',   path: '/coe/marks-approval',        icon: CheckCircle },
-    { key: 'result-status',   label: 'Result Status',          path: '/coe/result-status',         icon: Award },
-    { key: 'pending',         label: 'Pending Actions',        path: '/coe/pending',               icon: AlertTriangle },
-    { key: 'settings',        label: 'Settings',               path: '/coe/settings',              icon: SettingsIcon },
-];
 
 // ─── CHIEF SECRETARY MENU ─────────────────────────────────────────────────────
 export const chiefSecretaryMenu = [
@@ -159,12 +151,6 @@ export const chiefSecretaryMenu = [
 // ─── STUDENT MENU ─────────────────────────────────────────────────────────────
 export const studentMenu = [
     { key: 'dashboard',     label: 'Dashboard',      path: '/student',                icon: LayoutDashboard },
-    { key: 'attendance',    label: 'My Attendance',  path: '/student/attendance',     icon: Activity },
-    { key: 'marks',         label: 'My Marks',       path: '/student/marks',          icon: Award },
-    { key: 'results',       label: 'My Results',     path: '/student/results',        icon: ShieldCheck },
-    { key: 'materials',     label: 'Materials',      path: '/student/materials',      icon: Book },
-    { key: 'announcements', label: 'Announcements',  path: '/student/announcements',  icon: Bell },
-    { key: 'settings',      label: 'Settings',       path: '/student/settings',       icon: SettingsIcon },
 ];
 
 // ─── EXTERNAL STAFF MENU ─────────────────────────────────────────────────────
@@ -178,7 +164,6 @@ export const MENUS_BY_ROLE = {
     FACULTY: facultyMenu,
     HOD: hodMenu,
     PRINCIPAL: principalMenu,
-    COE: coeMenu,
     CHIEF_SECRETARY: chiefSecretaryMenu,
     STUDENT: studentMenu,
     EXTERNAL_STAFF: externalStaffMenu,

@@ -24,6 +24,7 @@ import Dispatch from "./examination/Dispatch";
 import Announcements from "../shared/Announcements";
 import Settings from "../shared/Settings";
 import StudentProfile from "./academics/StudentProfile";
+import FacultyProfile from "./academics/FacultyProfile";
 import AttendanceEligibility from "./examination/AttendanceEligibility";
 import ProvisionalResults from "./examination/ProvisionalResults";
 import UserManager from "./settings/UserManager";
@@ -50,6 +51,7 @@ const AdminPortal = () => {
 
             {/* Academics */}
             <Route path="faculty" element={<FacultyManager />} />
+            <Route path="faculty/:id" element={<FacultyProfile />} />
             <Route path="subjects" element={<SubjectManager />} />
             <Route path="departments" element={<DepartmentManager />} />
             <Route path="courses" element={<CourseManager />} />

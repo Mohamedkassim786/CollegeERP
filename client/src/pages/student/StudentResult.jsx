@@ -23,7 +23,7 @@ const StudentResult = () => {
                     <AlertCircle size={40} className="text-amber-500" />
                 </div>
                 <h1 className="text-2xl font-black text-gray-800">Results Not Published</h1>
-                <p className="text-gray-500 max-w-md mx-auto">{data.message || 'The results for your current semester have not been released by the Controller of Examinations yet.'}</p>
+                <p className="text-gray-500 max-w-md mx-auto">{data.message || 'The results for your current semester have not been released by the Admin yet.'}</p>
             </div>
         );
     }
@@ -101,7 +101,7 @@ const StudentResult = () => {
                 </div>
                 <div>
                     <h4 className="font-black text-[#003B73]">Note to Student</h4>
-                    <p className="text-sm text-blue-700 mt-1">These are provisional results. Official mark sheets will be issued by the college office. For any discrepancies, please contact the COE within 7 days.</p>
+                    <p className="text-sm text-blue-700 mt-1">These are provisional results. Official mark sheets will be issued by the college office. For any discrepancies, please contact the Admin within 7 days.</p>
                 </div>
             </div>
         </div>

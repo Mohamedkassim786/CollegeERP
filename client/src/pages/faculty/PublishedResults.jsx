@@ -61,7 +61,7 @@ const PublishedResults = () => {
           <Award className="text-blue-600" /> Published Semester Results
         </h1>
         <p className="text-gray-500">
-          View official marks and grades after publication by COE.
+          View official marks and grades after publication by Admin.
         </p>
       </div>
 

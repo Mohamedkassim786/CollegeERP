@@ -40,8 +40,6 @@ const Login = () => {
         target = "/external";
       } else if (user.role === "PRINCIPAL") {
         target = "/principal";
-      } else if (user.role === "COE") {
-        target = "/admin";
       } else if (user.role === "HOD") {
         target = "/hod";
       } else if (user.role === "STUDENT") {
