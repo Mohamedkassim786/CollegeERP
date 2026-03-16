@@ -185,7 +185,7 @@ const ExternalMarkEntry = () => {
     <div className="flex h-screen bg-gray-50">
       <Sidebar role="EXTERNAL_STAFF" />
       <div className="flex-1 flex flex-col ml-64 transition-all duration-300">
-        <Header title="Enter External Marks" />
+        <Header title="External Staff Portal" />
         <main className="flex-1 p-10 mt-24 overflow-y-auto animate-fadeIn">
           <button
             onClick={() => navigate("/external")}

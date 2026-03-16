@@ -1,15 +1,16 @@
+// Finalized Dashboard Controller with correct casing and robust matching logic
 const { PrismaClient } = require('@prisma/client');
 const ExcelJS = require('exceljs');
-const { getDeptCriteria } = require('../utils/deptUtils');
+const { getDeptCriteria } = require('../utils/deptUtils.js');
 
 const prisma = new PrismaClient();
-const { handleError } = require('../utils/errorUtils');
+const { handleError } = require('../utils/errorUtils.js');
 
 const getDashboardStats = async (req, res) => {
     try {
         const [studentCount, facultyCount, subjectCount, deptCount] = await Promise.all([
-            prisma.student.count(),
-            prisma.user.count({ where: { role: 'FACULTY' } }),
+            prisma.student.count({ where: { status: 'ACTIVE' } }),
+            prisma.faculty.count({ where: { isActive: true } }),
             prisma.subject.count(),
             prisma.department.count()
         ]);
@@ -19,18 +20,22 @@ const getDashboardStats = async (req, res) => {
 
         const studentsPerDept = await prisma.student.groupBy({
             by: ['department'],
+            where: { status: 'ACTIVE' },
             _count: { id: true }
         });
-        const facultyPerDept = await prisma.user.groupBy({
+        const facultyPerDept = await prisma.faculty.groupBy({
             by: ['department'],
-            where: { role: 'FACULTY' },
+            where: { isActive: true },
             _count: { id: true }
         });
 
         const departmentData = departments.map(d => {
-            const matchKey = d.code || d.name; // Use code first if available
-            const students = studentsPerDept.find(s => s.department === matchKey)?._count.id || 0;
-            const faculty = facultyPerDept.find(f => f.department === matchKey)?._count.id || 0;
+            const students = studentsPerDept
+                .filter(s => s.department === d.name || s.department === d.code)
+                .reduce((acc, curr) => acc + curr._count.id, 0);
+            const faculty = facultyPerDept
+                .filter(f => f.department === d.name || f.department === d.code)
+                .reduce((acc, curr) => acc + curr._count.id, 0);
             return { dept: d.name, students, faculty };
         });
 

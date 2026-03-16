@@ -58,6 +58,11 @@ const submitAttendance = async (req, res) => {
     const { subjectId, date, period, attendanceData } = req.body;
     const facultyId = req.user.id;
     try {
+        const today = new Date().toISOString().split('T')[0];
+        if (date > today) {
+            return res.status(400).json({ message: 'Attendance cannot be submitted for a future date.' });
+        }
+
         const sId = parseInt(subjectId);
         const pId = period ? parseInt(period) : 0;
 

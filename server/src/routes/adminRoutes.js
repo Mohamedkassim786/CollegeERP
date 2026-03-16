@@ -49,8 +49,8 @@ router.use(verifyToken);
 // Base access: Principal, COE, HOD, and Admin can access standard reports/stats
 router.get('/stats', isPrincipal, getDashboardStats);
 
-router.get('/timetable', getTimetable);
-router.post('/timetable', saveTimetable);
+router.get('/timetable', isHod, getTimetable);
+router.post('/timetable', isHod, saveTimetable);
 
 // Faculty routes moved to section below
 

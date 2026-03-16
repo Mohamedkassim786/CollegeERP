@@ -650,7 +650,7 @@ const ClassDetails = () => {
               automatically locked after submission.
             </p>
             <button
-              onClick={() => navigate("/faculty/marks")} // Ideally deep link with subject ID pre-selected
+              onClick={() => navigate("/faculty/marks", { state: { preSelectSubjectId: subjectId } })}
               className="btn btn-primary px-8 py-3"
             >
               Go to Marks Entry

@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { handleError } = require('../utils/errorUtils');
+const { handleError } = require('../utils/errorUtils.js');
 
 const getPrincipalDashboard = async (req, res) => {
     try {
@@ -75,7 +75,15 @@ const getCOEDashboard = async (req, res) => {
 
 const getHODDashboard = async (req, res) => {
     try {
-        const { department } = req.user; // Assuming user model has department for HODs
+        // Get department from JWT first, fallback to DB lookup
+        let department = req.user.department;
+        if (!department) {
+            const hod = await prisma.faculty.findUnique({ 
+                where: { id: req.user.id },
+                select: { department: true }
+            });
+            department = hod?.department;
+        }
         if (!department) {
             return res.status(403).json({ message: "HOD department not identified" });
         }
@@ -205,7 +213,7 @@ const getChiefSecretaryDashboard = async (req, res) => {
         });
 
         const totalStudents = await prisma.student.count({ where: { status: 'ACTIVE' } });
-        const totalFaculty = await prisma.user.count({ where: { role: 'FACULTY' } });
+        const totalFaculty = await prisma.faculty.count({ where: { isActive: true } });
         const pendingApprovals = await prisma.marks.count({ where: { isApproved: false, isLocked: true } });
 
         res.json({

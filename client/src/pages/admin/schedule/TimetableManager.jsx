@@ -32,7 +32,9 @@ import {
   Building2,
   GraduationCap,
   Users,
+  AlertCircle,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const TimetableManager = () => {
   const [department, setDepartment] = useState("");
@@ -67,6 +69,7 @@ const TimetableManager = () => {
   const [substituteId, setSubstituteId] = useState("");
   const [facultyAvailability, setFacultyAvailability] = useState([]);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [confirmState, setConfirmState] = useState(null);
 
   const days = ["MON", "TUE", "WED", "THU", "FRI"];
   const periods = [
@@ -314,9 +317,9 @@ const TimetableManager = () => {
       fetchDailyStatus();
       fetchAvailability(selectedDate, selectedCell?.period);
       setShowModal(false);
-      alert("Faculty marked as absent.");
+      toast.success("Faculty marked as absent.");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to mark absent");
+      toast.error(err.response?.data?.message || "Failed to mark absent");
     }
   };
 
@@ -336,8 +339,8 @@ const TimetableManager = () => {
 
   const handleAssignSubstitute = async (timetableId) => {
     if (!timetableId)
-      return alert("Please save the timetable before assigning a substitute.");
-    if (!substituteId) return alert("Please select a substitute faculty");
+      return toast.error("Please save the timetable before assigning a substitute.");
+    if (!substituteId) return toast.error("Please select a substitute faculty");
     setAssigningSub(true);
     try {
       await assignSubstitute({
@@ -347,26 +350,26 @@ const TimetableManager = () => {
       });
       fetchDailyStatus();
       setShowModal(false);
-      alert("Substitute assigned successfully!");
+      toast.success("Substitute assigned successfully!");
     } catch (err) {
-      alert(err.response?.data?.details || err.response?.data?.message || "Failed to assign substitute");
+      toast.error(err.response?.data?.details || err.response?.data?.message || "Failed to assign substitute");
     } finally {
       setAssigningSub(false);
     }
   };
 
   const handleRemoveSubstitution = async (subId) => {
-    if (!confirm("Remove this substitution?")) return;
     try {
       await deleteSubstitution(subId);
       fetchDailyStatus();
       setShowModal(false);
+      toast.success("Substitution revoked");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to remove substitution");
+      toast.error(err.response?.data?.message || "Failed to remove substitution");
     }
   };
+
   const handleRemoveAbsence = async (facultyId) => {
-    if (!confirm("Restore faculty presence for ONLY this class?")) return;
     try {
       await deleteTimetableAbsence({
         facultyId,
@@ -375,19 +378,13 @@ const TimetableManager = () => {
       });
       fetchDailyStatus();
       setShowModal(false);
-      alert("Absence removed for this class.");
+      toast.success("Absence removed for this class.");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to remove absence");
+      toast.error(err.response?.data?.message || "Failed to remove absence");
     }
   };
 
   const handleRestoreRemainder = async (facultyId) => {
-    if (
-      !confirm(
-        "Restore faculty presence for this AND all subsequent classes today?",
-      )
-    )
-      return;
     try {
       await deleteTimetableAbsence({
         facultyId,
@@ -397,9 +394,9 @@ const TimetableManager = () => {
       });
       fetchDailyStatus();
       setShowModal(false);
-      alert("Absence removed for remainder of the day.");
+      toast.success("Absence removed for remainder of the day.");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to restore presence");
+      toast.error(err.response?.data?.message || "Failed to restore presence");
     }
   };
 
@@ -461,9 +458,9 @@ const TimetableManager = () => {
               )}
             </div>
 
-            {!isAbsent && (
+             {!isAbsent && (
               <button
-                onClick={() => handleMarkAbsent(entry.facultyId)}
+                onClick={() => setConfirmState({ action: 'mark-absent', id: entry.facultyId, message: "Mark this faculty as absent for the entire day? This will clear their scheduled classes." })}
                 className="px-6 py-4 bg-white text-red-600 rounded-2xl font-bold text-xs uppercase tracking-widest border border-red-100 hover:bg-red-600 hover:text-white transition-all shadow-sm transform active:scale-95"
               >
                 Notify Absence
@@ -479,13 +476,13 @@ const TimetableManager = () => {
                 </label>
                 <div className="flex gap-4">
                   <button
-                    onClick={() => handleRemoveAbsence(entry.facultyId)}
+                    onClick={() => setConfirmState({ action: 'restore-single', id: entry.facultyId, message: "Restore presence for ONLY this specific period?" })}
                     className="flex-1 py-4 bg-white text-emerald-600 border border-emerald-100 rounded-2xl font-black text-xs uppercase transition-all hover:bg-emerald-600 hover:text-white shadow-sm transform active:scale-95"
                   >
                     Single Class
                   </button>
                   <button
-                    onClick={() => handleRestoreRemainder(entry.facultyId)}
+                    onClick={() => setConfirmState({ action: 'restore-all', id: entry.facultyId, message: "Restore presence for this and ALL remaining periods today?" })}
                     className="flex-1 py-4 bg-[#003B73] text-white rounded-2xl font-black text-xs uppercase transition-all hover:bg-[#002850] shadow-lg shadow-blue-900/10 transform active:scale-95"
                   >
                     Rest of Day
@@ -516,8 +513,8 @@ const TimetableManager = () => {
                           {subEntry.substituteFaculty?.fullName}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleRemoveSubstitution(subEntry.id)}
+                       <button
+                        onClick={() => setConfirmState({ action: 'revoke-sub', id: subEntry.id, message: "Are you sure you want to revoke this substitution?" })}
                         className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
                         title="Revoke Substitution"
                       >
@@ -599,11 +596,11 @@ const TimetableManager = () => {
         semester,
         section,
       });
-      alert("Timetable saved successfully!");
+      toast.success("Timetable saved successfully!");
       fetchTimetable();
       fetchDailyStatus();
     } catch (err) {
-      alert("Failed to save timetable");
+      toast.error("Failed to save timetable");
     } finally {
       setSaving(false);
     }
@@ -682,8 +679,44 @@ const TimetableManager = () => {
             )}
             {saving ? "Saving..." : "Publish Schedule"}
           </button>
-        </div>
+          </div>
       </div>
+
+      {confirmState && (
+        <div className="mb-8 mx-2 animate-fadeIn">
+          <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-red-900/5">
+            <div className="flex items-center gap-4 text-left">
+              <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-red-600">
+                <AlertCircle size={28} />
+              </div>
+              <div>
+                <p className="text-red-900 font-black uppercase tracking-tight text-lg">Confirm Action</p>
+                <p className="text-red-700 font-bold text-sm">{confirmState.message}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setConfirmState(null)}
+                className="flex-1 md:flex-none px-10 py-4 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all font-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmState.action === 'mark-absent') handleMarkAbsent(confirmState.id);
+                  if (confirmState.action === 'restore-single') handleRemoveAbsence(confirmState.id);
+                  if (confirmState.action === 'restore-all') handleRestoreRemainder(confirmState.id);
+                  if (confirmState.action === 'revoke-sub') handleRemoveSubstitution(confirmState.id);
+                  setConfirmState(null);
+                }}
+                className="flex-1 md:flex-none px-10 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all font-black"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter Dashboard */}
       <div className="bg-white p-10 rounded-[40px] shadow-xl border border-gray-100 mb-10 relative transition-all duration-700 hover:shadow-2xl z-20">

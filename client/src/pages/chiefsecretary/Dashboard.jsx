@@ -13,7 +13,7 @@ const ChiefSecretaryDashboard = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await api.get('/api/dashboard/chief-secretary');
+                const response = await api.get('/dashboard/chief-secretary');
                 setStats(response.data);
             } catch (error) {
                 console.error("Failed to fetch Chief Secretary stats", error);

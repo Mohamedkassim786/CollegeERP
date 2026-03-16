@@ -48,7 +48,7 @@ const ExamAttendanceSheet = () => {
     if (initLoading) return <div className="p-10 animate-pulse bg-gray-100 h-32 rounded-2xl w-full" />;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
+        <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center gap-3">
                 <Users className="text-blue-600" size={28} />
                 <div>

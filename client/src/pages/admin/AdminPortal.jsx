@@ -4,9 +4,7 @@ import Header from "../../components/Header";
 import AdminHome from "./Dashboard";
 import FacultyManager from "./academics/FacultyManager";
 import SubjectManager from "./academics/SubjectManager";
-import CourseManager from "./academics/CourseManager";
 import StudentManager from "./academics/StudentManager";
-import StudentPromotion from "./academics/StudentPromotion";
 import AutoPromote from "./academics/AutoPromote";
 import AdminMarksManager from "./examination/AdminMarksManager";
 import AdminMarksApproval from "./examination/AdminMarksApproval";
@@ -43,7 +41,7 @@ const AdminPortal = () => {
     <div className="flex h-screen bg-gray-50">
       <Sidebar role="ADMIN" />
       <div className="flex-1 flex flex-col ml-64 transition-all duration-300">
-        <Header title="College ERP" />
+        <Header title="Admin Portal" />
         <main className="flex-1 p-8 mt-24 overflow-y-auto animate-fadeIn">
           <Routes>
             {/* Dashboard */}
@@ -54,7 +52,7 @@ const AdminPortal = () => {
             <Route path="faculty/:id" element={<FacultyProfile />} />
             <Route path="subjects" element={<SubjectManager />} />
             <Route path="departments" element={<DepartmentManager />} />
-            <Route path="courses" element={<CourseManager />} />
+            <Route path="courses" element={<Navigate to="/admin/subjects" replace />} />
             <Route path="students" element={<StudentManager />} />
             <Route path="students/profile/:id" element={<StudentProfile />} />
             <Route path="students/promote" element={<AutoPromote />} />

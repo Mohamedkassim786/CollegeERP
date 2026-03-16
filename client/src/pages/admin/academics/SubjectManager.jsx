@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { getSubjects, createSubject, deleteSubject, assignFaculty, removeAssignment } from "../../../services/subject.service";
 import { getFaculty } from "../../../services/faculty.service";
 import { getDepartments } from "../../../services/department.service";
-import { BookOpen, UserPlus, CheckCircle, Trash2, Plus, X } from "lucide-react";
+import { BookOpen, UserPlus, CheckCircle, Trash2, Plus, X, AlertCircle } from "lucide-react";
+import toast from "react-hot-toast";
 
 const SubjectManager = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const SubjectManager = () => {
   // UI States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmState, setConfirmState] = useState(null);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -91,7 +93,7 @@ const SubjectManager = () => {
       const payload = { ...newSubject };
       if (payload.type === "DEPARTMENT") {
         if (payload.departments.length === 0) {
-          return alert("Please select at least one department");
+          return toast.error("Please select at least one department");
         }
         payload.department = payload.departments.join(",");
       } else {
@@ -114,9 +116,9 @@ const SubjectManager = () => {
       });
       setShowCreateModal(false);
       refreshSubjects();
-      alert("Subject Created");
+      toast.success("Subject Created Successfully");
     } catch (err) {
-      alert(
+      toast.error(
         "Error creating subject: " +
         (err.response?.data?.message || err.message),
       );
@@ -132,37 +134,32 @@ const SubjectManager = () => {
         section: assignSection,
         department: assignDept,
       });
-      alert("Faculty Assigned Successfully");
+      toast.success("Faculty Assigned Successfully");
       setSelectedSubjectId(null);
       setAssignDept("");
       refreshSubjects();
     } catch (err) {
-      alert("Error assigning faculty");
+      toast.error("Error assigning faculty");
     }
   };
 
   const handleRemoveAssignment = async (assignmentId) => {
-    if (!confirm("Remove this faculty assignment?")) return;
     try {
       await removeAssignment(assignmentId);
       refreshSubjects();
+      toast.success("Assignment removed");
     } catch (err) {
-      alert("Error removing assignment");
+      toast.error("Error removing assignment");
     }
   };
 
   const handleDeleteSubject = async (id) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this course? This will remove all related marks and assignments.",
-      )
-    )
-      return;
     try {
       await deleteSubject(id);
       refreshSubjects();
+      toast.success("Subject deleted successfully");
     } catch (err) {
-      alert("Failed to delete subject");
+      toast.error("Failed to delete subject");
     }
   };
 
@@ -206,6 +203,40 @@ const SubjectManager = () => {
           <Plus size={22} strokeWidth={3} /> Add New Subject
         </button>
       </div>
+
+      {confirmState && (
+        <div className="mb-6 mx-2 animate-fadeIn">
+          <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-red-900/5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600">
+                <AlertCircle size={24} />
+              </div>
+              <div>
+                <p className="text-red-900 font-black uppercase tracking-tight">Confirm Action</p>
+                <p className="text-red-700 font-bold text-sm">{confirmState.message}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setConfirmState(null)}
+                className="flex-1 md:flex-none px-8 py-3 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmState.action === 'delete-subject') handleDeleteSubject(confirmState.id);
+                  if (confirmState.action === 'remove-assignment') handleRemoveAssignment(confirmState.id);
+                  setConfirmState(null);
+                }}
+                className="flex-1 md:flex-none px-8 py-3 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-900/20 transition-all"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white p-10 rounded-[40px] shadow-xl border border-gray-100 min-h-[650px] transition-all relative">
         {/* Search & Filter Top Bar */}
@@ -331,7 +362,7 @@ const SubjectManager = () => {
                                   {a.facultyName}
                                 </span>
                                 <button
-                                  onClick={() => handleRemoveAssignment(a.id)}
+                                  onClick={() => setConfirmState({ action: 'remove-assignment', id: a.id, message: `Remove assignment for ${a.facultyName}?` })}
                                   className="text-gray-300 hover:text-red-500 transition-colors"
                                 >
                                   <X size={14} />
@@ -364,7 +395,7 @@ const SubjectManager = () => {
                           <CheckCircle size={18} />
                         </button>
                         <button
-                          onClick={() => handleDeleteSubject(sub.id)}
+                          onClick={() => setConfirmState({ action: 'delete-subject', id: sub.id, message: `Delete course ${sub.code}? This will remove all related marks and assignments.` })}
                           className="p-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
                           title="Delete Subject"
                         >

@@ -65,6 +65,7 @@ const StudentManager = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [confirmState, setConfirmState] = useState(null);
 
   // Form Inputs
   const [newStudent, setNewStudent] = useState({
@@ -186,7 +187,7 @@ const StudentManager = () => {
       setDbSections(secs);
       return { depts, secs };
     } catch (err) {
-      console.error("Failed to fetch departments");
+      toast.error("Failed to fetch departments");
       return { depts: [], secs: [] };
     } finally {
       setLoadingDepts(false);
@@ -251,8 +252,6 @@ const StudentManager = () => {
 
   const handleDeleteSection = async (e, sectionId) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this section?")) return;
-    
     try {
       await deleteSection(sectionId);
       toast.success("Section deleted successfully");
@@ -360,7 +359,7 @@ const StudentManager = () => {
       setStudentsList(filtered);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch students");
+      toast.error("Failed to fetch students");
     } finally {
       setLoading(false);
     }
@@ -421,7 +420,7 @@ const StudentManager = () => {
       }
 
       await updateStudent(editingStudent.id, formData);
-      alert("Student Updated Successfully");
+      toast.success("Student Updated Successfully");
       setShowEditModal(false);
       setEditingStudent(null);
       fetchStudents(selectedSection);
@@ -508,17 +507,12 @@ const StudentManager = () => {
   };
 
   const handleDeleteStudent = async (id) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this student? All marks will be lost.",
-      )
-    )
-      return;
     try {
       await deleteStudent(id);
       setStudentsList(studentsList.filter((s) => s.id !== id));
+      toast.success("Student deleted");
     } catch (err) {
-      alert("Failed to delete student");
+      toast.error("Failed to delete student");
     }
   };
 
@@ -1441,7 +1435,10 @@ const StudentManager = () => {
                     {/* Delete Button for Empty Sections */}
                     {totalStudentsInYear === 0 && sectionObj && (
                       <button
-                        onClick={(e) => handleDeleteSection(e, sectionObj.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmState({ action: 'delete-section', id: sectionObj.id, message: `Are you sure you want to delete Section ${secName}?` });
+                        }}
                         className="absolute top-6 right-6 p-2 bg-white text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 shadow-sm"
                         title="Delete Section"
                       >
@@ -1645,7 +1642,7 @@ const StudentManager = () => {
                                 <Edit2 size={14} />
                               </button>
                               <button
-                                onClick={() => handleDeleteStudent(s.id)}
+                                onClick={() => setConfirmState({ action: 'delete-student', id: s.id, message: `Delete student ${s.rollNo}? This will erase all marks.` })}
                                 className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
                                 title="Delete"
                               >
@@ -1677,11 +1674,45 @@ const StudentManager = () => {
         )}
       </div>
 
+      {confirmState && (
+        <div className="mb-8 mx-auto max-w-7xl px-4 animate-fadeIn">
+          <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-red-900/5">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
+                <AlertCircle size={28} />
+              </div>
+              <div className="text-left">
+                <p className="text-red-900 font-black uppercase tracking-tight text-lg">Confirm Action</p>
+                <p className="text-red-700 font-bold text-sm">{confirmState.message}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setConfirmState(null)}
+                className="flex-1 md:flex-none px-10 py-4 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all font-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmState.action === 'delete-student') handleDeleteStudent(confirmState.id);
+                  if (confirmState.action === 'delete-section') handleDeleteSection({ stopPropagation: () => {} }, confirmState.id);
+                  setConfirmState(null);
+                }}
+                className="flex-1 md:flex-none px-10 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all font-black"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Student Modal */}
       {
         showCreateModal && (
           <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
-            <div 
+            <div
               className="bg-white rounded-[48px] w-full max-w-2xl shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden"
             >
               <div className="flex justify-between items-center p-10 pb-4 shrink-0">
@@ -1708,7 +1739,7 @@ const StudentManager = () => {
                   {newStudent.photo ? (
                     <div className="relative w-32 h-32">
                       <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover rounded-[24px] shadow-lg" />
-                      <button 
+                      <button
                         type="button"
                         onClick={() => setNewStudent({ ...newStudent, photo: '' })}
                         className="absolute -top-2 -right-2 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all"
@@ -1847,16 +1878,16 @@ const StudentManager = () => {
                       <option value="">Select Section</option>
                       {(() => {
                         const semesterNum = parseInt(newStudent.semester);
-                        
+
                         // 1. Try to get sections matching the specific semester
                         let match = dbSections
                           .filter(s => s.semester == semesterNum)
                           .map(s => s.name);
-                        
+
                         // 2. If no matching semester sections, fall back to ALL sections from DB
                         // but DON'T use hardcoded fallbacks
-                        const finalSectionNames = match.length > 0 
-                          ? match 
+                        const finalSectionNames = match.length > 0
+                          ? match
                           : dbSections.map(s => s.name);
 
                         const uniqueSections = [...new Set(finalSectionNames.filter(Boolean))].sort();
@@ -1949,8 +1980,8 @@ const StudentManager = () => {
                       <option value="FEMALE">Female</option>
                       <option value="OTHER">Other</option>
                     </CustomSelect>
-                    <CustomSelect 
-                      value={newStudent.bloodGroup} 
+                    <CustomSelect
+                      value={newStudent.bloodGroup}
                       onChange={e => setNewStudent({ ...newStudent, bloodGroup: e.target.value })}
                       required
                     >
@@ -1971,22 +2002,22 @@ const StudentManager = () => {
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Contact Details</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input 
-                      className="input-field" 
-                      placeholder="Phone Number" 
-                      value={newStudent.phoneNumber} 
+                    <input
+                      className="input-field"
+                      placeholder="Phone Number"
+                      value={newStudent.phoneNumber}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
                         setNewStudent({ ...newStudent, phoneNumber: val });
-                      }} 
+                      }}
                       required
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Email Address" 
+                    <input
+                      className="input-field"
+                      placeholder="Email Address"
                       type="email"
-                      value={newStudent.email} 
-                      onChange={e => setNewStudent({ ...newStudent, email: e.target.value })} 
+                      value={newStudent.email}
+                      onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
                       required
                     />
                     <input className="input-field col-span-2" placeholder="Full Address" value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} required />
@@ -1997,44 +2028,44 @@ const StudentManager = () => {
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Parent Details</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input 
-                      className="input-field" 
-                      placeholder="Father's Name" 
-                      value={newStudent.fatherName} 
+                    <input
+                      className="input-field"
+                      placeholder="Father's Name"
+                      value={newStudent.fatherName}
                       onChange={e => {
                         const val = e.target.value.replace(/[^a-zA-Z\s]/g, "");
                         setNewStudent({ ...newStudent, fatherName: val });
-                      }} 
+                      }}
                       required
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Father's Phone" 
-                      value={newStudent.fatherPhone} 
+                    <input
+                      className="input-field"
+                      placeholder="Father's Phone"
+                      value={newStudent.fatherPhone}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
                         setNewStudent({ ...newStudent, fatherPhone: val });
-                      }} 
+                      }}
                       required
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Mother's Name" 
-                      value={newStudent.motherName} 
+                    <input
+                      className="input-field"
+                      placeholder="Mother's Name"
+                      value={newStudent.motherName}
                       onChange={e => {
                         const val = e.target.value.replace(/[^a-zA-Z\s]/g, "");
                         setNewStudent({ ...newStudent, motherName: val });
-                      }} 
+                      }}
                       required
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Mother's Phone" 
-                      value={newStudent.motherPhone} 
+                    <input
+                      className="input-field"
+                      placeholder="Mother's Phone"
+                      value={newStudent.motherPhone}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
                         setNewStudent({ ...newStudent, motherPhone: val });
-                      }} 
+                      }}
                       required
                     />
                   </div>
@@ -2337,8 +2368,8 @@ const StudentManager = () => {
                       <option value="FEMALE">Female</option>
                       <option value="OTHER">Other</option>
                     </CustomSelect>
-                    <CustomSelect 
-                      value={editingStudent.bloodGroup} 
+                    <CustomSelect
+                      value={editingStudent.bloodGroup}
                       onChange={e => setEditingStudent({ ...editingStudent, bloodGroup: e.target.value })}
                     >
                       <option value="">Blood Group</option>
@@ -2358,21 +2389,21 @@ const StudentManager = () => {
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Contact Details</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input 
-                      className="input-field" 
-                      placeholder="Phone Number" 
-                      value={editingStudent.phoneNumber || ""} 
+                    <input
+                      className="input-field"
+                      placeholder="Phone Number"
+                      value={editingStudent.phoneNumber || ""}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
                         setEditingStudent({ ...editingStudent, phoneNumber: val });
-                      }} 
+                      }}
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Email Address" 
+                    <input
+                      className="input-field"
+                      placeholder="Email Address"
                       type="email"
-                      value={editingStudent.email || ""} 
-                      onChange={e => setEditingStudent({ ...editingStudent, email: e.target.value })} 
+                      value={editingStudent.email || ""}
+                      onChange={e => setEditingStudent({ ...editingStudent, email: e.target.value })}
                     />
                     <input className="input-field col-span-2" placeholder="Full Address" value={editingStudent.address || ""} onChange={e => setEditingStudent({ ...editingStudent, address: e.target.value })} />
                   </div>
@@ -2382,41 +2413,41 @@ const StudentManager = () => {
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Parent Details</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input 
-                      className="input-field" 
-                      placeholder="Father's Name" 
-                      value={editingStudent.fatherName || ""} 
+                    <input
+                      className="input-field"
+                      placeholder="Father's Name"
+                      value={editingStudent.fatherName || ""}
                       onChange={e => {
                         const val = e.target.value.replace(/[^a-zA-Z\s]/g, "");
                         setEditingStudent({ ...editingStudent, fatherName: val });
-                      }} 
+                      }}
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Father's Phone" 
-                      value={editingStudent.fatherPhone || ""} 
+                    <input
+                      className="input-field"
+                      placeholder="Father's Phone"
+                      value={editingStudent.fatherPhone || ""}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
                         setEditingStudent({ ...editingStudent, fatherPhone: val });
-                      }} 
+                      }}
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Mother's Name" 
-                      value={editingStudent.motherName || ""} 
+                    <input
+                      className="input-field"
+                      placeholder="Mother's Name"
+                      value={editingStudent.motherName || ""}
                       onChange={e => {
                         const val = e.target.value.replace(/[^a-zA-Z\s]/g, "");
                         setEditingStudent({ ...editingStudent, motherName: val });
-                      }} 
+                      }}
                     />
-                    <input 
-                      className="input-field" 
-                      placeholder="Mother's Phone" 
-                      value={editingStudent.motherPhone || ""} 
+                    <input
+                      className="input-field"
+                      placeholder="Mother's Phone"
+                      value={editingStudent.motherPhone || ""}
                       onChange={e => {
                         const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
                         setEditingStudent({ ...editingStudent, motherPhone: val });
-                      }} 
+                      }}
                     />
                   </div>
                 </div>

@@ -66,12 +66,18 @@ exports.promoteAll = async (req, res) => {
         const isGraduating = semInt === 8;
 
         let promoted = 0, graduated = 0;
+        const skippedDueToArrears = [];
 
         for (const student of students) {
             // Check if student has any active arrears — if so, skip promotion
             const arrears = await prisma.arrear.count({
-                where: { studentId: student.id, status: { in: ['ACTIVE', 'PENDING'] } }
+                where: { studentId: student.id, isCleared: false }
             });
+
+            if (arrears > 0 && !isGraduating) {
+                skippedDueToArrears.push({ id: student.id, rollNo: student.rollNo, name: student.name });
+                continue;
+            }
 
             if (isGraduating) {
                 await prisma.student.update({
@@ -85,19 +91,21 @@ exports.promoteAll = async (req, res) => {
                     data: {
                         semester: nextSemester,
                         currentSemester: nextSemester,
-                        // Year advances every 2 semesters (sem 3→4 = year 2, sem 5→6 = year 3, etc.)
-                        year: nextSemester % 2 === 1 ? yearInt + 1 : yearInt
+                        // Year advances every 2 semesters
+                        year: Math.ceil(nextSemester / 2)
                     }
                 });
                 promoted++;
             }
         }
 
-        logger.info(`Promote All: ${promoted} promoted, ${graduated} graduated in ${department} Sem ${semInt}`);
+        logger.info(`Promote All: ${promoted} promoted, ${graduated} graduated, ${skippedDueToArrears.length} skipped in ${department} Sem ${semInt}`);
         res.json({
-            message: `Promotion complete. ${promoted} students promoted to Sem ${nextSemester}. ${graduated} students marked as Passed Out.`,
+            message: `Promotion complete. ${promoted} students promoted to Sem ${nextSemester}. ${graduated} students marked as Passed Out. ${skippedDueToArrears.length} students skipped due to arrears.`,
             promoted,
-            graduated
+            graduated,
+            skippedCount: skippedDueToArrears.length,
+            skippedDueToArrears
         });
     } catch (error) {
         logger.error('promoteAll failed', error);

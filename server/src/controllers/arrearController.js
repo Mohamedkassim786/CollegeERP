@@ -263,7 +263,7 @@ const bulkUploadPassedOutArrears = async (req, res) => {
                 data: { studentId: student.id, subjectId: subject.id, semester: semNum }
             });
             await prisma.arrearAttempt.create({
-                data: { arrearId: arrear.id, currentSemester: semNum }
+                data: { arrearId: arrear.id, semester: semNum }
             });
             added++;
         }

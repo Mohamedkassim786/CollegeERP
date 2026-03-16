@@ -12,8 +12,10 @@ import {
   BookOpen,
   Unlock,
   RotateCcw,
-  ChevronLeft
+  ChevronLeft,
+  AlertCircle
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const AdminMarksApproval = () => {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ const AdminMarksApproval = () => {
   const [filterStatus, setFilterStatus] = useState("ALL"); // 'ALL', 'PENDING', 'COMPLETED'
 
   // Detailed View State
+  const [confirmState, setConfirmState] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [subjectMarks, setSubjectMarks] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
@@ -119,13 +122,7 @@ const AdminMarksApproval = () => {
   const handleApproveSelected = async (lock = false) => {
     if (selectedStudents.length === 0) return;
 
-    const action = lock ? "Approve & Lock" : "Approve";
-    if (
-      !confirm(
-        `${action} ${selectedStudents.length} students for ${selectedExam.toUpperCase()}?`,
-      )
-    )
-      return;
+    setSubmitting(true);
 
     try {
       await approveMarks({
@@ -134,21 +131,16 @@ const AdminMarksApproval = () => {
         lock,
         exam: selectedExam,
       });
-      alert(`Success: ${action} completed for ${selectedExam.toUpperCase()}`);
+      toast.success(`Success: ${action} completed for ${selectedExam.toUpperCase()}`);
       fetchSubjectMarks(selectedSubject.subjectId);
     } catch (error) {
-      alert("Error approving marks");
+      toast.error("Error approving marks");
     }
   };
 
   const handleUnlockSelected = async () => {
     if (selectedStudents.length === 0) return;
-    if (
-      !confirm(
-        `Unlock ${selectedExam.toUpperCase()} marks for selected students? This allows faculty to edit them again.`,
-      )
-    )
-      return;
+    setSubmitting(true);
 
     try {
       await unlockMarks({
@@ -156,21 +148,16 @@ const AdminMarksApproval = () => {
         studentIds: selectedStudents,
         exam: selectedExam,
       });
-      alert(`Unlocked ${selectedExam.toUpperCase()} marks`);
+      toast.success(`Unlocked ${selectedExam.toUpperCase()} marks`);
       fetchSubjectMarks(selectedSubject.subjectId);
     } catch (error) {
-      alert("Error unlocking marks");
+      toast.error("Error unlocking marks");
     }
   };
 
   const handleUnapproveSelected = async () => {
     if (selectedStudents.length === 0) return;
-    if (
-      !confirm(
-        `Revert approval for ${selectedExam.toUpperCase()}? These marks will become PENDING again.`,
-      )
-    )
-      return;
+    setSubmitting(true);
 
     try {
       await unapproveMarks({
@@ -178,10 +165,10 @@ const AdminMarksApproval = () => {
         studentIds: selectedStudents,
         exam: selectedExam,
       });
-      alert(`Reverted approval for ${selectedExam.toUpperCase()}`);
+      toast.success(`Reverted approval for ${selectedExam.toUpperCase()}`);
       fetchSubjectMarks(selectedSubject.subjectId);
     } catch (error) {
-      alert("Error reverting approval");
+      toast.error("Error reverting approval");
     }
   };
 
@@ -308,7 +295,7 @@ const AdminMarksApproval = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12 pt-10 border-t border-gray-50">
                 <button
-                  onClick={() => handleApproveSelected(false)}
+                  onClick={() => setConfirmState({ action: 'approve', lock: false, message: `Approve ${selectedStudents.length} students for ${selectedExam.toUpperCase()}?` })}
                   disabled={selectedStudents.length === 0}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-emerald-600 text-white rounded-[24px] hover:bg-emerald-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-emerald-900/20 hover:-translate-y-1"
                 >
@@ -316,7 +303,7 @@ const AdminMarksApproval = () => {
                   Approve ({selectedStudents.length})
                 </button>
                 <button
-                  onClick={() => handleApproveSelected(true)}
+                  onClick={() => setConfirmState({ action: 'approve', lock: true, message: `Approve & LOCK ${selectedStudents.length} students for ${selectedExam.toUpperCase()}? This is permanent.` })}
                   disabled={selectedStudents.length === 0}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-[24px] hover:bg-blue-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-blue-900/20 hover:-translate-y-1"
                 >
@@ -324,7 +311,7 @@ const AdminMarksApproval = () => {
                   Approve & Lock
                 </button>
                 <button
-                  onClick={handleUnlockSelected}
+                  onClick={() => setConfirmState({ action: 'unlock', message: `Unlock ${selectedExam.toUpperCase()} marks for selected students? Faculty will be able to edit.` })}
                   disabled={selectedStudents.length === 0}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-orange-500 text-white rounded-[24px] hover:bg-orange-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-orange-900/20 hover:-translate-y-1"
                 >
@@ -332,7 +319,7 @@ const AdminMarksApproval = () => {
                   Unlock Entry
                 </button>
                 <button
-                  onClick={handleUnapproveSelected}
+                  onClick={() => setConfirmState({ action: 'unapprove', message: `Revert approval for ${selectedExam.toUpperCase()}? Marks will return to PENDING state.` })}
                   disabled={selectedStudents.length === 0}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-red-500 text-white rounded-[24px] hover:bg-red-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-red-900/20 hover:-translate-y-1"
                 >
@@ -343,6 +330,41 @@ const AdminMarksApproval = () => {
             </div>
           </div>
         </div>
+
+        {confirmState && (
+          <div className="mb-10 animate-fadeIn">
+            <div className="bg-white border-2 border-blue-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-blue-900/10">
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-[#003B73]">
+                  <AlertCircle size={28} />
+                </div>
+                <div>
+                  <p className="text-[#003B73] font-black uppercase tracking-tight text-lg">Verification Required</p>
+                  <p className="text-gray-500 font-bold text-sm">{confirmState.message}</p>
+                </div>
+              </div>
+              <div className="flex gap-3 w-full md:w-auto">
+                <button
+                  onClick={() => setConfirmState(null)}
+                  className="flex-1 md:flex-none px-10 py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirmState.action === 'approve') handleApproveSelected(confirmState.lock);
+                    if (confirmState.action === 'unlock') handleUnlockSelected();
+                    if (confirmState.action === 'unapprove') handleUnapproveSelected();
+                    setConfirmState(null);
+                  }}
+                  className="flex-1 md:flex-none px-10 py-4 bg-[#003B73] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#002850] shadow-xl shadow-blue-900/20 transition-all"
+                >
+                  Confirm Action
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {subjectMarks.length === 0 ? (
           <div className="text-center py-32 bg-white rounded-[40px] border border-dashed border-gray-200">

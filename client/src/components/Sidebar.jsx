@@ -18,7 +18,9 @@ const Sidebar = ({ role, activePath }) => {
 
     // Merge menus for all computed roles assigned to the user, memoized to prevent re-renders
     const menu = useMemo(() => {
-        const rolesToUse = auth?.computedRoles?.length ? auth.computedRoles : [role || 'FACULTY'];
+        const rolesToUse = (role === 'HOD' || role === 'HOD_WITH_SUBJECTS')
+            ? [role]
+            : (auth?.computedRoles?.length ? auth.computedRoles : [role || 'FACULTY']);
         const _menuKeys = new Set();
         const _menu = [];
         

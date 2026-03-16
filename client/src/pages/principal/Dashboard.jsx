@@ -15,7 +15,7 @@ const PrincipalDashboard = () => {
 
     const fetchStats = async () => {
         try {
-            const response = await api.get('/api/dashboard/principal');
+            const response = await api.get('/dashboard/principal');
             setStats(response.data);
         } catch (error) {
             console.error(error);

@@ -13,13 +13,9 @@ const Header = ({ title }) => {
         <header className="h-24 bg-[#F1F5F9]/50 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-8 fixed top-0 right-0 left-64 z-40 transition-all duration-300">
             {/* Breadcrumb Section */}
             <div className="flex items-center gap-2">
-                <span className="text-xl font-black text-[#003B73]">College ERP</span>
-                {title && (
-                    <>
-                        <span className="text-gray-300 font-light mx-1">/</span>
-                        <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">{title}</span>
-                    </>
-                )}
+                <span className="text-xl font-black text-[#003B73]">
+                    {title || "College ERP"}
+                </span>
             </div>
 
             {/* Right Section */}

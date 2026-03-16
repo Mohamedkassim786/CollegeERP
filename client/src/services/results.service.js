@@ -14,7 +14,7 @@ export const calculateConsolidatedGrades = (data) => api.post('/exam/end-sem-mar
 export const getConsolidatedResults = (params) => api.get('/exam/consolidated-results', { params })
 export const calculateBulkGPA = (data) => api.post('/exam/calculate-bulk-gpa', data)
 export const exportPortraitResults = (params) => api.get('/exam/export-portrait', { params, responseType: 'blob' })
-export const exportLandscapeResults = (params) => api.get('/admin/results/export-landscape', { params, responseType: 'blob' })
+export const exportLandscapeResults = (params) => api.get('/exam/export-landscape', { params, responseType: 'blob' })
 
 export const exportProvisionalPortrait = (params) => api.get('/exam/export-portrait', { params, responseType: 'blob' })
 export const exportProvisionalLandscape = (params) => api.get('/exam/export-landscape', { params, responseType: 'blob' })

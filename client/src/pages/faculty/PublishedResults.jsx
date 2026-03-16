@@ -37,7 +37,7 @@ const PublishedResults = () => {
 
       const res = await getFacultyPublishedResults({
           department: assignment.subject.department,
-          year: assignment.studentYear || 2, // Assuming from assignment or student record
+          year: Math.ceil(assignment.subject.semester / 2),
           semester: assignment.subject.semester,
           section: assignment.section,
           subjectId: assignment.subject.id,

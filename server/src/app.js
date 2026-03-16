@@ -80,7 +80,9 @@ app.use('/api/materials', materialRoutes);
 app.use('/api/dummy', require('./routes/dummyRoutes'));
 app.use('/api/external/marks', require('./routes/externalMarkRoutes'));
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/eligibility', require('./routes/eligibilityRoutes'));
+app.use('/api/student', require('./routes/studentRoutes'));
 app.use('/api', require('./routes/examPrintRoutes'));
 
 // ─── 404 + Global Error Handler (must be LAST) ───
@@ -112,6 +114,6 @@ app.listen(PORT, '0.0.0.0', () => {
         const { registerCronJobs } = require('./jobs/attendance.cron');
         registerCronJobs();
     } catch (e) {
-        logger.warn('Cron jobs could not be loaded (may not exist yet).');
+        logger.error('Cron jobs could not be loaded:', e);
     }
 });

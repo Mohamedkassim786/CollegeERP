@@ -21,11 +21,32 @@ const StudentProfile = () => {
     const [editingStudent, setEditingStudent] = useState(null);
     const [departments, setDepartments] = useState([]);
     const [activeTab, setActiveTab] = useState('Profile');
+    const [attendanceReport, setAttendanceReport] = useState(null);
+    const [fetchingAttendance, setFetchingAttendance] = useState(false);
 
     useEffect(() => {
         fetchStudentProfile();
         fetchDepartments();
     }, [id]);
+
+    useEffect(() => {
+        if (activeTab === 'Attendance' && !attendanceReport) {
+            fetchAttendanceReport();
+        }
+    }, [activeTab]);
+
+    const fetchAttendanceReport = async () => {
+        try {
+            setFetchingAttendance(true);
+            const { getAdminAttendanceReport } = await import('../../../services/attendance.service');
+            const res = await getAdminAttendanceReport({ studentId: id });
+            setAttendanceReport(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setFetchingAttendance(false);
+        }
+    };
 
     const fetchDepartments = async () => {
         try {
@@ -365,11 +386,134 @@ const StudentProfile = () => {
                     </div>
                 )}
 
-                {activeTab !== 'Profile' && (
-                    <div className="h-72 bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center animate-fadeIn">
-                        <GraduationCap size={36} className="text-gray-200 mb-3" />
-                        <h3 className="text-lg font-black text-[#003B73] uppercase tracking-tight">{activeTab}</h3>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Coming soon</p>
+                {activeTab === 'Academics' && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 overflow-hidden">
+                            <h3 className="text-xl font-black text-[#003B73] uppercase tracking-tight mb-6">Subject Ledger — CIA & Results</h3>
+                            {student.marks?.length > 0 ? (
+                                <div className="overflow-x-auto -mx-8">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                            <tr>
+                                                <th className="px-8 py-4 text-left">Subject</th>
+                                                <th className="px-4 py-4 text-center">CIA 1</th>
+                                                <th className="px-4 py-4 text-center">CIA 2</th>
+                                                <th className="px-4 py-4 text-center">CIA 3</th>
+                                                <th className="px-4 py-4 text-center bg-blue-50/50">Internal</th>
+                                                <th className="px-4 py-4 text-center bg-blue-50/50 text-[#003B73]">External</th>
+                                                <th className="px-4 py-4 text-center">Grade</th>
+                                                <th className="px-8 py-4 text-right">Result</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 font-bold text-sm text-gray-600">
+                                            {student.marks.map((m, idx) => (
+                                                <tr key={idx} className="hover:bg-gray-50 group transition-colors">
+                                                    <td className="px-8 py-4">
+                                                        <p className="text-[#003B73] font-black uppercase text-xs truncate max-w-[200px]">{m.subject.name}</p>
+                                                        <p className="text-[9px] font-mono text-gray-400 font-black">{m.subject.code}</p>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">{m.cia1_total?.toFixed(1) || '—'}</td>
+                                                    <td className="px-4 py-4 text-center">{m.cia2_total?.toFixed(1) || '—'}</td>
+                                                    <td className="px-4 py-4 text-center">{m.cia3_total?.toFixed(1) || '—'}</td>
+                                                    <td className="px-4 py-4 text-center font-black text-[#003B73] bg-blue-50/20">{(m.cia1_total || 0 + m.cia2_total || 0 + m.cia3_total || 0).toFixed(1)}</td>
+                                                    <td className="px-4 py-4 text-center font-black text-blue-700 bg-blue-50/20">{m.endSemMarks?.externalMarks || '—'}</td>
+                                                    <td className="px-4 py-4 text-center text-amber-600 font-black">{m.endSemMarks?.grade || 'NA'}</td>
+                                                    <td className="px-8 py-4 text-right">
+                                                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${m.endSemMarks?.resultStatus === 'PASS' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                                                            {m.endSemMarks?.resultStatus || 'PENDING'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                                    <Award size={40} className="mx-auto text-gray-200 mb-4" />
+                                    <p className="text-gray-400 uppercase font-bold tracking-widest text-[10px]">No Academic Records Found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'Attendance' && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 overflow-hidden">
+                            <h3 className="text-xl font-black text-[#003B73] uppercase tracking-tight mb-6">Attendance Analytics</h3>
+                            {fetchingAttendance ? (
+                                <div className="py-20 text-center">
+                                    <div className="w-10 h-10 border-4 border-[#003B73] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                    <p className="text-gray-400 uppercase font-black text-[10px] tracking-widest">Compiling Records...</p>
+                                </div>
+                            ) : attendanceReport?.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {attendanceReport.map((m, idx) => (
+                                        <div key={idx} className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex justify-between items-center group hover:bg-white hover:shadow-lg transition-all">
+                                            <div>
+                                                <h4 className="text-xs font-black text-[#003B73] uppercase tracking-tight">{m.subject.name}</h4>
+                                                <p className="text-[9px] font-black text-gray-400 font-mono mt-0.5">{m.subject.code}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-[#003B73]">{m.percentage}%</p>
+                                                <p className={`text-[9px] font-black uppercase tracking-widest ${parseFloat(m.percentage) >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                    {m.status}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                                    <Calendar size={40} className="mx-auto text-gray-200 mb-4" />
+                                    <p className="text-gray-400 uppercase font-bold tracking-widest text-[10px]">Registry Empty</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'Documents' && (
+                    <div className="space-y-6 animate-fadeIn max-w-2xl">
+                        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
+                            <h3 className="text-xl font-black text-[#003B73] uppercase tracking-tight mb-6">Credential Management</h3>
+                            <div className="space-y-4">
+                                <div className="p-6 bg-[#003B73]/5 rounded-2xl border border-[#003B73]/10 flex justify-between items-center">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#003B73] shadow-sm"><FileText size={20}/></div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Semester Grade Registry</p>
+                                            <p className="font-black text-[#003B73] truncate">Grade Sheet — Sem {student.semester}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={handleDownload} className="btn-secondary px-6 shrink-0"><Download size={14} className="mr-2"/> PDF</button>
+                                </div>
+
+                                <div className="p-6 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex justify-between items-center opacity-60">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm"><Fingerprint size={20}/></div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Institutional Identity</p>
+                                            <p className="font-black text-emerald-700 truncate">Digital ID Card</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => toast("Digital ID feature coming soon!")} className="btn-secondary px-6 shrink-0 opacity-50 cursor-not-allowed border-emerald-200"><Download size={14} className="mr-2"/> WAIT</button>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 p-6 bg-amber-50 rounded-[28px] border border-amber-100">
+                                <div className="flex gap-3">
+                                    <AlertCircle className="text-amber-500 shrink-0" size={18} />
+                                    <div>
+                                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Administrative Note</p>
+                                        <p className="text-xs font-bold text-amber-600/80 leading-relaxed italic">
+                                            Documents generated are legally valid institutional certificates. Any tampering with digital signatures is detectable and actionable.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

@@ -11,7 +11,9 @@ import {
   Search,
   UserCheck,
   Briefcase,
+  AlertCircle,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const AttendanceManager = () => {
   const [assignments, setAssignments] = useState([]);
@@ -25,6 +27,7 @@ const AttendanceManager = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [alreadyTaken, setAlreadyTaken] = useState(false);
+  const [confirmState, setConfirmState] = useState(null);
 
   useEffect(() => {
     fetchAssignments();
@@ -105,15 +108,15 @@ const AttendanceManager = () => {
       });
 
       // Add 'status' field to local state if not present (default PRESENT)
-      const studentList = res.data.students.map((s) => ({
+       const studentList = res.data.students.map((s) => ({
         ...s,
-        status: s.status || "PRESENT",
+        status: s.status || null,
       }));
 
       setStudents(studentList);
       setAlreadyTaken(res.data.isAlreadyTaken);
     } catch (err) {
-      alert("Failed to fetch students");
+      toast.error("Failed to fetch students");
     } finally {
       setLoading(false);
     }
@@ -124,11 +127,8 @@ const AttendanceManager = () => {
     setStudents((prev) =>
       prev.map((s) => {
         if (s.id === studentId) {
-          let newStatus;
-          if (s.status === "PRESENT") newStatus = "ABSENT";
-          else if (s.status === "ABSENT") newStatus = "OD";
-          else newStatus = "PRESENT";
-          return { ...s, status: newStatus };
+           const cycle = { null: "PRESENT", PRESENT: "ABSENT", ABSENT: "OD", OD: "PRESENT" };
+          return { ...s, status: cycle[s.status] || "PRESENT" };
         }
         return s;
       }),
@@ -140,8 +140,6 @@ const AttendanceManager = () => {
   };
 
   const handleSubmit = async () => {
-    if (!confirm(`Submit attendance for ${students.length} students?`)) return;
-
     setSubmitting(true);
     try {
       const assignment = assignments.find(
@@ -153,17 +151,17 @@ const AttendanceManager = () => {
         status: s.status,
       }));
 
-      await submitAttendance({
+       await submitAttendance({
         subjectId: assignment.subjectId,
         date: selectedDate,
         period: parseInt(selectedPeriod),
         attendanceData,
       });
 
-      alert("Attendance submitted successfully!");
+      toast.success("Attendance submitted successfully!");
       setAlreadyTaken(true);
     } catch (err) {
-      alert("Failed to submit attendance");
+      toast.error("Failed to submit attendance");
     } finally {
       setSubmitting(false);
     }
@@ -244,6 +242,36 @@ const AttendanceManager = () => {
           </div>
         </div>
       </div>
+
+      {confirmState && (
+        <div className="mx-6 animate-fadeIn">
+          <div className="bg-blue-50 border-2 border-blue-100 p-8 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-900/5">
+            <div className="flex items-center gap-4 text-left">
+              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-[#003B73] shadow-sm">
+                <AlertCircle size={28} />
+              </div>
+              <div>
+                <p className="text-[#003B73] font-black uppercase tracking-tight text-lg">Final Submission</p>
+                <p className="text-blue-800/60 font-bold text-sm">{confirmState.message}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setConfirmState(null)}
+                className="flex-1 md:flex-none px-10 py-4 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all font-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleSubmit(); setConfirmState(null); }}
+                className="flex-1 md:flex-none px-10 py-4 bg-[#003B73] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#002850] shadow-xl shadow-blue-900/20 transition-all font-black"
+              >
+                Confirm Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Student List */}
       {
@@ -327,14 +355,21 @@ const AttendanceManager = () => {
                       <td className="p-4 flex justify-center">
                         <button
                           onClick={() => toggleStatus(student.id)}
-                          className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold transition-all transform active:scale-95 ${student.status === "PRESENT"
-                            ? "bg-green-100 text-green-700 hover:bg-green-200 ring-2 ring-green-400"
-                            : student.status === "ABSENT"
-                              ? "bg-red-100 text-red-700 hover:bg-red-200 ring-2 ring-red-400"
-                              : "bg-blue-100 text-blue-700 hover:bg-blue-200 ring-2 ring-blue-400"
-                            }`}
+                          className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold transition-all transform active:scale-95 ${
+                            student.status === null
+                              ? "bg-gray-100 text-gray-400 hover:bg-gray-200 border-2 border-transparent"
+                              : student.status === "PRESENT"
+                              ? "bg-green-100 text-green-700 hover:bg-green-200 ring-2 ring-green-400"
+                              : student.status === "ABSENT"
+                                ? "bg-red-100 text-red-700 hover:bg-red-200 ring-2 ring-red-400"
+                                : "bg-blue-100 text-blue-700 hover:bg-blue-200 ring-2 ring-blue-400"
+                             }`}
                         >
-                          {student.status === "PRESENT" ? (
+                          {student.status === null ? (
+                            <>
+                              <div className="w-4 h-4 rounded-full border-2 border-gray-300" /> Not Marked
+                            </>
+                          ) : student.status === "PRESENT" ? (
                             <>
                               <CheckCircle size={18} /> Present
                             </>
@@ -356,8 +391,8 @@ const AttendanceManager = () => {
             </div>
 
             <div className="p-6 bg-white border-t sticky bottom-0 z-20 shadow-inner">
-              <button
-                onClick={handleSubmit}
+                <button
+                onClick={() => setConfirmState({ message: `Submit attendance for ${students.length} students for period ${selectedPeriod}?` })}
                 disabled={submitting}
                 className={`btn w-full text-lg py-4 flex items-center justify-center gap-3 shadow-xl ${alreadyTaken ? "btn-secondary" : "btn-primary"
                   }`}

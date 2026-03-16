@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -27,7 +28,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { getFacultyDashboard } from "../../services/dashboard.service";
 import { getFacultyTimetable } from "../../services/timetable.service";
 
 const FacultyHome = () => {
@@ -64,8 +64,8 @@ const FacultyHome = () => {
 
   const fetchDashboardData = async () => {
     try {
-      console.log("[FacultyHome] Fetching dashboard stats...");
-      const res = await getFacultyDashboard();
+      console.log("[FacultyHome] Fetching dashboard stats via /faculty/stats...");
+      const res = await api.get('/faculty/stats');
       console.log("[FacultyHome] Stats response:", res.data);
 
       if (res.data) {

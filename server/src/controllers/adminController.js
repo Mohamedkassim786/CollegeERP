@@ -362,8 +362,8 @@ const getFacultyAvailability = async (req, res) => {
             return res.status(400).json({ message: "Date and period are required" });
         }
 
-        const faculty = await prisma.user.findMany({
-            where: { role: 'FACULTY', isDisabled: false },
+        const faculty = await prisma.faculty.findMany({
+            where: { isActive: true },
             select: { id: true, fullName: true, department: true }
         });
 

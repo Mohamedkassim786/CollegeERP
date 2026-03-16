@@ -389,8 +389,10 @@ exports.updateEndSemMarks = async (req, res) => {
                     }
                 } else if (finalResultStatus === 'FAIL') {
                     // First time fail - Auto-generate arrear record for future tracking
-                    await tx.arrear.create({
-                        data: {
+                    await tx.arrear.upsert({
+                        where: { studentId_subjectId: { studentId: student.id, subjectId: subIdInt } },
+                        update: {},
+                        create: {
                             studentId: student.id,
                             subjectId: subIdInt,
                             semester: student.semester,
@@ -474,6 +476,11 @@ exports.calculateGPA = async (req, res) => {
 
         const regulation = student.regulation || '2021';
         const grades = await prisma.gradeSettings.findMany({ where: { regulation } });
+        if (grades.length === 0) {
+            return res.status(400).json({ 
+                message: `Grade settings not configured for regulation ${regulation}. Please set up grade thresholds in Settings → Grade Settings before calculating GPA.` 
+            });
+        }
 
         const result = await _performGPACalculation(parseInt(studentId), parseInt(semester), grades);
         if (!result) return res.status(404).json({ message: "Calculation failed" });
@@ -510,6 +517,11 @@ exports.calculateBulkGPA = async (req, res) => {
         });
 
         const grades = await prisma.gradeSettings.findMany({ where: { regulation } });
+        if (grades.length === 0) {
+            return res.status(400).json({ 
+                message: `Grade settings not configured for regulation ${regulation}. Please set up grade thresholds in Settings → Grade Settings before calculating GPA.` 
+            });
+        }
 
         let processed = 0;
         for (const student of students) {

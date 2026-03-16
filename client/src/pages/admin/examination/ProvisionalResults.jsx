@@ -113,7 +113,7 @@ const ProvisionalResults = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
+        <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Printer className="text-blue-600" size={28} />

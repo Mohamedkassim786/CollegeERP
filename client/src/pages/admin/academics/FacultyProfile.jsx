@@ -15,6 +15,10 @@ const FacultyProfile = () => {
     const [faculty, setFaculty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('personal');
+    const [timetable, setTimetable] = useState(null);
+    const [fetchingTimetable, setFetchingTimetable] = useState(false);
+    const [attendanceReport, setAttendanceReport] = useState(null);
+    const [fetchingAttendance, setFetchingAttendance] = useState(false);
 
     useEffect(() => {
         const fetchFaculty = async () => {
@@ -30,6 +34,41 @@ const FacultyProfile = () => {
         };
         fetchFaculty();
     }, [id]);
+
+    useEffect(() => {
+        if (activeTab === 'timetable' && !timetable) {
+            fetchTimetable();
+        }
+        if (activeTab === 'attendance' && !attendanceReport) {
+            fetchAttendance();
+        }
+    }, [activeTab]);
+
+    const fetchTimetable = async () => {
+        try {
+            setFetchingTimetable(true);
+            const { getAdminTimetable } = await import('../../../services/timetable.service');
+            const res = await getAdminTimetable({ facultyId: id });
+            setTimetable(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setFetchingTimetable(false);
+        }
+    };
+
+    const fetchAttendance = async () => {
+        try {
+            setFetchingAttendance(true);
+            const { getAdminAttendanceReport } = await import('../../../services/attendance.service');
+            const res = await getAdminAttendanceReport({ facultyId: id, role: 'faculty' });
+            setAttendanceReport(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setFetchingAttendance(false);
+        }
+    };
 
     const getPhotoUrl = (photo) => {
         if (!photo) return null;
@@ -256,29 +295,133 @@ const FacultyProfile = () => {
                 )}
 
                 {activeTab === 'timetable' && (
-                    <div className="bg-white p-32 rounded-[60px] border border-gray-100 shadow-2xl text-center space-y-6">
-                        <div className="w-24 h-24 bg-blue-50 rounded-[40px] flex items-center justify-center mx-auto mb-10 shadow-inner">
-                            <Clock size={48} className="text-blue-500" />
+                    <div className="bg-white rounded-[60px] border border-gray-100 shadow-2xl overflow-hidden animate-fadeIn">
+                        <div className="p-12 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 className="text-3xl font-black text-[#003B73] tracking-tighter uppercase">Faculty Matrix Grid</h3>
+                                <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Institutional Time Allocation</p>
+                            </div>
+                            <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-[#003B73]">
+                                <Clock size={24} />
+                            </div>
                         </div>
-                        <h3 className="text-4xl font-black text-[#003B73] tracking-tighter">Matrix Grid</h3>
-                        <p className="text-gray-400 font-bold max-w-md mx-auto leading-relaxed">The multidimensional schedule grid is currently being synchronized with institutional resources.</p>
-                        <button className="px-10 py-4 bg-gray-50 text-[#003B73] rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all">Request Refresh</button>
+                        <div className="p-8">
+                            {fetchingTimetable ? (
+                                <div className="py-20 text-center">
+                                    <div className="w-10 h-10 border-4 border-[#003B73] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                    <p className="text-gray-400 uppercase font-black text-[10px] tracking-widest">Decoding schedule...</p>
+                                </div>
+                            ) : timetable ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th className="p-4 bg-gray-50 border border-gray-100 font-black text-[10px] text-gray-400 uppercase tracking-widest">Day / Period</th>
+                                                {[1, 2, 3, 4, 5, 6].map(p => (
+                                                    <th key={p} className="p-4 bg-gray-50 border border-gray-100 font-black text-[10px] text-gray-400 uppercase tracking-widest">P{p}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {[1, 2, 3, 4, 5, 6].map(dayId => {
+                                                const dayName = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][dayId - 1];
+                                                return (
+                                                    <tr key={dayId}>
+                                                        <td className="p-4 bg-gray-50 border border-gray-100 font-black text-[10px] text-[#003B73] text-center">{dayName}</td>
+                                                        {[1, 2, 3, 4, 5, 6].map(period => {
+                                                            const entry = timetable.find(t => t.day === dayId && t.period === period);
+                                                            return (
+                                                                <td key={period} className="p-4 border border-gray-100 text-center group hover:bg-blue-50/50 transition-colors">
+                                                                    {entry ? (
+                                                                        <div>
+                                                                            <p className="font-black text-[#003B73] text-[11px] leading-tight uppercase">{entry.subject.name}</p>
+                                                                            <p className="font-bold text-blue-500 text-[9px] mt-1">SEC {entry.section}</p>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-gray-200 font-black text-xs">--</span>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="py-20 text-center opacity-30">
+                                    <Clock size={64} className="mx-auto mb-4" />
+                                    <p className="font-black text-xl uppercase tracking-tighter">No Schedule Recorded</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
                 {activeTab === 'attendance' && (
-                    <div className="bg-white p-32 rounded-[60px] border border-gray-100 shadow-2xl text-center space-y-6">
-                        <div className="w-24 h-24 bg-emerald-50 rounded-[40px] flex items-center justify-center mx-auto mb-10 shadow-inner">
-                            <ClipboardCheck size={48} className="text-emerald-500" />
+                    <div className="bg-white rounded-[60px] border border-gray-100 shadow-2xl overflow-hidden animate-fadeIn">
+                        <div className="p-12 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 className="text-3xl font-black text-[#003B73] tracking-tighter uppercase">Traceability Metrics</h3>
+                                <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Operational Performance Analysis</p>
+                            </div>
+                            <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-emerald-600">
+                                <ClipboardCheck size={24} />
+                            </div>
                         </div>
-                        <h3 className="text-4xl font-black text-[#003B73] tracking-tighter">Traceability Analytics</h3>
-                        <p className="text-gray-400 font-bold max-w-md mx-auto leading-relaxed">Presence data for the current cycle is undergoing final institutional audit.</p>
-                        <div className="flex justify-center gap-4 pt-6">
-                            {[85, 92, 78].map((n, i) => (
-                                <div key={i} className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#003B73]" style={{ width: `${n}%` }}></div>
+                        <div className="p-8">
+                            {fetchingAttendance ? (
+                                <div className="py-20 text-center">
+                                    <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                    <p className="text-gray-400 uppercase font-black text-[10px] tracking-widest">Auditing logs...</p>
                                 </div>
-                            ))}
+                            ) : attendanceReport?.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50/50">
+                                            <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                <th className="px-8 py-6 text-left">Academic Unit</th>
+                                                <th className="px-8 py-6 text-center">Scheduled</th>
+                                                <th className="px-8 py-6 text-center">Submitted</th>
+                                                <th className="px-8 py-6 text-right">Coverage %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {attendanceReport.map((m, idx) => (
+                                                <tr key={idx} className="hover:bg-gray-50 transition-colors group">
+                                                    <td className="px-8 py-6">
+                                                        <p className="font-black text-[#003B73] text-sm uppercase">{m.subject.name}</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-[9px] font-mono text-gray-400 font-black">{m.subject.code}</span>
+                                                            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Section {m.section}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center font-bold text-slate-500">{m.total}</td>
+                                                    <td className="px-8 py-6 text-center font-black text-[#003B73]">{m.present + m.absent}</td>
+                                                    <td className="px-8 py-6 text-right">
+                                                        <div className="flex items-center justify-end gap-3">
+                                                            <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className="h-full bg-[#003B73]" 
+                                                                    style={{ width: `${(Math.min(100, (m.present + m.absent) / m.total * 100)) || 0}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <span className="font-black text-[#003B73] text-sm">{((m.present + m.absent) / m.total * 100).toFixed(1)}%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="py-20 text-center opacity-30">
+                                    <ClipboardCheck size={64} className="mx-auto mb-4" />
+                                    <p className="font-black text-xl uppercase tracking-tighter">Attendance tracking for faculty coming soon</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

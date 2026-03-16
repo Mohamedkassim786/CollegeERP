@@ -12,7 +12,9 @@ import {
   GraduationCap,
   X,
   BookOpen,
+  AlertCircle,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const DepartmentManager = () => {
   const [departments, setDepartments] = useState([]);
@@ -23,6 +25,7 @@ const DepartmentManager = () => {
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
+  const [confirmState, setConfirmState] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -80,14 +83,9 @@ const DepartmentManager = () => {
     } else {
       setEditMode(false);
       setSelectedDept(null);
-      setFormData({
-        name: "",
-        code: "",
-        type: "Academic",
-        hodId: "",
-        sections: "A,B,C",
-        years: "2,3,4",
-        degree: "B.E.",
+      setFormData({ 
+        name: '', code: '', type: 'Academic', 
+        degree: 'B.E.', sections: 'A,B,C', years: '2,3,4', hodId: '' 
       });
     }
     setShowModal(true);
@@ -98,15 +96,15 @@ const DepartmentManager = () => {
     try {
       if (editMode && selectedDept) {
         await updateDepartment(selectedDept.id, formData);
-        alert("Department updated successfully");
+        toast.success("Department updated successfully");
       } else {
         await createDepartment(formData);
-        alert("Department created successfully");
+        toast.success("Department created successfully");
       }
       setShowModal(false);
       fetchData();
     } catch (err) {
-      alert("Operation failed. Name/Code might be duplicate.");
+      toast.error("Operation failed. Name/Code might be duplicate.");
     }
   };
 
@@ -124,12 +122,12 @@ const DepartmentManager = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this department?")) return;
     try {
       await deleteDepartment(id);
       fetchData();
+      toast.success("Department deleted");
     } catch (err) {
-      alert("Failed to delete department");
+      toast.error("Failed to delete department");
     }
   };
 
@@ -185,6 +183,36 @@ const DepartmentManager = () => {
         </button>
       </div>
 
+      {confirmState && (
+        <div className="mb-8 mx-2 animate-fadeIn">
+          <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-red-900/5">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
+                <AlertCircle size={28} />
+              </div>
+              <div>
+                <p className="text-red-900 font-black uppercase tracking-tight text-lg">Confirm Deletion</p>
+                <p className="text-red-700 font-bold text-sm">{confirmState.message}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setConfirmState(null)}
+                className="flex-1 md:flex-none px-10 py-4 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleDelete(confirmState.id); setConfirmState(null); }}
+                className="flex-1 md:flex-none px-10 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all font-black"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Department Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-10">
         {(Array.isArray(departments) ? departments : [])
@@ -230,8 +258,8 @@ const DepartmentManager = () => {
                     >
                       <Edit2 size={18} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(dept.id)}
+                     <button
+                      onClick={() => setConfirmState({ action: 'delete', id: dept.id, message: `Are you sure you want to delete ${dept.name}?` })}
                       className="p-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
                       title="Delete Department"
                     >

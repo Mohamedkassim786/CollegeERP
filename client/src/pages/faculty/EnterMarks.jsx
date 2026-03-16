@@ -1,5 +1,6 @@
 import CustomSelect from "../../components/CustomSelect";
 import { useState, useEffect } from "react";
+import { useLocation } from 'react-router-dom';
 import { getFacultyAssignments } from "../../services/faculty.service";
 import { getFacultyMarks, submitFacultyMarks } from "../../services/marks.service";
 import {
@@ -15,6 +16,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 
 const EnterMarks = () => {
+  const location = useLocation();
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
   const [selectedExam, setSelectedExam] = useState("cia1");
@@ -49,6 +51,18 @@ const EnterMarks = () => {
         setCurrentCategory(cat);
         // Auto-select correct exam type based on first subject's category
         if (cat === 'LAB') setSelectedExam('lab_marks');
+
+        // Handle pre-selected subject from navigation state
+        if (location.state?.preSelectSubjectId && res.data.length > 0) {
+          const matchingAssignment = res.data.find(a => a.subjectId === parseInt(location.state.preSelectSubjectId));
+          if (matchingAssignment) {
+            setSelectedAssignmentId(matchingAssignment.id);
+            const matchingCat = matchingAssignment.subject.subjectCategory || "THEORY";
+            setCurrentCategory(matchingCat);
+            if (matchingCat === 'LAB') setSelectedExam('lab_marks');
+            else setSelectedExam('cia1');
+          }
+        }
       }
     } catch (err) {
       console.error(err);
@@ -72,7 +86,9 @@ const EnterMarks = () => {
       // Check if marks are locked
       if (res.data.length > 0) {
         const firstMark = res.data[0].marks;
-        const granularLock = firstMark?.[`isLocked_${selectedExam}`];
+        const granularLock = (selectedExam === 'lab_marks' || selectedExam === 'integrated_lab')
+          ? firstMark?.isLocked
+          : firstMark?.[`isLocked_${selectedExam}`];
         const globalLock = firstMark?.isLocked;
         setIsLocked(!!(granularLock || globalLock)); // Ensure boolean
       } else {

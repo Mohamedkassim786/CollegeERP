@@ -11,7 +11,7 @@
 
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
-const { logger } = require('../utils/logger');
+const { logger } = require('../utils/logger.js');
 
 const prisma = new PrismaClient();
 
@@ -77,19 +77,19 @@ const runAttendanceCheck = async () => {
             // Check if attendance was submitted for any subject today
             const submitted = await prisma.studentAttendance.findFirst({
                 where: {
-                    takenById: facultyId,
-                    takenAt: { gte: startOfDay, lte: endOfDay }
+                    facultyId: facultyId,
+                    createdAt: { gte: startOfDay, lte: endOfDay }
                 }
             });
 
             if (submitted) continue; // Faculty submitted — no alert needed
 
             // Find the HOD of this faculty's department
-            const hod = await prisma.user.findFirst({
+            const hod = await prisma.faculty.findFirst({
                 where: {
+                    role: 'HOD',
                     department: faculty.department,
-                    isHOD: true,
-                    isDisabled: false
+                    isActive: true
                 }
             });
 

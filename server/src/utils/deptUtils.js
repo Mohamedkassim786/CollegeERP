@@ -1,3 +1,4 @@
+// Utility for department-based filtering with standardized casing
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 

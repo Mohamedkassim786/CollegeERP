@@ -20,7 +20,7 @@ const HODDashboard = () => {
             const response = await getHODDashboard();
             setData(response.data);
         } catch (error) {
-            console.error(error);
+            console.error('HOD Dashboard error:', error.response?.data || error);
         } finally {
             setLoading(false);
         }

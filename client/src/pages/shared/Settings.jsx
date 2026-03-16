@@ -22,7 +22,8 @@ import {
   Phone,
   Hash,
   Calendar,
-  Plus
+  Plus,
+  Camera
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -249,6 +250,12 @@ const Settings = () => {
     }
   };
 
+  const getPhotoUrl = (photo) => {
+    if (!photo) return null;
+    if (photo.startsWith('http')) return photo;
+    return `http://${window.location.hostname}:3000/uploads/faculty/${photo}`;
+  };
+
   if (loading)
     return (
       <div className="p-8 text-center animate-pulse">Loading settings...</div>
@@ -304,6 +311,56 @@ const Settings = () => {
                   <User className="text-blue-600" size={24} />
                   Personal Details
                 </h3>
+
+                {!isAdmin && (auth.role === 'FACULTY' || auth.role === 'HOD') && (
+                  <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col md:flex-row gap-8 items-center md:items-start group">
+                    <div className="relative">
+                      {profile?.photo ? (
+                        <img 
+                          src={getPhotoUrl(profile.photo)} 
+                          alt="Profile" 
+                          className="w-32 h-32 rounded-3xl object-cover shadow-2xl border-4 border-white group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-[#003B73] to-blue-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl border-4 border-white group-hover:scale-105 transition-transform duration-300">
+                          {profile?.fullName?.split(' ').map(n => n[0]).join('') || profile?.staffId?.[0]}
+                        </div>
+                      )}
+                      <div className="absolute -bottom-2 -right-2 p-2 bg-white rounded-xl shadow-lg text-blue-600">
+                        <Camera size={18} />
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 space-y-4 w-full">
+                      <div className="flex flex-wrap gap-3">
+                        <span className="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs font-black uppercase tracking-widest border border-blue-200">
+                          {profile?.staffId}
+                        </span>
+                        <span className="px-4 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-black uppercase tracking-widest border border-emerald-200">
+                          {profile?.designation}
+                        </span>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-2xl font-black text-gray-900 tracking-tight">{profile?.fullName}</h4>
+                        <p className="text-[#003B73] font-bold text-sm flex items-center gap-2 mt-1">
+                          <Building2 size={16} />
+                          {profile?.department}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div className="flex items-center gap-2 text-gray-500 text-sm font-medium bg-white/50 p-2 rounded-lg border border-gray-100">
+                          <Mail size={14} /> {profile?.email || 'N/A'}
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-500 text-sm font-medium bg-white/50 p-2 rounded-lg border border-gray-100">
+                          <Phone size={14} /> {profile?.phoneNumber || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <form
                   onSubmit={handleUpdatePersonal}
                   className="space-y-6 max-w-2xl"

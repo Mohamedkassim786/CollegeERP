@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, AlertTriangle, Eye, CheckCheck } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Eye, CheckCheck, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { getPromotionPreview, promoteAllStudents } from '../../../services/student.service';
 import { getDepartments, getSections } from '../../../services/department.service';
 import CustomSelect from '../../../components/CustomSelect';
@@ -12,6 +13,7 @@ const AutoPromote = () => {
     const [promoting, setPromoting] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState('');
+    const [confirmState, setConfirmState] = useState(null);
     const [departments, setDepartments] = useState([]);
     const [dbSections, setDbSections] = useState([]);
 
@@ -52,14 +54,15 @@ const AutoPromote = () => {
     };
 
     const doPromote = async () => {
-        if (!window.confirm(`⚠️ This will promote ${preview?.totalStudents} students. This cannot be undone. Continue?`)) return;
         setPromoting(true); setError('');
         try {
             const res = await promoteAllStudents(form);
             setResult(res.data);
             setPreview(null);
+            toast.success("Promotion completed successfully!");
         } catch (e) {
             setError(e.response?.data?.message || 'Promotion failed.');
+            toast.error("Promotion failed.");
         }
         setPromoting(false);
     };
@@ -82,7 +85,7 @@ const AutoPromote = () => {
     })();
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn">
+        <div className="space-y-8 animate-fadeIn">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="p-4 bg-blue-50 rounded-2xl text-[#003B73]">
@@ -221,7 +224,48 @@ const AutoPromote = () => {
                             </p>
                         </div>
                         <button 
-                            onClick={doPromote} 
+                            onClick={() => {
+                                toast.custom((t) => (
+                                    <div
+                                        className={`${
+                                            t.visible ? 'animate-enter' : 'animate-leave'
+                                        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+                                    >
+                                        <div className="flex-1 w-0 p-4">
+                                            <div className="flex items-start">
+                                                <div className="flex-shrink-0 pt-0.5">
+                                                    <AlertCircle className="h-6 w-6 text-red-400" aria-hidden="true" />
+                                                </div>
+                                                <div className="ml-3 flex-1">
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        Critical Action Required
+                                                    </p>
+                                                    <p className="mt-1 text-sm text-gray-500">
+                                                        This will promote {preview?.totalStudents} students. This cannot be undone. All current year data will be archived.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex border-l border-gray-200">
+                                            <button
+                                                onClick={() => {
+                                                    doPromote();
+                                                    toast.dismiss(t.id);
+                                                }}
+                                                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                            >
+                                                Confirm & Execute
+                                            </button>
+                                            <button
+                                                onClick={() => toast.dismiss(t.id)}
+                                                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ), { duration: Infinity });
+                            }}
                             disabled={promoting}
                             className="px-10 h-[60px] bg-[#003B73] text-white rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-[#002850] transition-all disabled:opacity-60 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/20 active:scale-95"
                         >

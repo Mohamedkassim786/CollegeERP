@@ -4,7 +4,7 @@ import {
     MoreVertical, Edit3, Trash2, Eye, Shield, 
     CalendarX, RefreshCw, X, AlertCircle, Phone, 
     CheckCircle, Info, Download, FileText, GraduationCap,
-    Mail, MapPin
+    Mail, MapPin, BookOpen
 } from "lucide-react";
 import { 
     getFaculty, 
@@ -182,11 +182,11 @@ const FacultyManager = () => {
             {/* Modals */}
             {showStaffModal && (
                 <StaffModal 
-                    role={modalRole}
                     editingStaff={editingStaff}
                     departments={departments}
-                    onClose={() => setShowStaffModal(false)}
-                    onSuccess={() => { setShowStaffModal(false); fetchInitialData(); }}
+                    facultyList={facultyList}
+                    onClose={() => setShowStaffModal(false)} 
+                    onSave={() => { setShowStaffModal(false); fetchInitialData(); }}
                 />
             )}
 
@@ -287,11 +287,104 @@ const DepartmentCard = ({ dept, onViewStaff, staffCount }) => {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SPOTLIGHT BANNER COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const SpotlightBanner = ({ staff, type, absent, onViewProfile, onManageAbsence, onEdit }) => {
+    const isFYC = type === 'FYC';
+    const accentColor = isFYC ? 'from-violet-400 to-indigo-600' : 'from-amber-500 to-orange-600';
+    const bgGradient = absent ? 'from-red-400 to-red-600' : (isFYC ? 'from-[#1E1B4B] via-[#312E81] to-[#4338CA]' : 'from-[#0F172A] via-[#1E293B] to-[#334155]');
+
+    return (
+        <div className={`p-1 bg-gradient-to-br ${bgGradient} rounded-[48px] shadow-2xl shadow-slate-900/40 transform hover:scale-[1.01] transition-transform duration-500`}>
+            <div className="bg-[#0F172A]/90 backdrop-blur-xl p-10 rounded-[46px] flex flex-col lg:flex-row items-center gap-10 relative overflow-hidden">
+                {/* Status Badge */}
+                <div className={`absolute top-0 right-0 px-10 py-4 font-black text-[10px] uppercase tracking-[0.3em] rounded-bl-[40px] text-white shadow-xl ${absent ? 'bg-red-600' : `bg-gradient-to-r ${accentColor} animate-shimmer`}`}>
+                    {absent ? '● Absent' : (isFYC ? '✧ Coordinator Spotlight' : '★ HOD Spotlight')}
+                </div>
+
+                {/* Photo Section */}
+                <div className="relative group/photo">
+                    <div className={`w-48 h-48 rounded-[56px] overflow-hidden border-[6px] ${absent ? 'border-red-500/30' : 'border-white/10'} shadow-2xl transition-all duration-700 group-hover/photo:rounded-[40px]`}>
+                        {staff.photo ? (
+                            <img src={`http://${window.location.hostname}:3000/uploads/faculty/${staff.photo}`} className="w-full h-full object-cover scale-110 group-hover/photo:scale-100 transition-transform duration-700" />
+                        ) : (
+                            <div className="w-full h-full bg-slate-800 flex items-center justify-center font-black text-white text-6xl">
+                                {staff.fullName.charAt(0)}
+                            </div>
+                        )}
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-black/50 transform group-hover/photo:rotate-12 transition-transform">
+                        {isFYC ? <BookOpen className="text-[#312E81]" size={24} /> : <Shield className="text-[#0F172A]" size={24} />}
+                    </div>
+                </div>
+
+                {/* Details Section */}
+                <div className="flex-1 text-center lg:text-left space-y-6">
+                    <div>
+                        <h3 className="text-4xl font-black text-white mb-2 tracking-tight drop-shadow-sm">{staff.fullName}</h3>
+                        <div className="flex flex-wrap justify-center lg:justify-start items-center gap-4">
+                            <span className={`px-5 py-2 bg-white/5 ${isFYC ? 'text-indigo-400' : 'text-amber-400'} rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-white/10 backdrop-blur-md`}>
+                                {isFYC ? 'First Year Coordinator' : (staff.designation || 'Head of Department')}
+                            </span>
+                            <span className="text-xs font-mono text-slate-400 font-bold bg-white/5 px-4 py-2 rounded-2xl border border-white/5 tracking-widest">#{staff.staffId}</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+                        {[
+                            { icon: GraduationCap, text: staff.qualification || 'Academic Excellence', color: 'text-blue-400' },
+                            { icon: Mail, text: staff.email || 'No email provided', color: 'text-emerald-400' },
+                            { icon: Phone, text: staff.phone || 'No phone provided', color: 'text-amber-400' },
+                            { icon: MapPin, text: staff.address || 'Institution Main Campus', color: 'text-rose-400' }
+                        ].map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-center lg:justify-start gap-4 animate-fadeIn" style={{ animationDelay: `${idx * 0.1}s` }}>
+                                <div className={`w-10 h-10 rounded-2xl bg-white/5 ${item.color} flex items-center justify-center border border-white/5 shadow-inner`}>
+                                    <item.icon size={18} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-300 tracking-wide uppercase">{item.text}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-4 min-w-[200px]">
+                    <button 
+                        onClick={() => onViewProfile(staff.id)}
+                        className="w-full px-8 py-5 bg-white text-[#0F172A] rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-amber-400 transition-all duration-300 shadow-xl shadow-white/5"
+                    >
+                        Profile
+                    </button>
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={() => onManageAbsence(staff)}
+                            className={`flex-1 p-5 rounded-3xl transition-all duration-300 ${absent ? 'bg-red-500 text-white' : 'bg-white/5 text-white hover:bg-red-500'}`}
+                        >
+                            <CalendarX size={20} className="mx-auto" />
+                        </button>
+                        <button 
+                            onClick={() => onEdit(staff)}
+                            className="flex-1 p-5 bg-white/5 text-white rounded-3xl hover:bg-blue-600 transition-all duration-300"
+                        >
+                            <Edit3 size={20} className="mx-auto" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // VIEW 2: STAFF LIST
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, facultyList, onAddFaculty, onAddHOD, onEdit, onDelete, onViewProfile, onManageAbsence }) => {
     const hod = facultyList.find(f => f.computedRoles && f.computedRoles.includes('HOD'));
-    const faculty = facultyList.filter(f => !(f.computedRoles && f.computedRoles.includes('HOD')));
+    const fyc = facultyList.find(f => f.computedRoles && f.computedRoles.includes('FIRST_YEAR_COORDINATOR'));
+    const faculty = facultyList.filter(f => 
+        !(f.computedRoles && f.computedRoles.includes('HOD')) && 
+        !(f.computedRoles && f.computedRoles.includes('FIRST_YEAR_COORDINATOR'))
+    );
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -323,86 +416,29 @@ const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, 
                 </div>
             </div>
 
-            {/* HOD BANNER */}
-            {hod && (
-                <div className={`p-1 bg-gradient-to-br ${absentFacultyIds.includes(hod.id) ? 'from-red-400 to-red-600' : 'from-[#0F172A] via-[#1E293B] to-[#334155]'} rounded-[48px] shadow-2xl shadow-slate-900/40 transform hover:scale-[1.01] transition-transform duration-500`}>
-                    <div className="bg-[#0F172A]/90 backdrop-blur-xl p-10 rounded-[46px] flex flex-col lg:flex-row items-center gap-10 relative overflow-hidden">
-                        {/* Status Badge */}
-                        <div className={`absolute top-0 right-0 px-10 py-4 font-black text-[10px] uppercase tracking-[0.3em] rounded-bl-[40px] text-white shadow-xl ${absentFacultyIds.includes(hod.id) ? 'bg-red-600' : 'bg-gradient-to-r from-amber-500 to-orange-600 animate-shimmer'}`}>
-                            {absentFacultyIds.includes(hod.id) ? '● Absent' : '★ HOD Spotlight'}
-                        </div>
-
-                        {/* Photo Section */}
-                        <div className="relative group/photo">
-                            <div className={`w-48 h-48 rounded-[56px] overflow-hidden border-[6px] ${absentFacultyIds.includes(hod.id) ? 'border-red-500/30' : 'border-white/10'} shadow-2xl transition-all duration-700 group-hover/photo:rounded-[40px]`}>
-                                {hod.photo ? (
-                                    <img src={`http://${window.location.hostname}:3000/uploads/faculty/${hod.photo}`} className="w-full h-full object-cover scale-110 group-hover/photo:scale-100 transition-transform duration-700" />
-                                ) : (
-                                    <div className="w-full h-full bg-slate-800 flex items-center justify-center font-black text-white text-6xl">
-                                        {hod.fullName.charAt(0)}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-black/50 transform group-hover/photo:rotate-12 transition-transform">
-                                <Shield className="text-[#0F172A]" size={24} />
-                            </div>
-                        </div>
-
-                        {/* Details Section */}
-                        <div className="flex-1 text-center lg:text-left space-y-6">
-                            <div>
-                                <h3 className="text-4xl font-black text-white mb-2 tracking-tight drop-shadow-sm">{hod.fullName}</h3>
-                                <div className="flex flex-wrap justify-center lg:justify-start items-center gap-4">
-                                    <span className="px-5 py-2 bg-white/5 text-amber-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-white/10 backdrop-blur-md">
-                                        {hod.designation || 'Head of Department'}
-                                    </span>
-                                    <span className="text-xs font-mono text-slate-400 font-bold bg-white/5 px-4 py-2 rounded-2xl border border-white/5 tracking-widest">#{hod.staffId}</span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-                                {[
-                                    { icon: GraduationCap, text: hod.qualification || 'Doctorate Candidate', color: 'text-blue-400' },
-                                    { icon: Mail, text: hod.email || 'No email provided', color: 'text-emerald-400' },
-                                    { icon: Phone, text: hod.phone || 'No phone provided', color: 'text-amber-400' },
-                                    { icon: MapPin, text: hod.address || 'MIET HQ, Administrative Block', color: 'text-rose-400' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className="flex items-center justify-center lg:justify-start gap-4 animate-fadeIn" style={{ animationDelay: `${idx * 0.1}s` }}>
-                                        <div className={`w-10 h-10 rounded-2xl bg-white/5 ${item.color} flex items-center justify-center border border-white/5 shadow-inner`}>
-                                            <item.icon size={18} />
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-300 tracking-wide uppercase">{item.text}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-col sm:flex-row lg:flex-col gap-4 min-w-[200px]">
-                            <button 
-                                onClick={() => onViewProfile(hod.id)}
-                                className="w-full px-8 py-5 bg-white text-[#0F172A] rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-amber-400 transition-all duration-300 shadow-xl shadow-white/5"
-                            >
-                                Profile
-                            </button>
-                            <div className="flex gap-4">
-                                <button 
-                                    onClick={() => onManageAbsence(hod)}
-                                    className={`flex-1 p-5 rounded-3xl transition-all duration-300 ${absentFacultyIds.includes(hod.id) ? 'bg-red-500 text-white' : 'bg-white/5 text-white hover:bg-red-500'}`}
-                                >
-                                    <CalendarX size={20} className="mx-auto" />
-                                </button>
-                                <button 
-                                    onClick={() => onEdit(hod)}
-                                    className="flex-1 p-5 bg-white/5 text-white rounded-3xl hover:bg-blue-600 transition-all duration-300"
-                                >
-                                    <Edit3 size={20} className="mx-auto" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* SPOTLIGHT SECTION */}
+            <div className="space-y-6">
+                {hod && (
+                    <SpotlightBanner 
+                        staff={hod}
+                        type="HOD"
+                        absent={absentFacultyIds.includes(hod.id)}
+                        onViewProfile={onViewProfile}
+                        onManageAbsence={onManageAbsence}
+                        onEdit={onEdit}
+                    />
+                )}
+                {fyc && (
+                    <SpotlightBanner 
+                        staff={fyc}
+                        type="FYC"
+                        absent={absentFacultyIds.includes(fyc.id)}
+                        onViewProfile={onViewProfile}
+                        onManageAbsence={onManageAbsence}
+                        onEdit={onEdit}
+                    />
+                )}
+            </div>
 
             {/* FACULTY SECTION */}
             <div className="space-y-8">
@@ -504,7 +540,7 @@ const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MODAL: ADD / EDIT STAFF
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const StaffModal = ({ role, editingStaff, departments, onClose, onSuccess }) => {
+const StaffModal = ({ departments, facultyList, onClose, onSave, editingStaff }) => {
     const [loading, setLoading] = useState(false);
     const [photoPreview, setPhotoPreview] = useState(editingStaff?.photo ? `http://${window.location.hostname}:3000/uploads/faculty/${editingStaff.photo}` : null);
     const [formData, setFormData] = useState({
@@ -521,6 +557,11 @@ const StaffModal = ({ role, editingStaff, departments, onClose, onSuccess }) => 
         email: editingStaff?.email || '',
         address: editingStaff?.address || '',
     });
+
+    const currentDept = departments.find(d => d.id === parseInt(formData.departmentId));
+    const currentFYC = facultyList.find(f => f.computedRoles && f.computedRoles.includes('FIRST_YEAR_COORDINATOR'));
+    const currentHODName = currentDept?.hodName;
+    const currentFYCName = currentFYC?.fullName;
     const [photoFile, setPhotoFile] = useState(null);
 
     const handlePhotoChange = (e) => {
@@ -632,7 +673,7 @@ const StaffModal = ({ role, editingStaff, departments, onClose, onSuccess }) => 
                             <div>
                                 <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Assign Roles</label>
                                 <div className="flex flex-col gap-2 bg-gray-50 p-3 rounded-[22px] border border-gray-100">
-                                    <label className="flex items-center gap-3 p-2 cursor-pointer">
+                                    <label className="flex items-center gap-3 p-2 cursor-pointer group/role">
                                         <input type="checkbox" className="w-5 h-5 accent-[#003B73]" 
                                             checked={formData.computedRoles.includes('HOD')}
                                             onChange={(e) => {
@@ -641,12 +682,19 @@ const StaffModal = ({ role, editingStaff, departments, onClose, onSuccess }) => 
                                                 setFormData({...formData, computedRoles: Array.from(roles)});
                                             }}
                                         />
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col flex-1">
                                             <span className="text-sm font-black text-gray-800 tracking-tight">Head of Department (HOD)</span>
-                                            <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest">Replaces current HOD</span>
+                                            {formData.computedRoles.includes('HOD') && currentHODName && currentHODName !== formData.fullName && (
+                                                <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 mt-1 max-w-fit flex items-center gap-1">
+                                                    <RefreshCw size={10} className="animate-spin" /> Replace: {currentHODName}
+                                                </span>
+                                            )}
+                                            {!formData.computedRoles.includes('HOD') && (
+                                                <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest">Replaces current HOD</span>
+                                            )}
                                         </div>
                                     </label>
-                                    <label className="flex items-center gap-3 p-2 cursor-pointer">
+                                    <label className="flex items-center gap-3 p-2 cursor-pointer group/role">
                                         <input type="checkbox" className="w-5 h-5 accent-[#003B73]" 
                                             checked={formData.computedRoles.includes('FIRST_YEAR_COORDINATOR')}
                                             onChange={(e) => {
@@ -655,9 +703,16 @@ const StaffModal = ({ role, editingStaff, departments, onClose, onSuccess }) => 
                                                 setFormData({...formData, computedRoles: Array.from(roles)});
                                             }}
                                         />
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col flex-1">
                                             <span className="text-sm font-black text-gray-800 tracking-tight">First Year Coordinator</span>
-                                            <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Global Institution Role</span>
+                                            {formData.computedRoles.includes('FIRST_YEAR_COORDINATOR') && currentFYCName && currentFYCName !== formData.fullName && (
+                                                <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 mt-1 max-w-fit flex items-center gap-1">
+                                                    <RefreshCw size={10} className="animate-spin" /> Replace: {currentFYCName}
+                                                </span>
+                                            )}
+                                            {!formData.computedRoles.includes('FIRST_YEAR_COORDINATOR') && (
+                                                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Global Institution Role</span>
+                                            )}
                                         </div>
                                     </label>
                                 </div>

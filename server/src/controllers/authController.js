@@ -177,6 +177,7 @@ const login = async (req, res) => {
         }
 
         // Neither found
+        logger.warn(`Failed login attempt: ${username} (User not found)`);
         return res.status(401).json({ message: 'Invalid credentials.' });
 
     } catch (error) {
