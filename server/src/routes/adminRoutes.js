@@ -105,9 +105,9 @@ router.post('/substitutions', assignSubstitute);
 router.delete('/substitutions/:id', deleteSubstitution);
 
 // Admin Faculty Management
-router.get('/faculty', isAdmin, getFaculties);
+router.get('/faculty', isHod, getFaculties);
 router.post('/faculty/bulk-upload', isAdmin, upload.single('file'), bulkUploadFaculty);
-router.get('/faculty/:id', isAdmin, getFacultyProfile);
+router.get('/faculty/:id', isHod, getFacultyProfile);
 router.post('/faculty', isAdmin, upload.single('photo'), createFaculty);
 router.patch('/faculty/:id', isAdmin, upload.single('photo'), updateFaculty);
 router.delete('/faculty/:id', isAdmin, deleteFaculty);

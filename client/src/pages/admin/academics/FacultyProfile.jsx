@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import AuthContext from '../../../context/AuthProvider';
 import { 
     ChevronLeft, Edit3, Mail, Phone, MapPin, 
     Calendar, User, Droplets, Briefcase, 
@@ -12,6 +13,8 @@ import { handleApiError } from '../../../utils/errorHandler';
 const FacultyProfile = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { auth } = useContext(AuthContext);
+    const isAdmin = auth?.role === 'ADMIN';
     const [faculty, setFaculty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('personal');
@@ -154,9 +157,11 @@ const FacultyProfile = () => {
                         </div>
 
                         <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                            <button className="px-10 py-5 bg-white text-[#0F172A] rounded-[28px] font-black text-[10px] uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl hover:translate-y-[-2px] flex items-center gap-3">
-                                <Edit3 size={16} /> Update Bio
-                            </button>
+                            {isAdmin && (
+                                <button className="px-10 py-5 bg-white text-[#003B73] rounded-[28px] font-black text-[10px] uppercase tracking-widest hover:bg-amber-400 transition-all shadow-xl hover:translate-y-[-2px] flex items-center gap-3">
+                                    <Edit3 size={16} /> Update Bio
+                                </button>
+                            )}
                             <button className="p-5 bg-white/5 text-white rounded-[28px] border border-white/10 hover:bg-blue-600 transition-all shadow-xl">
                                 <Mail size={20} />
                             </button>

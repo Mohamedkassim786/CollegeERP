@@ -177,7 +177,7 @@ const DepartmentManager = () => {
         )}
         <button
           onClick={() => handleOpenModal()}
-          className="px-8 py-4 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all flex items-center gap-2 transform active:scale-95"
+          className="px-8 py-4 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-transform flex items-center gap-2 transform active:scale-95"
         >
           <Plus size={22} strokeWidth={3} /> Add New Department
         </button>
@@ -204,7 +204,7 @@ const DepartmentManager = () => {
               </button>
               <button
                 onClick={() => { handleDelete(confirmState.id); setConfirmState(null); }}
-                className="flex-1 md:flex-none px-10 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all font-black"
+                className="flex-1 md:flex-none px-10 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-transform active:scale-95"
               >
                 Confirm Delete
               </button>
@@ -501,7 +501,7 @@ const DepartmentManager = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-[2] py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95"
+                    className="flex-[2] py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-transform transform active:scale-95"
                   >
                     {editMode ? "Save Changes" : "Confirm Registration"}
                   </button>

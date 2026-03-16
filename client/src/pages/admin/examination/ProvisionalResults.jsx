@@ -192,7 +192,7 @@ const ProvisionalResults = () => {
 
                 <div className="flex flex-col md:flex-row gap-4 pt-4 border-t border-gray-100">
                     <button onClick={() => handleExport('portrait')} disabled={loading || !form.department || !form.semester}
-                        className="flex-1 px-8 py-4 bg-[#003B73] text-white rounded-2xl font-black text-sm hover:bg-[#002850] transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl shadow-blue-900/10">
+                        className="flex-1 px-8 py-4 bg-[#003B73] text-white rounded-2xl font-black text-sm hover:bg-[#002850] transition-transform flex items-center justify-center gap-3 disabled:opacity-50 shadow-xl shadow-blue-900/10 active:scale-95">
                         <FileText size={20} /> {loading ? 'Processing...' : 'Export Portrait (A4)'}
                     </button>
                     <button onClick={() => handleExport('landscape')} disabled={loading || !form.department || !form.semester}

@@ -100,7 +100,8 @@ const login = async (req, res) => {
                     username: faculty.staffId,
                     role: faculty.role,
                     computedRoles: computedRoles,
-                    department: faculty.department
+                    department: faculty.department,
+                    departmentId: faculty.departmentId
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: '8h' }
@@ -111,10 +112,11 @@ const login = async (req, res) => {
             return res.status(200).json({
                 id: faculty.id,
                 username: faculty.staffId,
-                role: faculty.role, // Kept for backward compatibility
-                computedRoles: computedRoles, // New frontend checks this
+                role: faculty.role,
+                computedRoles: computedRoles,
                 fullName: faculty.fullName,
                 department: faculty.department,
+                departmentId: faculty.departmentId,
                 photo: faculty.photo,
                 isFirstLogin: faculty.isFirstLogin,
                 accessToken: token

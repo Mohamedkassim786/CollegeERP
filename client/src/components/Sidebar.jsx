@@ -108,8 +108,8 @@ const Sidebar = ({ role, activePath }) => {
                     to={item.path}
                     className={`flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden
                         ${isActive
-                            ? 'bg-white text-[#003B73] shadow-xl shadow-blue-900/20'
-                            : 'text-blue-100/90 hover:bg-white/10 hover:text-white'
+                            ? 'bg-white text-[#003B73] shadow-xl shadow-blue-900/20 border-l-4 border-white pl-1'
+                            : 'text-blue-100/90 hover:bg-white/10 hover:text-white border-l-4 border-transparent'
                         } ${isChild ? 'py-2 px-3' : ''}`}
                 >
                     <Icon className={`w-5 h-5 mr-3 flex-shrink-0 transition-transform duration-300 ${isActive ? 'text-[#003B73]' : 'group-hover:scale-110 group-hover:text-white'}`} />

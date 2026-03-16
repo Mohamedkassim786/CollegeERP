@@ -23,7 +23,8 @@ import {
   Hash,
   Calendar,
   Plus,
-  Camera
+  Camera,
+  Building2
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -710,7 +711,7 @@ const Settings = () => {
                         Department
                       </p>
                       <p className="text-xl font-black text-blue-900">
-                        {profile.department}
+                        {profile?.department || 'Not Assigned'}
                       </p>
                     </div>
                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">

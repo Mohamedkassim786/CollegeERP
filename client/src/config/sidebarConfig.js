@@ -170,7 +170,6 @@ export const studentMenu = [
     { key: 'timetable', label: 'Timetable', path: '/student/timetable', icon: Calendar },
     { key: 'announcements', label: 'Announcements', path: '/student/announcements', icon: Bell },
     { key: 'profile', label: 'My Profile', path: '/student/profile', icon: User },
-    { key: 'settings', label: 'Settings', path: '/student/settings', icon: SettingsIcon },
 ];
 
 // ─── EXTERNAL STAFF MENU ─────────────────────────────────────────────────────

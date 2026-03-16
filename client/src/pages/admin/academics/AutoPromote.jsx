@@ -289,7 +289,7 @@ const AutoPromote = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {preview.students.slice(0, 50).map((s, i) => (
-                                    <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
+                                    <tr key={s.id} className="hover:bg-blue-50/30 transition-all duration-150 hover:translate-x-1 group">
                                         <td className="px-8 py-5 font-mono text-sm text-[#003B73] font-bold group-hover:scale-105 transition-transform origin-left">{s.rollNo}</td>
                                         <td className="px-8 py-5 font-bold text-gray-800 text-sm">{s.name}</td>
                                         <td className="px-8 py-5 text-center">

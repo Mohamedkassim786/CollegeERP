@@ -61,7 +61,12 @@ router.get('/timetable', async (req, res) => {
     const student = await prisma.student.findUnique({ where: { id: studentId } });
     if (!student) return res.status(404).json({ message: 'Student not found' });
     const timetable = await prisma.timetable.findMany({
-      where: { department: student.department, semester: student.semester, section: student.section },
+      where: { 
+        department: student.department, 
+        semester: student.semester, 
+        section: student.section,
+        year: student.year 
+      },
       include: { subject: true, faculty: { select: { fullName: true } } },
       orderBy: [{ day: 'asc' }, { period: 'asc' }]
     });

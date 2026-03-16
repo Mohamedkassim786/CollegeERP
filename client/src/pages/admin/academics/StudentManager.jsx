@@ -32,6 +32,7 @@ import {
 } from "../../../services/student.service";
 import { getDepartments, getSections, createSection, deleteSection } from "../../../services/department.service";
 import { getArrears, uploadBulkPassedOutArrears } from "../../../services/arrear.service";
+import SkeletonLoader from '../../../components/SkeletonLoader';
 
 const StudentManager = () => {
   const [selectedCategory, setSelectedCategory] = useState(() => sessionStorage.getItem('std_category') || null);
@@ -811,7 +812,7 @@ const StudentManager = () => {
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col animate-fadeIn">
       <div className="mb-8 p-4 bg-white rounded-3xl shadow-sm border border-gray-100 flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-black text-[#003B73] tracking-tight">

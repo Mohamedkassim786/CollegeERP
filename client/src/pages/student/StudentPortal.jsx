@@ -25,7 +25,6 @@ const StudentPortal = () => {
             <Route path="/results" element={<StudentResult />} />
             <Route path="/timetable" element={<StudentTimetable />} />
             <Route path="/announcements" element={<Announcements role="STUDENT" />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/student" replace />} />
           </Routes>
         </main>

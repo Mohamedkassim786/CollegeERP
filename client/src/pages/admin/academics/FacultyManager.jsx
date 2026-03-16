@@ -26,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import CustomSelect from "../../../components/CustomSelect";
+import SkeletonLoader from '../../../components/SkeletonLoader';
 
 const FacultyManager = () => {
     const navigate = useNavigate();
@@ -136,11 +137,7 @@ const FacultyManager = () => {
         return `http://${hostname}:3000/uploads/faculty/${photo}`;
     };
 
-    if (loading) return (
-        <div className="h-96 flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-[#003B73] border-t-transparent rounded-full animate-spin"></div>
-        </div>
-    );
+    if (loading) return <SkeletonLoader type="cards" />;
 
     return (
         <div className="space-y-8 animate-fadeIn">

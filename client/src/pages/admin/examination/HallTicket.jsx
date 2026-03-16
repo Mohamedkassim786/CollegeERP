@@ -97,7 +97,7 @@ const HallTicket = () => {
 
                 <div className="pt-2">
                     <button onClick={handleDownload} disabled={loading || !form.examSessionId}
-                        className="w-full md:w-auto px-8 py-3 bg-[#003B73] text-white rounded-xl font-black text-sm hover:bg-[#002850] transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                        className="w-full md:w-auto px-8 py-3 bg-[#003B73] text-white rounded-xl font-black text-sm hover:bg-[#002850] transition-transform flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95">
                         <Download size={18} /> {loading ? 'Generating PDF...' : 'Download Hall Tickets'}
                     </button>
                     {error && <p className="text-red-600 text-sm mt-3">{error}</p>}

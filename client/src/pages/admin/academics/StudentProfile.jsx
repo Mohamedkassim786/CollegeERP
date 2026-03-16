@@ -8,9 +8,11 @@ import {
 import { getStudent, updateStudent, getGradeSheet } from '../../../services/student.service';
 import { getDepartments } from '../../../services/department.service';
 import { handleApiError } from '../../../utils/errorHandler';
+import AuthContext from '../../../context/AuthProvider';
 import toast from 'react-hot-toast';
 
 const StudentProfile = () => {
+    const { auth } = React.useContext(AuthContext);
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -23,6 +25,8 @@ const StudentProfile = () => {
     const [activeTab, setActiveTab] = useState('Profile');
     const [attendanceReport, setAttendanceReport] = useState(null);
     const [fetchingAttendance, setFetchingAttendance] = useState(false);
+
+    const canEdit = auth?.role === 'ADMIN';
 
     useEffect(() => {
         fetchStudentProfile();
@@ -178,9 +182,11 @@ const StudentProfile = () => {
                                     <div className="w-full h-full bg-white/10 flex items-center justify-center text-3xl font-black text-white/40">{initials}</div>
                                 )}
                             </div>
-                            <div className="absolute bottom-1 right-1 w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-[#003B73] border border-gray-100">
-                                <Upload size={16} />
-                            </div>
+                            {canEdit && (
+                                <div className="absolute bottom-1 right-1 w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-[#003B73] border border-gray-100">
+                                    <Upload size={16} />
+                                </div>
+                            )}
                         </div>
 
                         {/* Identity text */}
@@ -208,12 +214,14 @@ const StudentProfile = () => {
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-3 shrink-0">
-                            <button
-                                onClick={() => { setEditingStudent({ ...student }); setShowEditModal(true); }}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest border border-white/15 transition-all"
-                            >
-                                <Edit size={13} /> Edit
-                            </button>
+                            {canEdit && (
+                                <button
+                                    onClick={() => { setEditingStudent({ ...student }); setShowEditModal(true); }}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest border border-white/15 transition-all"
+                                >
+                                    <Edit size={13} /> Edit
+                                </button>
+                            )}
                             <button
                                 onClick={handleDownload}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#003B73] rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"

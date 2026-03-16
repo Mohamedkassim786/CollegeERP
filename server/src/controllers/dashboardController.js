@@ -75,60 +75,86 @@ const getCOEDashboard = async (req, res) => {
 
 const getHODDashboard = async (req, res) => {
     try {
-        // Get department from JWT first, fallback to DB lookup
+        const userId = req.user.id;
         let department = req.user.department;
-        if (!department) {
-            const hod = await prisma.faculty.findUnique({ 
-                where: { id: req.user.id },
-                select: { department: true }
+        let departmentId = req.user.departmentId;
+
+        // Fallback for identification if not in JWT
+        if (!department || !departmentId) {
+            const hod = await prisma.faculty.findUnique({
+                where: { id: userId },
+                select: { department: true, departmentId: true }
             });
-            department = hod?.department;
+            department = department || hod?.department;
+            departmentId = departmentId || hod?.departmentId;
         }
-        if (!department) {
+
+        if (!department && !departmentId) {
             return res.status(403).json({ message: "HOD department not identified" });
         }
 
-        const students = await prisma.student.findMany({
-            where: { department: department },
-            include: {
-                results: true,
-                attendance: true
+        // Use ID-based filtering if available, fallback to string-based for legacy
+        const studentWhere = departmentId ? { departmentId } : { department };
+        const facultyWhere = departmentId ? { departmentId } : { department };
+
+        const facultyMembers = await prisma.faculty.findMany({
+            where: { ...facultyWhere, isActive: true },
+            include: { assignments: true }
+        });
+
+        const activeStudentCount = await prisma.student.count({
+            where: { ...studentWhere, status: 'ACTIVE' }
+        });
+
+        // Faculty workload stats
+        const facultyWorkload = facultyMembers.map(f => ({
+            name: f.fullName,
+            count: f.assignments.length,
+            id: f.id
+        })).sort((a,b) => b.count - a.count).slice(0, 5);
+
+        // Attendance by Year
+        const years = [1, 2, 3, 4];
+        const attendanceByYear = await Promise.all(years.map(async (year) => {
+            const records = await prisma.studentAttendance.findMany({
+                where: { 
+                    student: { ...studentWhere, year }
+                }
+            });
+            const present = records.filter(a => a.status === 'PRESENT' || a.status === 'OD').length;
+            const rate = records.length > 0 ? ((present / records.length) * 100).toFixed(1) : 0;
+            return { year, rate };
+        }));
+
+        // Average attendance for the department
+        const totalAttendanceRecords = await prisma.studentAttendance.count({
+            where: { student: studentWhere }
+        });
+        const presentRecords = await prisma.studentAttendance.count({
+            where: { 
+                student: studentWhere,
+                status: { in: ['PRESENT', 'OD'] }
             }
         });
+        const avgAttendance = totalAttendanceRecords > 0 ? ((presentRecords / totalAttendanceRecords) * 100).toFixed(1) : 0;
 
-        const studentCount = students.length;
-        const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
-        
-        // Average attendance for the department
-        const studentIdsInDept = students.map(s => s.id);
-        const attendanceRecords = await prisma.studentAttendance.findMany({
-            where: { studentId: { in: studentIdsInDept } }
-        });
-        const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT' || a.status === 'OD').length;
-        const avgAttendance = attendanceRecords.length > 0 ? ((presentCount / attendanceRecords.length) * 100).toFixed(2) : 0;
-
-        // Pending Approvals for this department
+        // Pending Approvals
         const pendingApprovals = await prisma.marks.count({
             where: {
-                student: { department: department },
+                student: studentWhere,
                 isApproved: false,
-                isLocked: true // Only count marks that are locked but not yet approved
+                isLocked: true
             }
         });
 
         res.json({
-            studentCount,
-            activeStudents,
+            studentCount: activeStudentCount,
+            facultyCount: facultyMembers.length,
             avgAttendance,
             pendingApprovals,
-            students: students.slice(0, 10).map(s => ({
-                id: s.id,
-                name: s.name,
-                rollNo: s.rollNo,
-                year: s.year,
-                section: s.section,
-                status: s.status
-            }))
+            attendanceByYear,
+            facultyWorkload,
+            departmentName: department
         });
     } catch (error) {
         handleError(res, error, "Error fetching HOD dashboard");

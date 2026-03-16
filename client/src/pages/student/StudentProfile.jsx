@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from 'react';
-import { User, Camera, Mail, Phone, MapPin, Calendar, Award } from 'lucide-react';
+import { User, Camera, Mail, Phone, MapPin, Calendar, Award, BookOpen } from 'lucide-react';
 import { getMyProfile, uploadProfilePhoto } from '../../services/profile.service';
 import AuthContext from '../../context/AuthProvider';
 
@@ -37,78 +37,137 @@ const StudentProfile = () => {
     const p = profile || {};
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
-            {msg && <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded-xl font-medium text-center">{msg}</div>}
+        <div className="w-full space-y-8 animate-fadeIn">
+            {msg && <div className="p-4 bg-blue-50 text-blue-700 text-sm rounded-2xl font-black text-center shadow-sm border border-blue-100">{msg}</div>}
 
-            {/* Banner Area - As per conversation prompt for "larger profile picture and visual hierarchy" */}
-            <div className="relative bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden pt-12 pb-8 px-8 flex flex-col md:flex-row items-center gap-8">
-                {/* Background graphic touch */}
-                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-[#003B73] to-[#00509E] opacity-10"></div>
+            {/* Banner Area - Enhanced visual hierarchy and full width */}
+            <div className="relative bg-[#003B73] rounded-[40px] shadow-2xl border border-white/10 overflow-hidden pt-16 pb-12 px-10 flex flex-col md:flex-row items-center gap-10">
+                {/* Background decorative elements */}
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/5 rounded-full blur-[100px] -mr-64 -mt-64"></div>
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-400/10 rounded-full blur-[80px] -ml-32 -mb-32"></div>
                 
                 <div className="relative z-10 flex-shrink-0">
-                    <div className="w-40 h-40 rounded-[2rem] overflow-hidden bg-gray-100 border-4 border-white shadow-lg flex items-center justify-center relative group">
+                    <div className="w-48 h-48 rounded-[3rem] overflow-hidden bg-white/10 border-[6px] border-white/20 shadow-2xl flex items-center justify-center relative group">
                         {p.photoUrl
                             ? <img src={`http://localhost:3000${p.photoUrl}`} alt="Profile" className="w-full h-full object-cover" />
-                            : <User size={56} className="text-gray-300" />
+                            : <User size={72} className="text-white/20" />
                         }
-                        <div onClick={() => fileRef.current?.click()} className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <Camera className="text-white" size={28} />
-                        </div>
                     </div>
-                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadPhoto} />
                 </div>
 
-                <div className="relative z-10 text-center md:text-left flex-1">
-                    <div className="inline-block px-3 py-1 bg-blue-50 text-[#003B73] text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
-                        B.E / B.Tech Student
+                <div className="relative z-10 text-center md:text-left flex-1 space-y-4">
+                    <div className="inline-flex items-center gap-2 px-5 py-2 bg-white/10 backdrop-blur-md text-blue-100 text-[10px] font-black rounded-full uppercase tracking-[0.2em] border border-white/10">
+                        <Award size={14} className="text-amber-400" /> B.TECH &middot; {p.department || 'ENGINEERING'} STUDENT
                     </div>
-                    <h1 className="text-4xl font-black text-gray-900 mb-2">{p.name || p.fullName || auth?.username}</h1>
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-500 font-medium">
-                        <span className="flex items-center gap-1.5"><Award size={18} className="text-amber-500" /> {p.registerNumber || p.rollNo || auth?.username}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 hidden md:block"></span>
-                        <span className="flex items-center gap-1.5 text-[#003B73]"><Calendar size={18} /> Sem {p.semester || 'N/A'}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 hidden md:block"></span>
-                        <span>{p.department || 'Department'} · Sec {p.section || 'A'}</span>
+                    <h1 className="text-5xl md:text-6xl font-black text-white tracking-tight drop-shadow-lg">
+                        {p.name || p.fullName || auth?.username}
+                    </h1>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-blue-100/70 font-bold text-sm">
+                        <span className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-2xl border border-white/5">
+                            Reg No: <span className="text-white">{p.registerNumber || p.rollNo || 'N/A'}</span>
+                        </span>
+                        <span className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-2xl border border-white/5 uppercase tracking-widest text-[10px]">
+                            <Calendar size={16} className="text-blue-300" /> Sem {p.semester || 'N/A'} &middot; Sec {p.section || 'A'}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            {/* Academic & Personal Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 space-y-6">
-                    <h3 className="font-bold text-gray-800 text-lg border-b border-gray-100 pb-3">Academic Info</h3>
-                    <div className="space-y-4 text-sm">
-                        <div className="flex justify-between items-center"><span className="text-gray-500">Roll No</span> <span className="font-bold font-mono">{p.rollNo}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-gray-500">Register No</span> <span className="font-bold font-mono">{p.registerNumber || '-'}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-gray-500">Admitted Year</span> <span className="font-bold">{p.year ? `Year ${p.year}` : '-'}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-gray-500">Batch Code</span> <span className="font-bold">{p.batchCode || '-'}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-gray-500">Status</span> 
-                            <span className={`px-2.5 py-1 rounded text-xs font-bold ${p.status === 'ACTIVE' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+            {/* Detailed Info Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Academic Profile */}
+                <div className="bg-white rounded-[32px] p-10 shadow-xl border border-gray-100 space-y-8 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
+                        <BookOpen size={120} />
+                    </div>
+                    <h3 className="font-black text-[#003B73] text-xs uppercase tracking-[0.3em] flex items-center gap-3">
+                        <div className="w-8 h-1 bg-[#003B73] rounded-full"></div> Academic Profile
+                    </h3>
+                    <div className="space-y-6">
+                        {[
+                            { label: 'Roll Number', value: p.rollNo },
+                            { label: 'Register Number', value: p.registerNumber || '-' },
+                            { label: 'Current Year', value: p.year ? `Year ${p.year}` : '-' },
+                            { label: 'Batch Code', value: p.batch || p.batchCode || '-' },
+                            { label: 'Regulation', value: p.regulation || '2021' },
+                        ].map((item, i) => (
+                            <div key={i} className="flex justify-between items-center group/item hover:translate-x-1 transition-transform">
+                                <span className="text-gray-400 text-xs font-black uppercase tracking-wider">{item.label}</span>
+                                <span className="font-black text-gray-900 text-sm bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">{item.value}</span>
+                            </div>
+                        ))}
+                        <div className="pt-4 flex justify-between items-center">
+                            <span className="text-gray-400 text-xs font-black uppercase tracking-wider">Status</span>
+                            <span className={`px-5 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase shadow-sm ${
+                                p.status === 'ACTIVE' 
+                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                                    : 'bg-gray-50 text-gray-500 border border-gray-100'
+                            }`}>
                                 {p.status || 'ACTIVE'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 space-y-6">
-                    <h3 className="font-bold text-gray-800 text-lg border-b border-gray-100 pb-3">Contact Info</h3>
-                    <div className="space-y-4 text-sm">
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-2 text-gray-500"><Mail size={16} /> Email</span> 
-                            <span className="font-medium text-gray-800">{p.email || 'Not provided'}</span>
+                {/* Family & Personal Info */}
+                <div className="bg-white rounded-[32px] p-10 shadow-xl border border-gray-100 space-y-8 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
+                        <User size={120} />
+                    </div>
+                    <h3 className="font-black text-[#003B73] text-xs uppercase tracking-[0.3em] flex items-center gap-3">
+                        <div className="w-8 h-1 bg-[#003B73] rounded-full"></div> Personal Background
+                    </h3>
+                    <div className="space-y-6">
+                        {[
+                            { label: "Father's Name", value: p.fatherName || 'N/A' },
+                            { label: "Mother's Name", value: p.motherName || 'N/A' },
+                            { label: 'Date of Birth', value: p.dateOfBirth ? new Date(p.dateOfBirth).toLocaleDateString() : 'N/A' },
+                            { label: 'Blood Group', value: p.bloodGroup || 'N/A' },
+                            { label: 'Gender', value: p.gender || 'N/A' },
+                        ].map((item, i) => (
+                            <div key={i} className="flex justify-between items-center group/item hover:translate-x-1 transition-transform">
+                                <span className="text-gray-400 text-xs font-black uppercase tracking-wider">{item.label}</span>
+                                <span className="font-black text-gray-900 text-sm bg-blue-50/50 px-3 py-1.5 rounded-xl border border-blue-50">{item.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="bg-[#0F172A] rounded-[32px] p-10 shadow-2xl space-y-8 relative overflow-hidden group text-white">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                        <Phone size={120} className="text-blue-400" />
+                    </div>
+                    <h3 className="font-black text-blue-400 text-xs uppercase tracking-[0.3em] flex items-center gap-3">
+                        <div className="w-8 h-1 bg-blue-400 rounded-full"></div> Communication
+                    </h3>
+                    <div className="space-y-8">
+                        <div className="space-y-2">
+                            <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <Mail size={12} className="text-blue-400" /> Official Email
+                            </span>
+                            <p className="font-bold text-lg text-blue-50 break-all">{p.email || 'Not provided'}</p>
                         </div>
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-2 text-gray-500"><Phone size={16} /> Phone</span> 
-                            <span className="font-medium text-gray-800">{p.phoneNumber || 'Not provided'}</span>
+                        <div className="space-y-2">
+                            <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <Phone size={12} className="text-blue-400" /> Primary Contact
+                            </span>
+                            <p className="font-bold text-lg text-blue-50">{p.phoneNumber || 'Not provided'}</p>
                         </div>
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-2 text-gray-500"><MapPin size={16} /> Address</span> 
-                            <span className="font-medium text-gray-800 text-right w-1/2 truncate">{p.address || 'Not provided'}</span>
+                        <div className="space-y-2">
+                            <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <MapPin size={12} className="text-blue-400" /> Residential Address
+                            </span>
+                            <p className="font-bold text-sm text-gray-300 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
+                                {p.address || 'Address details not provided in system.'}
+                            </p>
                         </div>
                     </div>
                     
-                    <div className="pt-4 border-t border-gray-100 text-center text-xs text-gray-400">
-                        Contact administration to update locked personal details.
+                    <div className="pt-4 text-center">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest bg-white/5 py-3 rounded-2xl border border-white/5">
+                            Information is Locked &middot; Contact Admin to Update
+                        </p>
                     </div>
                 </div>
             </div>

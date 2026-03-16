@@ -17,7 +17,22 @@ createRoot(document.getElementById('root')).render(
                     </Routes>
                 </AuthProvider>
             </BrowserRouter>
-            <Toaster position="top-right" />
+            <Toaster
+                position="bottom-right"
+                toastOptions={{
+                    duration: 3000,
+                    style: {
+                        borderRadius: '16px',
+                        fontWeight: '600',
+                        fontSize: '13px',
+                        padding: '12px 16px',
+                        boxShadow: '0 8px 32px rgba(0,59,115,0.12)',
+                    },
+                    success: {
+                        iconTheme: { primary: '#003B73', secondary: '#fff' },
+                    },
+                }}
+            />
         </ErrorBoundary>
     </StrictMode>,
 )

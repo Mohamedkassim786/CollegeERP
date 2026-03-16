@@ -13,13 +13,23 @@ const HODFacultyOverview = () => {
     useEffect(() => {
         const fetchFaculty = async () => {
             try {
-                const res = await api.get('/admin/faculty');
+                const myDeptId = auth?.departmentId;
+                const res = await api.get(`/admin/faculty${myDeptId ? `?departmentId=${myDeptId}` : ''}`);
                 const myDept = auth?.department;
-                const filtered = (res.data || []).filter(f =>
-                    f.department === myDept ||
-                    f.department?.toLowerCase() === myDept?.toLowerCase()
-                );
-                setFacultyList(filtered);
+
+                const deptFaculty = (res.data || []).filter(f => {
+                    // Filter by ID if available (robust)
+                    if (myDeptId && f.departmentId) {
+                        return f.departmentId == myDeptId; // Loose equality for string/number mismatch
+                    }
+                    // Fallback to name-based filtering with trimming and case-insensitivity
+                    const facultyDept = f.department?.trim().toLowerCase();
+                    const userDept = myDept?.trim().toLowerCase();
+                    return facultyDept === userDept;
+                });
+                setFacultyList(deptFaculty); // Assuming setFacultyList is the correct setter for the main list
+                // If setFiltered is intended for a separate state, it needs to be declared.
+                // For now, I'm assuming the instruction meant to update the primary list.
             } catch (err) {
                 console.error('Failed to load faculty', err);
             } finally {
@@ -27,7 +37,7 @@ const HODFacultyOverview = () => {
             }
         };
         fetchFaculty();
-    }, [auth?.department]);
+    }, [auth?.department, auth?.departmentId]);
 
     const getPhotoUrl = (photo) => {
         if (!photo) return null;
@@ -106,7 +116,7 @@ const HODFacultyOverview = () => {
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => navigate(`/admin/faculty/${faculty.id}`)}
+                                        onClick={() => navigate(`/hod/faculty/${faculty.id}`)}
                                         className="w-full py-3 bg-[#003B73] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#002850] transition-all flex items-center justify-center gap-2">
                                         <Eye size={14} /> View Profile
                                     </button>

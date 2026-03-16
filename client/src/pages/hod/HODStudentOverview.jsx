@@ -19,10 +19,16 @@ const HODStudentOverview = () => {
             try {
                 const res = await api.get('/admin/students');
                 const myDept = auth?.department;
-                const deptStudents = (res.data || []).filter(s =>
-                    s.department === myDept ||
-                    s.department?.toLowerCase() === myDept?.toLowerCase()
-                );
+                const myDeptId = auth?.departmentId;
+
+                const deptStudents = (res.data || []).filter(s => {
+                    if (myDeptId && s.departmentId) {
+                        return s.departmentId == myDeptId; // Loose equality
+                    }
+                    const studentDept = s.department?.trim().toLowerCase();
+                    const userDept = myDept?.trim().toLowerCase();
+                    return studentDept === userDept;
+                });
                 setStudents(deptStudents);
                 setFiltered(deptStudents);
             } catch (err) {
@@ -32,7 +38,7 @@ const HODStudentOverview = () => {
             }
         };
         fetchStudents();
-    }, [auth?.department]);
+    }, [auth?.department, auth?.departmentId]);
 
     useEffect(() => {
         let result = students;
@@ -113,7 +119,7 @@ const HODStudentOverview = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map(student => (
-                                <tr key={student.id} className="hover:bg-gray-50/50 transition-all">
+                                <tr key={student.id} className="hover:bg-gray-50/50 transition-all duration-150 hover:translate-x-1">
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 bg-gradient-to-br from-[#003B73] to-blue-500 rounded-xl flex items-center justify-center text-white font-black text-sm">

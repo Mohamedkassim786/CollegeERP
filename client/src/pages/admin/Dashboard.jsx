@@ -34,6 +34,13 @@ import {
   Legend,
 } from "recharts";
 import { getDashboardStats } from "../../services/settings.service";
+import useCountUp from '../../hooks/useCountUp';
+import SkeletonLoader from '../../components/SkeletonLoader';
+
+const AnimatedValue = ({ value }) => {
+  const animated = useCountUp(value);
+  return <>{animated}</>;
+};
 
 const AdminHome = () => {
   const [statsData, setStatsData] = useState({
@@ -129,8 +136,10 @@ const AdminHome = () => {
       ? upcomingEvents
       : [{ title: "No upcoming events", date: "-", type: "info" }];
 
+  if (loading) return <SkeletonLoader type="dashboard" />;
+
   return (
-    <div className="min-h-screen bg-[#F5F7FA] p-6 custom-scrollbar">
+    <div className="min-h-screen bg-[#F5F7FA] p-6 custom-scrollbar animate-fadeIn">
       {/* Header */}
       <div className="mb-8 animate-fadeIn">
         <h1 className="text-3xl font-black text-[#003B73] mb-2 tracking-tight">
@@ -171,7 +180,9 @@ const AdminHome = () => {
             <h3 className="text-gray-600 text-sm font-bold mb-1">
               {stat.title}
             </h3>
-            <p className="text-3xl font-black text-[#003B73]">{stat.value}</p>
+            <p className="text-3xl font-black text-[#003B73]">
+              <AnimatedValue value={stat.value} />
+            </p>
           </div>
         ))}
       </div>

@@ -21,6 +21,7 @@ import HODNotifications from './HODNotifications';
 import HODFacultyOverview from './HODFacultyOverview';
 import HODStudentOverview from './HODStudentOverview';
 import StudentProfile from '../admin/academics/StudentProfile';
+import FacultyProfile from '../admin/academics/FacultyProfile';
 import AttendanceEligibility from '../admin/examination/AttendanceEligibility';
 
 const HODPortal = () => {
@@ -52,6 +53,7 @@ const HODPortal = () => {
 
                         {/* My Department */}
                         <Route path="/faculty" element={<HODFacultyOverview />} />
+                        <Route path="/faculty/:id" element={<FacultyProfile />} />
                         <Route path="/students" element={<HODStudentOverview />} />
                         <Route path="/students/profile/:id" element={<StudentProfile />} />
                         <Route path="/dept-attendance" element={<HODAttendanceReport />} />

@@ -231,7 +231,7 @@ const AttendanceEligibility = () => {
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
                                             {student.subjects.map(s => (
-                                                <tr key={s.subjectId} className="hover:bg-gray-50">
+                                                <tr key={s.subjectId} className="hover:bg-gray-50 transition-all duration-150 hover:translate-x-1">
                                                     <td className="py-2">
                                                         <p className="font-semibold text-gray-800">{s.subjectCode}</p>
                                                         <p className="text-xs text-gray-400">{s.subjectName}</p>

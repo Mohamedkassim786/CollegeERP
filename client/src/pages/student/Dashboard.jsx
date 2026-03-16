@@ -4,6 +4,13 @@ import {
     ArrowRight, Star, ShieldCheck, Mail, Phone, MapPin
 } from 'lucide-react';
 import { getStudentDashboard } from '../../services/dashboard.service';
+import useCountUp from '../../hooks/useCountUp';
+import SkeletonLoader from '../../components/SkeletonLoader';
+
+const AnimatedValue = ({ value }) => {
+  const animated = useCountUp(value);
+  return <>{animated}</>;
+};
 
 const StudentDashboard = () => {
     const [data, setData] = useState(null);
@@ -24,7 +31,7 @@ const StudentDashboard = () => {
         }
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 border-4 border-[#003B73] border-t-transparent rounded-full animate-spin"></div></div>;
+    if (loading) return <SkeletonLoader type="dashboard" />;
 
     const name = data?.profile?.name || '';
     const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'ST';
@@ -51,12 +58,12 @@ const StudentDashboard = () => {
                     <div className="flex gap-8">
                          <div className="text-center">
                             <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest mb-1">Attendance</p>
-                            <h3 className="text-4xl font-black">{data?.stats?.attendancePercentage}%</h3>
+                            <h3 className="text-4xl font-black"><AnimatedValue value={data?.stats?.attendancePercentage || 0} />%</h3>
                          </div>
                          <div className="w-px h-16 bg-white/10 self-center"></div>
                          <div className="text-center">
                             <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest mb-1">Current CGPA</p>
-                            <h3 className="text-4xl font-black">{data?.stats?.cgpa || '0.00'}</h3>
+                            <h3 className="text-4xl font-black"><AnimatedValue value={data?.stats?.cgpa || '0.00'} /></h3>
                          </div>
                     </div>
                 </div>
@@ -74,7 +81,7 @@ const StudentDashboard = () => {
                             <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Active Arrears</p>
                                 <div className="flex justify-between items-end">
-                                    <h4 className={`text-4xl font-black ${data?.stats?.arrearsCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{data?.stats?.arrearsCount || 0}</h4>
+                                    <h4 className={`text-4xl font-black ${data?.stats?.arrearsCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}><AnimatedValue value={data?.stats?.arrearsCount || 0} /></h4>
                                     <span className="text-[10px] font-black text-gray-300 uppercase">Subjects to clear</span>
                                 </div>
                             </div>
@@ -131,7 +138,7 @@ const StudentDashboard = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {data?.recentResults?.map(res => (
-                                        <tr key={res.id} className="group hover:bg-gray-50/100 transition-all">
+                                        <tr key={res.id} className="group hover:bg-gray-50/100 transition-all duration-150 hover:translate-x-1">
                                             <td className="px-8 py-6 font-black text-[#003B73]">SEM {res.semester}</td>
                                             <td className="px-8 py-6 text-center text-lg font-black text-gray-700">{res.gpa.toFixed(2)}</td>
                                             <td className="px-8 py-6 text-center text-lg font-black text-gray-400">{res.cgpa.toFixed(2)}</td>

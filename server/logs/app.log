@@ -4182,3 +4182,406 @@ Unknown field `employeeId` for select statement on model `User`. Available optio
 [2026-03-16T07:18:12.825Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
 [2026-03-16T07:44:32.576Z] [INFO] Login: admin (ADMIN)
 [2026-03-16T07:45:19.876Z] [INFO] Faculty Login: STFECE1 (Roles: FACULTY, HOD)
+[2026-03-16T08:12:46.046Z] [INFO] Server running on:
+[2026-03-16T08:12:46.049Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T08:12:46.049Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T08:12:46.174Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-16T08:15:15.080Z] [INFO] Login: admin (ADMIN)
+[2026-03-16T08:16:27.446Z] [INFO] Faculty Login: STFCSE1 (Roles: FACULTY, HOD)
+[2026-03-16T08:19:18.884Z] [INFO] Server running on:
+[2026-03-16T08:19:18.886Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T08:19:18.887Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T08:19:18.922Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-16T08:24:47.079Z] [INFO] Login: admin (ADMIN)
+[2026-03-16T08:28:54.186Z] [INFO] Faculty Login: STFCSE1 (Roles: FACULTY, HOD)
+[2026-03-16T08:29:15.736Z] [INFO] Server running on:
+[2026-03-16T08:29:15.739Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T08:29:15.740Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T08:29:15.775Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-16T08:47:03.444Z] [INFO] Faculty Login: STFCSE3 (Roles: FACULTY, FIRST_YEAR_COORDINATOR)
+[2026-03-16T08:47:28.215Z] [INFO] Login: naveen (PRINCIPAL)
+[2026-03-16T08:47:48.472Z] [ERROR] getProfile error 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 2
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 2
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getProfile (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:22)
+[2026-03-16T08:47:48.485Z] [ERROR] getProfile error 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 2
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 2
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getProfile (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:22)
+[2026-03-16T08:48:14.263Z] [INFO] Faculty Login: E23422 (Roles: FACULTY)
+[2026-03-16T08:48:44.353Z] [INFO] Student Login: 2021MECH21 (Mechanical Engineering)
+[2026-03-16T08:50:22.284Z] [INFO] Login: admin (ADMIN)
+[2026-03-16T08:51:54.034Z] [INFO] Student Login: 2021MECH21 (Mechanical Engineering)
+[2026-03-16T09:11:30.401Z] [INFO] Server running on:
+[2026-03-16T09:11:30.403Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T09:11:30.403Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T09:11:30.422Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-16T09:12:56.857Z] [INFO] Server running on:
+[2026-03-16T09:12:56.858Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T09:12:56.859Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T09:12:56.878Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-16T09:15:32.341Z] [INFO] Server running on:
+[2026-03-16T09:15:32.342Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T09:15:32.343Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T09:15:32.363Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-16T09:17:29.205Z] [INFO] Server running on:
+[2026-03-16T09:17:29.206Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T09:17:29.207Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T09:17:29.227Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-16T09:22:23.381Z] [INFO] Login: admin (ADMIN)
+[2026-03-16T09:23:41.947Z] [ERROR] getProfile error 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getProfile (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:22)
+[2026-03-16T09:23:41.965Z] [ERROR] getProfile error 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getProfile (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:22)
+[2026-03-16T09:28:57.590Z] [INFO] Server running on:
+[2026-03-16T09:28:57.591Z] [INFO] - Local:   http://localhost:3000
+[2026-03-16T09:28:57.592Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-16T09:28:57.611Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
