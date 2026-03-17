@@ -1,4 +1,5 @@
 import CustomSelect from "../../../components/CustomSelect";
+import toast from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import { getSubjects, createSubject, deleteSubject, assignFaculty, removeAssignment } from "../../../services/subject.service";
 import { getFaculty } from "../../../services/faculty.service";
@@ -79,9 +80,9 @@ const CourseManager = () => {
         type: "DEPARTMENT",
       });
       refreshSubjects();
-      alert("Course Created Successfully");
+      toast.success("Course Created Successfully");
     } catch (err) {
-      alert(
+      toast.error(
         "Error creating course: " +
         (err.response?.data?.message || err.message),
       );
@@ -90,7 +91,7 @@ const CourseManager = () => {
 
   const handleDeleteCourse = async (id) => {
     if (
-      !confirm(
+      !window.confirm(
         "Are you sure you want to delete this course? This will remove all faculty assignments for it.",
       )
     )
@@ -99,7 +100,7 @@ const CourseManager = () => {
       await deleteSubject(id);
       refreshSubjects();
     } catch (err) {
-      alert("Failed to delete course. Ensure no student marks are linked.");
+      toast.error("Failed to delete course. Ensure no student marks are linked.");
     }
   };
 
@@ -111,21 +112,21 @@ const CourseManager = () => {
         subjectId: selectedSubjectId,
         section: assignSection,
       });
-      alert("Faculty Assigned Successfully");
+      toast.success("Faculty Assigned Successfully");
       setSelectedSubjectId(null);
       refreshSubjects();
     } catch (err) {
-      alert("Error assigning faculty");
+      toast.error("Error assigning faculty");
     }
   };
 
   const handleRemoveAssignment = async (assignmentId) => {
-    if (!confirm("Remove this faculty assignment?")) return;
+    if (!window.confirm("Remove this faculty assignment?")) return;
     try {
       await removeAssignment(assignmentId);
       refreshSubjects();
     } catch (err) {
-      alert("Error removing assignment");
+      toast.error("Error removing assignment");
     }
   };
 

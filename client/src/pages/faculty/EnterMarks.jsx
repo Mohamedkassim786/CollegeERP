@@ -1,4 +1,5 @@
 import CustomSelect from "../../components/CustomSelect";
+import toast from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
 import { getFacultyAssignments } from "../../services/faculty.service";
@@ -95,7 +96,7 @@ const EnterMarks = () => {
         setIsLocked(false);
       }
     } catch (err) {
-      alert("Error fetching student list");
+      toast.error("Error fetching student list");
     } finally {
       setLoading(false);
     }
@@ -103,7 +104,7 @@ const EnterMarks = () => {
 
   const handleInputChange = (studentId, field, value) => {
     if (isLocked) {
-      alert("Marks are locked by Admin. Cannot edit.");
+      toast.error("Marks are locked by Admin. Cannot edit.");
       return;
     }
 
@@ -138,12 +139,12 @@ const EnterMarks = () => {
 
   const handleSave = async () => {
     if (isLocked) {
-      alert("Marks are locked by Admin. Cannot save.");
+      toast.error("Marks are locked by Admin. Cannot save.");
       return;
     }
 
     if (students.length === 0) {
-      alert("Please load students first before saving.");
+      toast.error("Please load students first before saving.");
       return;
     }
 
@@ -153,7 +154,7 @@ const EnterMarks = () => {
         (a) => a.id === parseInt(selectedAssignmentId),
       );
       if (!assignment) {
-        alert("No assignment selected. Please reload the page.");
+        toast.error("No assignment selected. Please reload the page.");
         return;
       }
 
@@ -182,14 +183,14 @@ const EnterMarks = () => {
       });
 
       await Promise.all(promises);
-      alert("All marks saved successfully!");
+      toast.success("All marks saved successfully!");
       handleSearch(); // Refresh data
     } catch (err) {
       console.error(err);
       if (err.response?.data?.message) {
-        alert(err.response.data.message);
+        toast.error(err.response.data.message);
       } else {
-        alert("Error saving marks");
+        toast.error("Error saving marks");
       }
     } finally {
       setSaving(false);
@@ -198,7 +199,7 @@ const EnterMarks = () => {
 
   const exportToExcel = async () => {
     if (students.length === 0) {
-      alert("No data to export");
+      toast.error("No data to export");
       return;
     }
 

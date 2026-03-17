@@ -218,7 +218,7 @@ const Settings = () => {
 
   const handleToggleFaculty = async (facultyId, currentStatus) => {
     if (
-      !confirm(
+      !window.confirm(
         `Are you sure you want to ${currentStatus ? "enable" : "disable"} this account?`,
       )
     )
