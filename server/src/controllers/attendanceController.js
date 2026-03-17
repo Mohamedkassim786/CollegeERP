@@ -84,9 +84,12 @@ const submitAttendance = async (req, res) => {
 // --- Admin/Report Actions ---
 
 const getAttendanceReport = async (req, res) => {
-    const { department, year, section, fromDate, toDate, subjectId } = req.query;
+    const { department, year, section, fromDate, toDate, subjectId, studentId } = req.query;
     try {
         const where = {};
+        if (studentId) {
+            where.id = parseInt(studentId);
+        }
 
         // If subjectId is provided but no other criteria, get department/semester/section from assignment
         if (subjectId && !department && !year && !section) {
@@ -182,8 +185,72 @@ const getAttendanceReport = async (req, res) => {
     }
 };
 
+const getDepartmentAttendanceReport = async (req, res) => {
+    const { department, semester, section } = req.query;
+    try {
+        if (!department || !semester) {
+            return res.status(400).json({ message: 'department and semester are required' });
+        }
+
+        const semInt = parseInt(semester);
+
+        // Get subjects for this dept+semester
+        const subjects = await prisma.subject.findMany({
+            where: {
+                semester: semInt,
+                OR: [{ department }, { type: 'COMMON' }]
+            },
+            orderBy: { code: 'asc' }
+        });
+
+        // Get students
+        const students = await prisma.student.findMany({
+            where: {
+                department,
+                semester: semInt,
+                ...(section ? { section } : {}),
+                status: 'ACTIVE'
+            },
+            include: {
+                attendance: true
+            },
+            orderBy: { rollNo: 'asc' }
+        });
+
+        const report = students.map(student => {
+            const subjectData = subjects.map(subject => {
+                const subAtt = student.attendance.filter(a => a.subjectId === subject.id);
+                const total = subAtt.length;
+                const present = subAtt.filter(a => a.status === 'PRESENT' || a.status === 'OD').length;
+                const percent = total > 0 ? parseFloat(((present / total) * 100).toFixed(1)) : 0;
+                return {
+                    subjectId: subject.id,
+                    subjectCode: subject.code,
+                    subjectName: subject.name,
+                    total,
+                    present,
+                    percent
+                };
+            });
+
+            return {
+                studentId: student.id,
+                rollNo: student.rollNo,
+                name: student.name,
+                section: student.section,
+                subjects: subjectData
+            };
+        });
+
+        res.json(report);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getStudentsForAttendance,
     submitAttendance,
-    getAttendanceReport
+    getAttendanceReport,
+    getDepartmentAttendanceReport
 };

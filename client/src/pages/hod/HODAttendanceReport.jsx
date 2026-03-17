@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { BarChart2, Users, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { getDepartmentAttendanceReport } from '../../services/attendance.service';
+import { BarChart2, Users, CheckCircle, XCircle, AlertTriangle, Download } from 'lucide-react';
+import { getDepartmentAttendanceReport, exportAttendanceExcel } from '../../services/attendance.service';
 import AuthContext from '../../context/AuthProvider';
 import CustomSelect from '../../components/CustomSelect';
 import { getDepartments, getSections } from '../../services/department.service';
@@ -43,14 +43,29 @@ const HODAttendanceReport = () => {
         try {
             const res = await getDepartmentAttendanceReport({ 
                 department: dept, 
-                semester, 
+                semester: parseInt(semester), 
                 section: section || undefined 
             });
-            setReport(res.data);
+            setReport(Array.isArray(res.data) ? res.data : res.data.students || []);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to load report.');
         }
         setLoading(false);
+    };
+
+    const handleExport = async () => {
+        try {
+            const res = await exportAttendanceExcel({ department: dept, semester: parseInt(semester), section: section || undefined });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Attendance_${dept}_Sem${semester}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            setError('Export failed. Please try again.');
+        }
     };
 
     const getColor = (pct) => {
@@ -99,6 +114,13 @@ const HODAttendanceReport = () => {
                     className="bg-[#003B73] text-white px-8 h-[52px] rounded-[14px] font-black text-sm hover:bg-[#002850] transition-all shadow-lg shadow-blue-900/10 flex items-center gap-2">
                     <Users size={18} /> LOAD REPORT
                 </button>
+
+                {report.length > 0 && (
+                    <button onClick={handleExport}
+                        className="bg-white border border-[#003B73] text-[#003B73] px-6 h-[52px] rounded-[14px] font-black text-sm hover:bg-blue-50 transition-all flex items-center gap-2">
+                        <Download size={18} /> EXPORT
+                    </button>
+                )}
             </div>
 
             {error && (

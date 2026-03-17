@@ -37,15 +37,15 @@ export const GRADE_POINTS = {
 
 /** Fixed grade colours for badge display */
 export const GRADE_COLORS = {
-    O:   'bg-emerald-100 text-emerald-700',
+    O: 'bg-emerald-100 text-emerald-700',
     'A+': 'bg-green-100 text-green-700',
-    A:   'bg-blue-100 text-blue-700',
+    A: 'bg-blue-100 text-blue-700',
     'B+': 'bg-cyan-100 text-cyan-700',
-    B:   'bg-yellow-100 text-yellow-700',
-    C:   'bg-orange-100 text-orange-700',
-    U:   'bg-red-100 text-red-700',
-    RA:  'bg-red-100 text-red-700',
-    SA:  'bg-gray-100 text-gray-600',
+    B: 'bg-yellow-100 text-yellow-700',
+    C: 'bg-orange-100 text-orange-700',
+    U: 'bg-red-100 text-red-700',
+    RA: 'bg-red-100 text-red-700',
+    SA: 'bg-gray-100 text-gray-600',
 };
 
 /** Anna University attendance thresholds */
@@ -117,6 +117,8 @@ export const ROUTES = {
         NOTIFICATIONS: '/hod/notifications',
         ANNOUNCEMENTS: '/hod/announcements',
         SETTINGS: '/hod/settings',
+        DEPT_ATTENDANCE: '/hod/dept-attendance',
+        ATTENDANCE_ELIGIBILITY: '/hod/attendance-eligibility',
     },
 };
 
@@ -139,12 +141,12 @@ export const EXAM_SESSIONS = [
 export const REGULATIONS = ['2021', '2017', '2013'];
 
 export const SEMESTER_OPTIONS = {
-  'B.E.':   [1, 2, 3, 4, 5, 6, 7, 8],
-  'B.Tech': [1, 2, 3, 4, 5, 6, 7, 8],
-  'M.E.':   [1, 2, 3, 4],
-  'M.Tech': [1, 2, 3, 4],
-  'MBA':    [1, 2, 3, 4],
-  'MCA':    [1, 2, 3, 4, 5, 6],
+    'B.E.': [1, 2, 3, 4, 5, 6, 7, 8],
+    'B.Tech': [1, 2, 3, 4, 5, 6, 7, 8],
+    'M.E.': [1, 2, 3, 4],
+    'M.Tech': [1, 2, 3, 4],
+    'MBA': [1, 2, 3, 4],
+    'MCA': [1, 2, 3, 4, 5, 6],
 }
 
 export const ALLOWED_DEGREES = ['B.E.', 'B.Tech', 'M.E.', 'M.Tech', 'MBA', 'MCA']

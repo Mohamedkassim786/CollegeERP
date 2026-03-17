@@ -513,7 +513,7 @@ const StudentManager = () => {
       setStudentsList(studentsList.filter((s) => s.id !== id));
       toast.success("Student deleted");
     } catch (err) {
-      toast.error("Failed to delete student");
+      handleApiError(err, "Failed to delete student");
     }
   };
 

@@ -98,6 +98,7 @@ export const hodMenu = [
         { key: 'hod-stu',   label: 'Student Overview', path: '/hod/students',        icon: Users },
         { key: 'hod-att',   label: 'Dept Attendance',  path: '/hod/dept-attendance', icon: Activity },
         { key: 'hod-notif', label: 'Notifications',    path: '/hod/notifications',   icon: Bell },
+        { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
     ]},
     { key: 'hod-ann',  label: 'Announcements', path: '/hod/announcements',   icon: Bell },
     { key: 'hod-set',  label: 'Settings',       path: '/hod/settings',        icon: SettingsIcon },
@@ -110,6 +111,7 @@ export const hodWithSubjectsMenu = [
         { key: 'hod-stu',   label: 'Student Overview', path: '/hod/students',        icon: Users },
         { key: 'hod-att',   label: 'Dept Attendance',  path: '/hod/dept-attendance', icon: Activity },
         { key: 'hod-notif', label: 'Notifications',    path: '/hod/notifications',   icon: Bell },
+        { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
     ]},
     { key: 'hod-teach', label: 'My Teaching', icon: BookOpen, isGroup: true, children: [
         { key: 'hod-tt',  label: 'My Timetable',   path: '/hod/timetable',   icon: Calendar },

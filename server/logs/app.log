@@ -4585,3 +4585,52 @@ Unknown field `employeeId` for select statement on model `User`. Available optio
 [2026-03-16T09:28:57.591Z] [INFO] - Local:   http://localhost:3000
 [2026-03-16T09:28:57.592Z] [INFO] - Network: http://192.168.1.8:3000
 [2026-03-16T09:28:57.611Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T05:59:11.429Z] [INFO] Server running on:
+[2026-03-17T05:59:11.430Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T05:59:11.431Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T05:59:11.561Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T05:59:31.315Z] [INFO] Login: admin (ADMIN)
+[2026-03-17T06:05:18.166Z] [INFO] Server running on:
+[2026-03-17T06:05:18.168Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:05:18.168Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:05:18.201Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:06:19.659Z] [INFO] Server running on:
+[2026-03-17T06:06:19.660Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:06:19.661Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:06:19.686Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:06:33.443Z] [INFO] Server running on:
+[2026-03-17T06:06:33.445Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:06:33.445Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:06:33.474Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:10:09.160Z] [INFO] Server running on:
+[2026-03-17T06:10:09.162Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:10:09.163Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:10:09.162Z] [INFO] Server running on:
+[2026-03-17T06:10:09.164Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:10:09.165Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:10:09.194Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:10:09.197Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:14:52.806Z] [INFO] Server running on:
+[2026-03-17T06:14:52.808Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:14:52.809Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:14:52.810Z] [INFO] Server running on:
+[2026-03-17T06:14:52.812Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:14:52.813Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:14:52.853Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:14:52.860Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:16:44.924Z] [INFO] Server running on:
+[2026-03-17T06:16:44.926Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:16:44.927Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:16:44.949Z] [INFO] Server running on:
+[2026-03-17T06:16:44.951Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:16:44.952Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:16:44.969Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:16:44.995Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:17:42.632Z] [INFO] Server running on:
+[2026-03-17T06:17:42.634Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:17:42.635Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:17:42.645Z] [INFO] Server running on:
+[2026-03-17T06:17:42.647Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:17:42.648Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:17:42.671Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:17:42.691Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)

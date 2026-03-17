@@ -1,5 +1,6 @@
 import CustomSelect from "../../../components/CustomSelect";
 import { useState, useEffect } from "react";
+import toast from 'react-hot-toast';
 import { getAdminAttendanceReport, exportAttendanceExcel } from "../../../services/attendance.service";
 import { getDepartments } from "../../../services/department.service";
 import {
@@ -53,7 +54,7 @@ const AttendanceReports = () => {
             setReportData(res.data.students || []);
         } catch (err) {
             console.error("Failed to fetch report", err);
-            alert("Failed to fetch report");
+            toast.error("Failed to fetch report");
         } finally {
             setLoading(false);
         }
@@ -119,7 +120,7 @@ const AttendanceReports = () => {
             window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error("Export error:", err);
-            alert("Failed to export Excel");
+            toast.error("Failed to export Excel");
         } finally {
             setExporting(false);
         }

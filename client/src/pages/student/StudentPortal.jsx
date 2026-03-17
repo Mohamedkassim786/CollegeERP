@@ -8,7 +8,6 @@ import StudentAttendance from "./StudentAttendance";
 import StudentMarks from "./StudentMarks";
 import StudentTimetable from "./StudentTimetable";
 import Announcements from "../shared/Announcements";
-import Settings from "../shared/Settings";
 
 const StudentPortal = () => {
   return (

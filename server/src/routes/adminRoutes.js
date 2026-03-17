@@ -35,7 +35,7 @@ const {
 const {
     getDepartments, getSections, createSection, deleteSection, createDepartment, updateDepartment, deleteDepartment
 } = require('../controllers/departmentController');
-const { getAttendanceReport } = require('../controllers/attendanceController');
+const { getAttendanceReport, getDepartmentAttendanceReport } = require('../controllers/attendanceController');
 const { verifyToken, isAdmin, isHod, isCOE, isChiefSecretary, isPrincipal } = require('../middleware/authMiddleware');
 const { validateStudent, validateFaculty, validateSubject, validateMarks } = require('../middleware/validation');
 const { uploadArrears, getArrears, deleteArrear, autoGenerateArrears, bulkUploadPassedOutArrears } = require('../controllers/arrearController');
@@ -127,6 +127,7 @@ router.post('/marks-approval/unapprove', unapproveMarks);
 
 // Attendance Reports
 router.get('/attendance/report', getAttendanceReport);
+router.get('/attendance-report', isHod, getDepartmentAttendanceReport);
 router.get('/attendance/export-excel', exportAttendanceExcel);
 
 router.post('/students/promote', promoteStudents);

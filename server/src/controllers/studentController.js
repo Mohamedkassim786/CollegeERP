@@ -19,8 +19,8 @@ const createStudent = async (req, res) => {
         const parsedSemester = parseInt(semester) || 1;
 
         // Relational Support Resolver
-        let targetDeptId = req.body.departmentId || null;
-        let targetSecId = req.body.sectionId || null;
+        let targetDeptId = req.body.departmentId && !isNaN(parseInt(req.body.departmentId)) ? parseInt(req.body.departmentId) : null;
+        let targetSecId = req.body.sectionId && !isNaN(parseInt(req.body.sectionId)) ? parseInt(req.body.sectionId) : null;
         let academicYearId = req.body.academicYearId;
 
         if (!academicYearId) {
@@ -133,8 +133,8 @@ const updateStudent = async (req, res) => {
         const parsedSemester = parseInt(semester) || 1;
 
         // Relational Support Resolver
-        let targetDeptId = req.body.departmentId || null;
-        let targetSecId = req.body.sectionId || null;
+        let targetDeptId = req.body.departmentId && !isNaN(parseInt(req.body.departmentId)) ? parseInt(req.body.departmentId) : null;
+        let targetSecId = req.body.sectionId && !isNaN(parseInt(req.body.sectionId)) ? parseInt(req.body.sectionId) : null;
         let academicYearId = req.body.academicYearId;
 
         if (!academicYearId) {
@@ -243,20 +243,29 @@ const deleteStudent = async (req, res) => {
             });
         }
 
+        // Find related nested records to delete safely without relation filters
+        const studentMarks = await prisma.marks.findMany({ where: { studentId }, select: { id: true }});
+        const marksIds = studentMarks.map(m => m.id);
+
+        const studentArrears = await prisma.arrear.findMany({ where: { studentId }, select: { id: true }});
+        const arrearIds = studentArrears.map(a => a.id);
+
         const dummyMappings = await prisma.subjectDummyMapping.findMany({
             where: { studentId }
         });
-        const dummyNumbers = dummyMappings.map(m => m.dummyNumber);
+        const dummyNumbers = dummyMappings.map(m => m.dummyNumber).filter(Boolean);
 
         await prisma.$transaction([
             prisma.externalMark.deleteMany({ where: { dummyNumber: { in: dummyNumbers } } }),
-            prisma.endSemMarks.deleteMany({ where: { marks: { studentId } } }),
+            prisma.endSemMarks.deleteMany({ where: { marksId: { in: marksIds } } }),
             prisma.marks.deleteMany({ where: { studentId } }),
             prisma.studentAttendance.deleteMany({ where: { studentId } }),
+            prisma.attendanceEligibility.deleteMany({ where: { studentId } }),
             prisma.subjectDummyMapping.deleteMany({ where: { studentId } }),
             prisma.semesterResult.deleteMany({ where: { studentId } }),
             prisma.hallAllocation.deleteMany({ where: { studentId } }),
-            prisma.arrearAttempt.deleteMany({ where: { arrear: { studentId } } }),
+            prisma.markAuditLog.deleteMany({ where: { studentId } }),
+            prisma.arrearAttempt.deleteMany({ where: { arrearId: { in: arrearIds } } }),
             prisma.arrear.deleteMany({ where: { studentId } }),
             prisma.student.delete({ where: { id: studentId } })
         ]);
