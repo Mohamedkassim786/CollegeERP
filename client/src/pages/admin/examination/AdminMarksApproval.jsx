@@ -33,6 +33,7 @@ const AdminMarksApproval = () => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [subjectMarks, setSubjectMarks] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchSubjectsStatus();
@@ -123,6 +124,7 @@ const AdminMarksApproval = () => {
     if (selectedStudents.length === 0) return;
 
     setSubmitting(true);
+    const action = lock ? 'Approval & Lock' : 'Approval';
 
     try {
       await approveMarks({
@@ -135,6 +137,8 @@ const AdminMarksApproval = () => {
       fetchSubjectMarks(selectedSubject.subjectId);
     } catch (error) {
       toast.error("Error approving marks");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -152,6 +156,8 @@ const AdminMarksApproval = () => {
       fetchSubjectMarks(selectedSubject.subjectId);
     } catch (error) {
       toast.error("Error unlocking marks");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -169,6 +175,8 @@ const AdminMarksApproval = () => {
       fetchSubjectMarks(selectedSubject.subjectId);
     } catch (error) {
       toast.error("Error reverting approval");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -296,7 +304,7 @@ const AdminMarksApproval = () => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12 pt-10 border-t border-gray-50">
                 <button
                   onClick={() => setConfirmState({ action: 'approve', lock: false, message: `Approve ${selectedStudents.length} students for ${selectedExam.toUpperCase()}?` })}
-                  disabled={selectedStudents.length === 0}
+                  disabled={selectedStudents.length === 0 || submitting}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-emerald-600 text-white rounded-[24px] hover:bg-emerald-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-emerald-900/20 hover:-translate-y-1"
                 >
                   <CheckCircle size={22} />
@@ -304,7 +312,7 @@ const AdminMarksApproval = () => {
                 </button>
                 <button
                   onClick={() => setConfirmState({ action: 'approve', lock: true, message: `Approve & LOCK ${selectedStudents.length} students for ${selectedExam.toUpperCase()}? This is permanent.` })}
-                  disabled={selectedStudents.length === 0}
+                  disabled={selectedStudents.length === 0 || submitting}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-[24px] hover:bg-blue-700 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-blue-900/20 hover:-translate-y-1"
                 >
                   <Lock size={22} />
@@ -312,7 +320,7 @@ const AdminMarksApproval = () => {
                 </button>
                 <button
                   onClick={() => setConfirmState({ action: 'unlock', message: `Unlock ${selectedExam.toUpperCase()} marks for selected students? Faculty will be able to edit.` })}
-                  disabled={selectedStudents.length === 0}
+                  disabled={selectedStudents.length === 0 || submitting}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-orange-500 text-white rounded-[24px] hover:bg-orange-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-orange-900/20 hover:-translate-y-1"
                 >
                   <Unlock size={22} />
@@ -320,7 +328,7 @@ const AdminMarksApproval = () => {
                 </button>
                 <button
                   onClick={() => setConfirmState({ action: 'unapprove', message: `Revert approval for ${selectedExam.toUpperCase()}? Marks will return to PENDING state.` })}
-                  disabled={selectedStudents.length === 0}
+                  disabled={selectedStudents.length === 0 || submitting}
                   className="flex items-center justify-center gap-3 px-8 py-5 bg-red-500 text-white rounded-[24px] hover:bg-red-600 disabled:opacity-30 disabled:translate-y-0 transition-all font-black shadow-lg shadow-red-900/20 hover:-translate-y-1"
                 >
                   <RotateCcw size={22} />

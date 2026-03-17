@@ -577,155 +577,470 @@ exports.generateConsolidatedTabulationSheet = (res, data) => {
 // ── Hall Ticket PDF ───────────────────────────────────────────────────────────
 exports.generateHallTicket = (res, data) => {
     const students = data.students || [];
+    const sessionName = data.sessionName || '';
     const doc = new PDFDocument({ margin: 0, size: 'A4' });
     doc.pipe(res);
 
     const PW = doc.page.width;
     const PH = doc.page.height;
     const TICKET_H = PH / 2;
-    const M = 25;
+    const M = 28;
     const CW = PW - 2 * M;
 
     const drawTicket = (student, startY) => {
-        doc.rect(M, startY + 5, CW, TICKET_H - 15).stroke();
-        let y = startY + 10;
-        if (fs.existsSync(MIET_LOGO)) doc.image(MIET_LOGO, M + 5, y, { width: 45, height: 45 });
-        doc.font('Helvetica-Bold').fontSize(13).text(COLLEGE_NAME, M + 55, y + 2, { width: CW - 55, align: 'center' });
-        doc.fontSize(10).text(COLLEGE_NAME_BOLD, M + 55, y + 17, { width: CW - 55, align: 'center' });
-        doc.font('Helvetica').fontSize(8).text(COLLEGE_SUB, M + 55, y + 30, { width: CW - 55, align: 'center' });
-        y += 52;
-        doc.moveTo(M + 5, y).lineTo(M + CW - 5, y).stroke();
-        y += 5;
-        doc.font('Helvetica-Bold').fontSize(11).fillColor('#000').text('HALL TICKET', M, y, { width: CW, align: 'center', underline: true });
+        // Outer border
+        doc.rect(M, startY + 4, CW, TICKET_H - 12).stroke();
+        let y = startY + 8;
+
+        // Logo
+        const LOGO_SZ = 50;
+        if (fs.existsSync(MIET_LOGO)) {
+            doc.image(MIET_LOGO, M + 6, y, { width: LOGO_SZ, height: LOGO_SZ });
+        }
+
+        // Photo box (top-right)
+        const PHOTO_W = 65, PHOTO_H = 75;
+        const photoX = M + CW - PHOTO_W - 10;
+        doc.rect(photoX, y, PHOTO_W, PHOTO_H).stroke();
+        
+        const photoPath = student.photo ? path.join(__dirname, '../../uploads/students', student.photo) : null;
+        if (photoPath && fs.existsSync(photoPath)) {
+            doc.image(photoPath, photoX + 2, y + 2, { fit: [PHOTO_W - 4, PHOTO_H - 4] });
+        } else {
+            doc.fontSize(7).text('PHOTO', photoX, y + PHOTO_H / 2, { width: PHOTO_W, align: 'center' });
+        }
+
+        // College header (centered between logo and photo)
+        const TX = M + LOGO_SZ + 8;
+        const TW = CW - LOGO_SZ - PHOTO_W - 20;
+        doc.font('Helvetica-Bold').fontSize(13).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', TX, y + 2, { width: TW, align: 'center' });
+        doc.fontSize(10).text('(Autonomous)', TX, y + 16, { width: TW, align: 'center' });
+        doc.font('Helvetica').fontSize(8).text('Affiliated to Anna University, Chennai', TX, y + 28, { width: TW, align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(8).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', TX, y + 39, { width: TW, align: 'center' });
+        doc.fontSize(8).text(`UG/PG DEGREE END SEMESTER EXAMINATIONS ${sessionName}`, TX, y + 50, { width: TW, align: 'center' });
+        y += LOGO_SZ + 8;
+
+        // Divider
+        doc.moveTo(M + 4, y).lineTo(M + CW - 4, y).stroke();
+        y += 4;
+
+        // HALL TICKET title
+        doc.font('Helvetica-Bold').fontSize(12).text('HALL TICKET', M, y, { width: CW, align: 'center', underline: true });
         y += 16;
 
-        const PHOTO_W = 65, PHOTO_H = 80;
-        const INFO_W = CW - PHOTO_W - 20;
-        const photoX = M + CW - PHOTO_W - 5, photoY = y;
-        doc.rect(photoX, photoY, PHOTO_W, PHOTO_H).stroke();
-        if (student.photo && fs.existsSync(student.photo)) {
-            doc.image(student.photo, photoX + 2, photoY + 2, { fit: [PHOTO_W - 4, PHOTO_H - 4] });
-        } else {
-            doc.font('Helvetica').fontSize(7).fillColor('#aaa').text('PHOTO', photoX, photoY + PHOTO_H / 2 - 5, { width: PHOTO_W, align: 'center' });
-            doc.fillColor('#000');
-        }
-        const fields = [
-            ['Name', student.name], 
-            ['Register No.', student.registerNumber || student.rollNo], 
-            ['Degree', student.departmentRef?.degree || 'B.E.'],
-            ['Department', student.departmentRef?.name || student.department], 
-            ['Semester', student.semester], 
-            ['Section', student.section], 
-            ['Regulation', student.regulation || '2021']
-        ];
-        doc.font('Helvetica').fontSize(9);
-        fields.forEach(([label, val], i) => {
-            const fy = y + i * 13;
-            doc.font('Helvetica-Bold').text(`${label}:`, M + 5, fy, { width: 85 });
-            doc.font('Helvetica').text(String(val || ''), M + 92, fy, { width: INFO_W - 92 });
-        });
-        y += PHOTO_H + 6;
+        // Student info table (bordered)
+        const infoTableW = CW - PHOTO_W - 14;
+        const labelW = 90, valueW = infoTableW - labelW;
+        const rowH = 14;
 
-        const subH = 17;
+        const infoRows = [
+            ['Registration Number', student.registerNumber || student.rollNo, 'Semester', String(student.semester || '')],
+            ['Name', student.name || '', null, null],
+            ['Degree & Branch', `${student.departmentRef?.degree || 'B.E.'} ${student.departmentRef?.name || student.department || ''}`, null, null],
+            ['Date of Birth', student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-IN') : '', null, null],
+        ];
+
+        infoRows.forEach((row) => {
+            const [l1, v1, l2, v2] = row;
+            doc.rect(M, y, infoTableW, rowH).stroke();
+            doc.font('Helvetica-Bold').fontSize(8).text(l1, M + 2, y + 3, { width: labelW, align: 'left' });
+            doc.font('Helvetica').fontSize(8).text(String(v1 || ''), M + labelW, y + 3, { width: l2 ? valueW / 2 : valueW, align: 'left' });
+            if (l2) {
+                doc.moveTo(M + labelW + valueW / 2, y).lineTo(M + labelW + valueW / 2, y + rowH).stroke();
+                doc.font('Helvetica-Bold').fontSize(8).text(l2, M + labelW + valueW / 2 + 2, y + 3, { width: 55 });
+                doc.font('Helvetica').fontSize(8).text(String(v2 || ''), M + labelW + valueW / 2 + 57, y + 3, { width: 50 });
+            }
+            y += rowH;
+        });
+
+        y += 4;
+
+        // Subjects table header
+        const colW = [28, 68, 55, 65, 50, 280];
+        const hdrs = ['Sl.No', 'Date', 'Session', 'Sub.Code', 'Semester', 'Subject Title'];
+        const subH = 15;
         doc.rect(M, y, CW, subH).fillAndStroke('#003B73', '#000');
         doc.fillColor('#fff').font('Helvetica-Bold').fontSize(7.5);
-        const colW = [25, 65, 170, 80, 55, 50, 50];
-        const hdrs = ['S.No', 'Code', 'Subject', 'Date', 'Session', 'Hall', 'Seat'];
         let cx = M;
-        hdrs.forEach((h, i) => { doc.text(h, cx, y + 5, { width: colW[i], align: 'center' }); cx += colW[i]; });
+        hdrs.forEach((h, i) => {
+            doc.text(h, cx + 2, y + 4, { width: colW[i] - 4, align: 'center' });
+            cx += colW[i];
+        });
         doc.fillColor('#000');
         y += subH;
 
+        // Subject rows
         (student.subjects || []).forEach((sub, idx) => {
             const fill = idx % 2 === 0 ? '#f9f9f9' : '#fff';
-            doc.rect(M, y, CW, 16).fillAndStroke(fill, '#ccc');
+            doc.rect(M, y, CW, 14).fillAndStroke(fill, '#ccc');
             doc.font('Helvetica').fontSize(7.5).fillColor('#000');
             let cx2 = M;
-            [(idx+1).toString(), sub.code||'', sub.name||'', sub.examDate||'', sub.session||'', sub.hallNumber||'', sub.seatNumber||''].forEach((v, i) => {
-                doc.text(v, cx2 + 2, y + 4, { width: colW[i] - 4, align: i < 3 ? 'left' : 'center' });
+            const vals = [
+                String(idx + 1),
+                sub.examDate || '',
+                sub.session || '',
+                sub.code || '',
+                String(student.semester || ''),
+                sub.name || ''
+            ];
+            vals.forEach((v, i) => {
+                doc.text(v, cx2 + 2, y + 3, { width: colW[i] - 4, align: i === 5 ? 'left' : 'center' });
                 cx2 += colW[i];
             });
-            y += 16;
+            y += 14;
         });
 
-        y += 10;
-        doc.font('Helvetica').fontSize(8);
-        doc.text('Student Signature: _______________', M + 5, y);
-        doc.text('Principal', M, y, { width: CW, align: 'right' });
-        doc.lineCap('round').dash(3, { space: 4 }).moveTo(M, startY + TICKET_H - 10).lineTo(M + CW, startY + TICKET_H - 10).stroke().undash();
+        y += 6;
+
+        // No. of Subjects Registered
+        y += 6;
+        doc.moveTo(M + 4, y).lineTo(M + CW - 4, y).stroke();
+        y += 4;
+        doc.font('Helvetica-Bold').fontSize(8.5).text(`No. of Subjects Registered : ${(student.subjects || []).length}`, M + 12, y);
+
+        // Signatures pinned to bottom
+        const sigY = PH - 70;
+        doc.font('Helvetica').fontSize(9);
+        doc.text('Signature of the Candidate', M + 14, sigY);
+        doc.font('Helvetica-Bold').text('Controller of Examinations', M, sigY, { width: CW - 14, align: 'right' });
+        
+        // Note pinned to bottom
+        doc.fontSize(7.5).font('Helvetica').text('Note: If any discrepancies are found in the Hall Ticket, report to the COE office immediately.', M + 14, sigY + 22);
+
+        // Dashed cut line
+        doc.lineCap('round').dash(3, { space: 4 })
+            .moveTo(M, startY + TICKET_H - 6).lineTo(M + CW, startY + TICKET_H - 6)
+            .stroke().undash();
     };
 
-    for (let i = 0; i < students.length; i++) {
-        if (i > 0 && i % 2 === 0) doc.addPage();
-        drawTicket(students[i], (i % 2) === 0 ? 0 : TICKET_H);
-    }
+    students.forEach((student, i) => {
+        if (i > 0) doc.addPage();
+        drawTicket(student, 0);
+    });
+    doc.end();
+};
+
+exports.generateHallApplication = (res, data) => {
+    const students = data.students || [];
+    const sessionName = data.sessionName || '';
+    const doc = new PDFDocument({ margin: 0, size: 'A4' });
+    doc.pipe(res);
+
+    const M = 30;
+    const CW = doc.page.width - 2 * M;
+
+    const drawApplication = (student) => {
+        let y = 20;
+
+        // Outer border
+        doc.rect(M, y, CW, doc.page.height - 40).stroke();
+        y += 6;
+
+        // Logo
+        const LOGO_SZ = 55;
+        if (fs.existsSync(MIET_LOGO)) {
+            doc.image(MIET_LOGO, M + 6, y, { width: LOGO_SZ, height: LOGO_SZ });
+        }
+
+        // Photo box
+        const PHOTO_W = 70, PHOTO_H = 85;
+        const photoX = M + CW - PHOTO_W - 10;
+        doc.rect(photoX, y, PHOTO_W, PHOTO_H).stroke();
+        
+        const photoPath = student.photo ? path.join(__dirname, '../../uploads/students', student.photo) : null;
+        if (photoPath && fs.existsSync(photoPath)) {
+            doc.image(photoPath, photoX + 2, y + 2, { fit: [PHOTO_W - 4, PHOTO_H - 4] });
+        } else {
+            doc.fontSize(8).text('PHOTO', photoX, y + PHOTO_H / 2, { width: PHOTO_W, align: 'center' });
+        }
+
+        // Header text
+        const TX = M + LOGO_SZ + 8;
+        const TW = CW - LOGO_SZ - PHOTO_W - 20;
+        doc.font('Helvetica-Bold').fontSize(14).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', TX, y + 2, { width: TW, align: 'center' });
+        doc.fontSize(10).text('(Autonomous)', TX, y + 18, { width: TW, align: 'center' });
+        doc.font('Helvetica').fontSize(8.5).text('Affiliated to Anna University, Chennai', TX, y + 30, { width: TW, align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(9).text(`APPLICATION FOR SEMESTER EXAMINATIONS ${sessionName}`, TX, y + 44, { width: TW, align: 'center' });
+        y += LOGO_SZ + 10;
+
+        doc.moveTo(M + 4, y).lineTo(M + CW - 4, y).stroke();
+        y += 6;
+
+        // Student info — 2 column layout
+        const halfW = (CW - 10) / 2;
+        const lw = 95, vw = halfW - lw - 5;
+        const rowH = 16;
+
+        const leftInfo = [
+            ['Register Number', student.registerNumber || student.rollNo],
+            ["Student's Name", student.name || ''],
+            ['Date Of Birth', student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-IN') : ''],
+            ['Degree & Branch', `${student.departmentRef?.degree || 'B.E.'} - ${student.departmentRef?.name || student.department || ''}`],
+        ];
+        const rightInfo = [
+            ['Year/Semester', `${student.year || ''} / ${student.semester || ''}`],
+            ['Gender', student.gender || ''],
+            ['Regulations', student.regulation || '2021'],
+            ['Mobile Number', student.phoneNumber || ''],
+        ];
+
+        leftInfo.forEach((row, i) => {
+            const fy = y + i * rowH;
+            doc.rect(M + 4, fy, halfW, rowH).stroke();
+            doc.font('Helvetica-Bold').fontSize(8).text(`: ${row[0]}`, M + 6, fy + 4, { width: lw });
+            doc.font('Helvetica').fontSize(8).text(`: ${String(row[1] || '')}`, M + 6 + lw, fy + 4, { width: vw });
+        });
+        rightInfo.forEach((row, i) => {
+            const fy = y + i * rowH;
+            const rx = M + 4 + halfW + 2;
+            doc.rect(rx, fy, halfW, rowH).stroke();
+            doc.font('Helvetica-Bold').fontSize(8).text(row[0], rx + 2, fy + 4, { width: lw });
+            doc.font('Helvetica').fontSize(8).text(`: ${String(row[1] || '')}`, rx + 2 + lw, fy + 4, { width: vw });
+        });
+        y += leftInfo.length * rowH + 4;
+
+        // Subject table header
+        const subjColW = [30, 65, 180, 30, 65, 170];
+        const subjHdrs = ['Sem', 'Course Code', 'Course Title', 'Sem', 'Course Code', 'Course Title'];
+        const subjH = 16;
+        doc.rect(M + 4, y, CW - 8, subjH).fillAndStroke('#e8e8e8', '#000');
+        doc.fillColor('#000').font('Helvetica-Bold').fontSize(8);
+        let sx = M + 4;
+        subjHdrs.forEach((h, i) => {
+            doc.text(h, sx + 2, y + 4, { width: subjColW[i] - 4, align: 'center' });
+            sx += subjColW[i];
+        });
+        y += subjH;
+
+        // Sort subjects: theory, lab/practical, arrear
+        const subjects = student.subjects || [];
+        const theorySubjects = subjects.filter(s => s.subjectCategory === 'THEORY' || s.subjectCategory === 'INTEGRATED');
+        const labSubjects = subjects.filter(s => s.subjectCategory === 'LAB');
+        const arrearSubjects = subjects.filter(s => s.isArrear);
+        const allSubjects = [...theorySubjects, ...labSubjects, ...arrearSubjects];
+
+        // Two-column rows
+        const half = Math.ceil(allSubjects.length / 2);
+        const leftSubjects = allSubjects.slice(0, half);
+        const rightSubjects = allSubjects.slice(half);
+        const maxRows = Math.max(leftSubjects.length, rightSubjects.length);
+
+        for (let i = 0; i < maxRows; i++) {
+            const ls = leftSubjects[i];
+            const rs = rightSubjects[i];
+            doc.rect(M + 4, y, CW - 8, 14).stroke();
+            doc.font('Helvetica').fontSize(8).fillColor('#000');
+            let cx = M + 4;
+            // Left side
+            doc.text(ls ? String(ls.semester || student.semester || '') : '', cx + 2, y + 3, { width: subjColW[0] - 4, align: 'center' }); cx += subjColW[0];
+            doc.text(ls ? ls.code || '' : '', cx + 2, y + 3, { width: subjColW[1] - 4, align: 'center' }); cx += subjColW[1];
+            doc.text(ls ? ls.name || '' : '', cx + 2, y + 3, { width: subjColW[2] - 4, align: 'left' }); cx += subjColW[2];
+            // Right side
+            doc.text(rs ? String(rs.semester || student.semester || '') : '', cx + 2, y + 3, { width: subjColW[3] - 4, align: 'center' }); cx += subjColW[3];
+            doc.text(rs ? rs.code || '' : '', cx + 2, y + 3, { width: subjColW[4] - 4, align: 'center' }); cx += subjColW[4];
+            doc.text(rs ? rs.name || '' : '', cx + 2, y + 3, { width: subjColW[5] - 4, align: 'left' });
+            y += 14;
+        }
+
+        // Pinned to bottom sections (Total -> Decl -> Sigs -> Note)
+        const footerStartY = doc.page.height - 200;
+        let fy = footerStartY;
+
+        // Totals row (Relative to Bottom)
+        const theoryTotal = theorySubjects.length + (allSubjects.filter(s => s.isArrear && s.subjectCategory !== 'LAB').length);
+        const practicalTotal = labSubjects.length + (allSubjects.filter(s => s.isArrear && s.subjectCategory === 'LAB').length);
+        const totalPapers = allSubjects.length;
+
+        doc.rect(M + 4, fy, CW - 8, 16).fillAndStroke('#f0f0f0', '#000');
+        doc.fillColor('#000').font('Helvetica-Bold').fontSize(8);
+        const totW = (CW - 8) / 6;
+        doc.text('Theory Total', M + 4, fy + 4, { width: totW * 2, align: 'center' });
+        doc.text(String(theoryTotal), M + 4 + totW * 2, fy + 4, { width: totW, align: 'center' });
+        doc.text('Practical Total', M + 4 + totW * 3, fy + 4, { width: totW, align: 'center' });
+        doc.text(String(practicalTotal), M + 4 + totW * 4, fy + 4, { width: totW * 0.5, align: 'center' });
+        doc.text('Total No of Papers', M + 4 + totW * 4.5, fy + 4, { width: totW, align: 'center' });
+        doc.text(String(totalPapers), M + 4 + totW * 5.5, fy + 4, { width: totW * 0.5, align: 'center' });
+        fy += 24;
+
+        // Declaration
+        doc.font('Helvetica').fontSize(7.5).text('I here by declare that the particulars furnished by me in this application are correct', M + 6, fy, { width: 160 });
+
+        // 3 Signature boxes
+        const sigBoxW = (CW - 8) / 3;
+        ['Signature of the Candidate', 'Signature of the Class Coordinator', 'Recommended & forwarded to Office of CoE by HoD'].forEach((label, i) => {
+            const bx = M + 4 + i * sigBoxW;
+            doc.rect(bx, fy, sigBoxW, 55).stroke();
+            doc.font('Helvetica').fontSize(7).text(label, bx + 2, fy + 42, { width: sigBoxW - 4, align: 'center' });
+        });
+        fy += 62;
+
+        // Session times
+        doc.font('Helvetica-Bold').fontSize(8.5);
+        doc.text('FN - FORENOON 10.00 AM - 1.00 PM', M + 6, fy);
+        doc.text('AN - AFTERNOON 2.00 PM - 5.00 PM', M + 6, fy, { width: CW - 10, align: 'right' });
+        fy += 16;
+
+        // Accepted/Rejected
+        doc.rect(M + 4, fy, CW - 8, 20).stroke();
+        doc.font('Helvetica-Bold').fontSize(10).text('ACCEPTED / REJECTED', M + 4, fy + 5, { width: CW - 8, align: 'center' });
+        fy += 24;
+
+        // If Rejected line
+        doc.font('Helvetica').fontSize(8).text('If Rejected ,', M + 6, fy + 4);
+        doc.rect(M + 70, fy, CW - 80, 18).stroke();
+        fy += 22;
+
+        // Note
+        doc.fontSize(7.5).text('Note : 1. If any discrepancy is found in the form, report to office of CoE immediately.', M + 6, fy + 3);
+        doc.font('Helvetica-Bold').text('Controller of Examinations', M + 6, fy + 3, { width: CW - 10, align: 'right' });
+    };
+
+    students.forEach((student, idx) => {
+        if (idx > 0) doc.addPage();
+        drawApplication(student);
+    });
     doc.end();
 };
 
 // ── Exam Attendance Sheet PDF ─────────────────────────────────────────────────
 exports.generateExamAttendanceSheet = (res, data) => {
     const entries = data.entries || [];
-    const PAGE_ROWS = 26;
+    const PAGE_ROWS = 20;
     const pages = [];
     for (let i = 0; i < entries.length; i += PAGE_ROWS) pages.push(entries.slice(i, i + PAGE_ROWS));
     if (pages.length === 0) pages.push([]);
+    const totalPages = pages.length;
 
     const doc = new PDFDocument({ margin: 0, size: 'A4' });
     doc.pipe(res);
-    const M = 30, CW = 535;
+    const M = 30;
+    const CW = doc.page.width - 2 * M;
 
     pages.forEach((rows, pageIdx) => {
         if (pageIdx > 0) doc.addPage();
-        let y = 25;
-        y = drawMIETHeader(doc, y);
-        const year = new Date().getFullYear();
-        doc.font('Helvetica-Bold').fontSize(11).text(`END SEMESTER EXAMINATIONS NOV/DEC ${year}`, M, y, { width: CW, align: 'center' });
-        y += 14;
-        doc.fontSize(12).text('EXAM ATTENDANCE SHEET', M, y, { width: CW, align: 'center', underline: true });
-        y += 20;
+        let y = 20;
 
-        const c1 = M, c2 = M + 100, c3 = M + 280, c4 = M + 390;
-        doc.fontSize(9.5);
-        doc.font('Helvetica-Bold').text('SUBJECT:', c1, y); doc.font('Helvetica').text(`${data.subject?.code || ''} – ${data.subject?.name || ''}`, c2, y);
-        doc.font('Helvetica-Bold').text('DATE:', c3, y); doc.font('Helvetica').text(data.date || '', c4, y);
-        y += 14;
-        doc.font('Helvetica-Bold').text('Hall No:', c1, y); doc.font('Helvetica').text(data.hallNumber || '', c2, y);
-        doc.font('Helvetica-Bold').text('DEGREE:', c3, y); doc.font('Helvetica').text(data.subject?.departmentRef?.degree || 'B.E.', c4, y);
-        y += 14;
-        doc.font('Helvetica-Bold').text('SESSION:', c1, y); doc.font('Helvetica').text(data.session || 'FN', c2, y);
-        y += 20;
+        // Logo
+        const LOGO_SZ = 55;
+        if (fs.existsSync(MIET_LOGO)) {
+            doc.image(MIET_LOGO, M, y, { width: LOGO_SZ, height: LOGO_SZ });
+        }
 
-        const rowH = 20;
-        const colW = [28, 50, 130, 90, 180, 57];
-        const hdrs = ['S.No', 'Seat', 'Register No.', 'Dummy No.', 'Name', 'Signature'];
+        // Header text — centered
+        const TX = M + LOGO_SZ + 8;
+        const TW = CW - LOGO_SZ - 8;
+         doc.font('Helvetica-Bold').fontSize(13).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', TX, y + 2, { width: TW, align: 'center' });
+        doc.fontSize(10).text('(Autonomous)', TX, y + 16, { width: TW, align: 'center' });
+        doc.font('Helvetica').fontSize(8).text('Affiliated to Anna University, Chennai', TX, y + 28, { width: TW, align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(8).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', TX, y + 39, { width: TW, align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(10).text(`ATTENDANCE FOR END SEMESTER EXAMINATIONS ${data.sessionName || 'NOV - ' + new Date().getFullYear()}`, TX, y + 44, { width: TW, align: 'center' });
+        y += LOGO_SZ + 10;
 
-        doc.rect(M, y, CW, rowH).fillAndStroke('#003B73', '#000');
-        doc.fillColor('#fff').font('Helvetica-Bold').fontSize(8.5);
+        doc.moveTo(M, y).lineTo(M + CW, y).stroke();
+        y += 8;
+
+        // Info fields
+        const c1 = M, c2 = M + 110, c3 = M + 290, c4 = M + 380;
+        doc.font('Helvetica-Bold').fontSize(9);
+        doc.text('Degree & Branch', c1, y);
+        doc.font('Helvetica').text(`: ${data.department || ''}`, c2, y);
+        doc.font('Helvetica-Bold').text('Semester', c3, y);
+        doc.font('Helvetica').text(`: ${data.semester || ''}`, c4, y);
+        y += 14;
+        doc.font('Helvetica-Bold').text('Subject Code', c1, y);
+        doc.font('Helvetica').text(`: ${data.subject?.code || ''}`, c2, y);
+        doc.font('Helvetica-Bold').text('Date of Exam/Session', c3, y);
+        doc.font('Helvetica').text(`: ${data.dateSession || ''}`, c4, y);
+        y += 14;
+        doc.font('Helvetica-Bold').text('Subject Name', c1, y);
+        doc.font('Helvetica').text(`: ${data.subject?.name || ''}`, c2, y);
+        y += 16;
+
+        // Table header
+        // Columns: S.No | Register Number | Name | Answer Booklet No (5 cells) | HS To Write AB | Signature | Photo
+        const colW = [30, 100, 150, 20, 20, 20, 20, 20, 55, 65, 35];
+        const hdrs = ['S.No', 'Register\nNumber', 'Name of the\nCandidate', '', '', 'Answer Booklet No', '', '', 'HS To Write\nAB For Absent', 'Signature of\nthe Candidate', 'Photo'];
+        const rowH = 30;
+
+        doc.rect(M, y, CW, rowH).stroke();
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000');
+
+        // Draw Answer Booklet No spanning header
+        const abStartX = M + colW[0] + colW[1] + colW[2];
+        const abSpanW = colW[3] + colW[4] + colW[5] + colW[6] + colW[7];
+        doc.text('Answer Booklet No', abStartX, y + 4, { width: abSpanW, align: 'center' });
+        doc.moveTo(abStartX, y + 16).lineTo(abStartX + abSpanW, y + 16).stroke();
+
         let hx = M;
-        hdrs.forEach((h, i) => { doc.text(h, hx + 2, y + 6, { width: colW[i] - 4, align: 'center' }); hx += colW[i]; });
-        doc.fillColor('#000');
+        [0, 1, 2].forEach(i => {
+            doc.text(['S.No', 'Register\nNumber', 'Name of the\nCandidate'][i], hx + 2, y + 8, { width: colW[i] - 4, align: 'center' });
+            hx += colW[i];
+            doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+        });
+        // 5 small cells under Answer Booklet No
+        for (let i = 3; i <= 7; i++) {
+            doc.moveTo(hx + colW[i], y).lineTo(hx + colW[i], y + rowH).stroke();
+            hx += colW[i];
+        }
+        doc.text('HS To Write\nAB For Absent', hx + 2, y + 8, { width: colW[8] - 4, align: 'center' });
+        hx += colW[8]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+        doc.text('Signature of\nthe Candidate', hx + 2, y + 8, { width: colW[9] - 4, align: 'center' });
+        hx += colW[9]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+        doc.text('Photo', hx + 2, y + 8, { width: colW[10] - 4, align: 'center' });
         y += rowH;
 
+        // Data rows
         rows.forEach((row, ri) => {
-            const fill = ri % 2 === 0 ? '#fff' : '#f7f9ff';
-            doc.rect(M, y, CW, rowH).fillAndStroke(fill, '#ccc');
-            doc.font('Helvetica').fontSize(8.5).fillColor('#000');
+            const dataRowH = 22;
+            doc.rect(M, y, CW, dataRowH).stroke();
             let rx = M;
-            [(pageIdx * PAGE_ROWS + ri + 1).toString(), row.seatNumber||'', row.registerNumber||'', row.dummy||'', row.name||'', ''].forEach((v, i) => {
-                doc.text(v, rx + 3, y + 6, { width: colW[i] - 6 });
-                rx += colW[i];
-            });
-            y += rowH;
+            // S.No
+            doc.font('Helvetica').fontSize(8).text(String(pageIdx * PAGE_ROWS + ri + 1), rx + 2, y + 7, { width: colW[0] - 4, align: 'center' }); rx += colW[0]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+            // Register Number
+            doc.text(row.registerNumber || '', rx + 2, y + 7, { width: colW[1] - 4, align: 'center' }); rx += colW[1]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+            // Name
+            doc.text(row.name || '', rx + 2, y + 7, { width: colW[2] - 4, align: 'left' }); rx += colW[2]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+            // 5 Answer Booklet cells
+            for (let i = 3; i <= 7; i++) { rx += colW[i]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke(); }
+            // HS To Write AB
+            rx += colW[8]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+            // Signature
+            rx += colW[9]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+            // Photo box
+            if (row.photo && fs.existsSync(row.photo)) {
+                doc.image(row.photo, rx + 2, y + 2, { fit: [colW[10] - 4, dataRowH - 4] });
+            }
+            y += dataRowH;
         });
 
         y += 8;
-        doc.rect(M, y, CW, rowH).stroke();
-        doc.font('Helvetica-Bold').fontSize(9).text(`TOTAL PRESENT: _______   TOTAL ABSENT: _______   TOTAL: ${entries.length}`, M + 5, y + 6);
-        y += rowH + 22;
+        // Note
+        doc.font('Helvetica').fontSize(7.5).text('* Hall SuperIntendent should mark \'AB\' for Absent', M, y, { width: CW, align: 'right' });
+        y += 12;
+
+        // Certification box
+        const certH = 65;
+        doc.rect(M, y, CW * 0.6, certH).stroke();
+        doc.font('Helvetica-Bold').fontSize(8).text('Certified that the following particulars have been verified', M + 4, y + 4, { width: CW * 0.6 - 8 });
+        doc.font('Helvetica').fontSize(7.5);
+        doc.text('1. The Register No. in the attendance sheet with that in the hall ticket.', M + 4, y + 16);
+        doc.text('2. The identification of the candidate with the photo pasted in the hall ticket', M + 4, y + 26);
+        doc.text('3. The answer book number entered in the attendance sheet by the candidate\n   with the Serial No. on the Answer Book.', M + 4, y + 36);
+
+        // Total Present / Absent boxes
+        const totX = M + CW * 0.6 + 5;
+        const totW2 = CW * 0.4 - 5;
+        doc.rect(totX, y, totW2, certH / 2).stroke();
+        doc.font('Helvetica-Bold').fontSize(8).text('Total Present', totX + 4, y + 8, { width: totW2 / 2 });
+        doc.rect(totX, y + certH / 2, totW2, certH / 2).stroke();
+        doc.text('Total Absent', totX + 4, y + certH / 2 + 8, { width: totW2 / 2 });
+        y += certH + 8;
+
+        // Signature lines + Page number
         doc.font('Helvetica').fontSize(8);
-        doc.text('Invigilator: _______________', M, y);
-        doc.text('Hall Superintendent: _______________', M + 200, y);
-        doc.text('COE / Principal', M, y, { width: CW, align: 'right' });
+        doc.text('Signature of the Hall SuperIntendent', M, y + 10);
+        doc.text('Signature of the Chief SuperIntendent', M, y + 10, { width: CW, align: 'center' });
+        doc.font('Helvetica-Bold').text(`Page ${pageIdx + 1} of ${totalPages}`, M, y + 10, { width: CW, align: 'right' });
     });
 
     doc.end();

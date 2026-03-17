@@ -22,6 +22,7 @@ import {
 } from "../../../services/faculty.service";
 import { getDepartments } from "../../../services/department.service";
 import { toast } from "react-hot-toast";
+import { getPhotoUrl, getServerUrl } from "../../../utils/helpers";
 import { useNavigate } from "react-router-dom";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -130,12 +131,6 @@ const FacultyManager = () => {
         setView('stafflist');
     };
 
-    const getPhotoUrl = (photo) => {
-        if (!photo) return null;
-        if (photo.startsWith('http')) return photo;
-        const hostname = window.location.hostname;
-        return `http://${hostname}:3000/uploads/faculty/${photo}`;
-    };
 
     if (loading) return <SkeletonLoader type="cards" />;
 
@@ -303,7 +298,7 @@ const SpotlightBanner = ({ staff, type, absent, onViewProfile, onManageAbsence, 
                 <div className="relative group/photo">
                     <div className={`w-48 h-48 rounded-[56px] overflow-hidden border-[6px] ${absent ? 'border-red-500/30' : 'border-white/10'} shadow-2xl transition-all duration-700 group-hover/photo:rounded-[40px]`}>
                         {staff.photo ? (
-                            <img src={`http://${window.location.hostname}:3000/uploads/faculty/${staff.photo}`} className="w-full h-full object-cover scale-110 group-hover/photo:scale-100 transition-transform duration-700" />
+                            <img src={getPhotoUrl(staff.photo, 'faculty')} className="w-full h-full object-cover scale-110 group-hover/photo:scale-100 transition-transform duration-700" />
                         ) : (
                             <div className="w-full h-full bg-slate-800 flex items-center justify-center font-black text-white text-6xl">
                                 {staff.fullName.charAt(0)}
@@ -467,7 +462,7 @@ const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, 
                                 <div className="relative">
                                     <div className={`w-36 h-36 rounded-[44px] overflow-hidden border-[6px] border-white shadow-2xl transition-all duration-700 group-hover:rounded-[30px] group-hover:rotate-2 ${absentFacultyIds.includes(f.id) ? 'grayscale border-red-50' : ''}`}>
                                         {f.photo ? (
-                                            <img src={`http://${window.location.hostname}:3000/uploads/faculty/${f.photo}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                            <img src={getPhotoUrl(f.photo, 'faculty')} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                         ) : (
                                             <div className="w-full h-full bg-blue-50 flex items-center justify-center font-black text-[#003B73] text-5xl">
                                                 {f.fullName.charAt(0)}
@@ -539,7 +534,7 @@ const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const StaffModal = ({ departments, facultyList, onClose, onSave, editingStaff }) => {
     const [loading, setLoading] = useState(false);
-    const [photoPreview, setPhotoPreview] = useState(editingStaff?.photo ? `http://${window.location.hostname}:3000/uploads/faculty/${editingStaff.photo}` : null);
+    const [photoPreview, setPhotoPreview] = useState(editingStaff?.photo ? getPhotoUrl(editingStaff.photo, 'faculty') : null);
     const [formData, setFormData] = useState({
         staffId: editingStaff?.staffId || '',
         fullName: editingStaff?.fullName || '',

@@ -27,6 +27,7 @@ import {
   Building2
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { getPhotoUrl } from "../../utils/helpers";
 
 const Settings = () => {
   const { auth } = useContext(AuthContext);
@@ -251,12 +252,6 @@ const Settings = () => {
     }
   };
 
-  const getPhotoUrl = (photo) => {
-    if (!photo) return null;
-    if (photo.startsWith('http')) return photo;
-    return `http://${window.location.hostname}:3000/uploads/faculty/${photo}`;
-  };
-
   if (loading)
     return (
       <div className="p-8 text-center animate-pulse">Loading settings...</div>
@@ -318,7 +313,7 @@ const Settings = () => {
                     <div className="relative">
                       {profile?.photo ? (
                         <img 
-                          src={getPhotoUrl(profile.photo)} 
+                          src={getPhotoUrl(profile.photo, auth.role === 'STUDENT' ? 'students' : 'faculty')} 
                           alt="Profile" 
                           className="w-32 h-32 rounded-3xl object-cover shadow-2xl border-4 border-white group-hover:scale-105 transition-transform duration-300"
                         />

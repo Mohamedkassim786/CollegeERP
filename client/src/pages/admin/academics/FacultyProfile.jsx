@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getFacultyById } from '../../../services/faculty.service';
 import { handleApiError } from '../../../utils/errorHandler';
+import { getPhotoUrl } from '../../../utils/helpers';
 
 const FacultyProfile = () => {
     const { id } = useParams();
@@ -73,12 +74,6 @@ const FacultyProfile = () => {
         }
     };
 
-    const getPhotoUrl = (photo) => {
-        if (!photo) return null;
-        if (photo.startsWith('http')) return photo;
-        const hostname = window.location.hostname;
-        return `http://${hostname}:3000/uploads/faculty/${photo}`;
-    };
 
     if (loading) return (
         <div className="h-96 flex items-center justify-center">
@@ -117,7 +112,7 @@ const FacultyProfile = () => {
                         <div className="w-48 h-48 lg:w-64 lg:h-64 rounded-[70px] overflow-hidden border-[8px] border-white/10 shadow-2xl transform rotate-2 group-hover:rotate-0 transition-all duration-700 ring-4 ring-blue-500/20">
                             {faculty.photo ? (
                                 <img 
-                                    src={getPhotoUrl(faculty.photo)} 
+                                    src={getPhotoUrl(faculty.photo, 'faculty')} 
                                     alt={faculty.fullName}
                                     className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-1000"
                                 />

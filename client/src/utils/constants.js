@@ -138,6 +138,7 @@ export const EXAM_SESSIONS = [
 
 /** Regulation years */
 export const REGULATIONS = ['2021', '2017', '2013'];
+export const REGULATION_OPTIONS = REGULATIONS;
 
 export const SEMESTER_OPTIONS = {
     'B.E.': [1, 2, 3, 4, 5, 6, 7, 8],

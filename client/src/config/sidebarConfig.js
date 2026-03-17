@@ -52,15 +52,14 @@ export const adminMenu = [
         icon: ClipboardList,
         isGroup: true,
         children: [
-            // ↓ Exact order specified in the requirements
             { key: 'marks-approval', label: 'Marks Approval', path: '/admin/marks-approval', icon: CheckCircle },
             { key: 'results-consolidation', label: 'Results Consolidation', path: '/admin/results-consolidation', icon: Award },
             { key: 'attendance-eligibility', label: 'Attendance Eligibility', path: '/admin/attendance-eligibility', icon: AlertTriangle },
-            { key: 'dummy-mapping', label: 'Dummy Mapping', path: '/admin/dummy-mapping', icon: Book },
-            { key: 'external', label: 'External Staff', path: '/admin/external', icon: Users },
             { key: 'hall-allocation', label: 'Hall Allocation', path: '/admin/hall-allocation', icon: Layout },
             { key: 'hall-ticket', label: 'Hall Ticket', path: '/admin/hall-ticket', icon: Ticket },
             { key: 'exam-attendance-sheet', label: 'Exam Attendance Sheet', path: '/admin/exam-attendance-sheet', icon: ClipboardCheck },
+            { key: 'dummy-mapping', label: 'Dummy Mapping', path: '/admin/dummy-mapping', icon: Book },
+            { key: 'external', label: 'External Staff', path: '/admin/external', icon: Users },
             { key: 'dispatch', label: 'Dispatch', path: '/admin/dispatch', icon: Send },
             { key: 'provisional-results', label: 'Provisional Results', path: '/admin/provisional-results', icon: TrendingUp },
             { key: 'arrears', label: 'Arrear Management', path: '/admin/arrears', icon: ClipboardList },

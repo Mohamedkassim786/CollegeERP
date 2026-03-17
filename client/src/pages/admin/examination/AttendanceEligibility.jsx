@@ -255,7 +255,7 @@ const AttendanceEligibility = () => {
                                                     </td>
                                                     {isAdmin && (
                                                         <td className="text-center">
-                                                            {s.status === 'CONDONATION' && !s.isLocked && (
+                                                            {(s.status === 'CONDONATION' || s.status === 'DETAINED') && !s.isLocked && (
                                                                 <button
                                                                     onClick={() => setExceptionModal({ eligibilityId: s.eligibilityId, studentId: student.studentId, subjectId: s.subjectId, studentName: student.name, subjectName: s.subjectName })}
                                                                     className="px-3 py-1 text-xs font-bold bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all">
@@ -284,7 +284,7 @@ const AttendanceEligibility = () => {
             {exceptionModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full space-y-5">
-                        <h3 className="text-lg font-black text-gray-800">Grant Condonation Exception</h3>
+                        <h3 className="text-lg font-black text-gray-800">Grant Attendance Exception</h3>
                         <p className="text-sm text-gray-600">
                             Student: <span className="font-bold">{exceptionModal.studentName}</span><br />
                             Subject: <span className="font-bold">{exceptionModal.subjectName}</span>
@@ -294,7 +294,7 @@ const AttendanceEligibility = () => {
                             <textarea
                                 className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#003B73]"
                                 rows={3}
-                                placeholder="Enter reason for condonation..."
+                                placeholder="Enter reason for exception..."
                                 value={exceptionReason}
                                 onChange={e => setExceptionReason(e.target.value)}
                             />

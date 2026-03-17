@@ -184,6 +184,25 @@ export const formatRole = (role = '') =>
     role.split('_').map(capitalise).join(' ');
 
 /**
+ * Get the server base URL dynamically.
+ */
+export const getServerUrl = () => {
+    return `http://${window.location.hostname}:3000`;
+};
+
+/**
+ * Get the full URL for a student or faculty photo.
+ * @param {string} photo - Filename or full URL
+ * @param {'students'|'faculty'} type
+ * @returns {string|null}
+ */
+export const getPhotoUrl = (photo, type = 'students') => {
+    if (!photo) return null;
+    if (photo.startsWith('data:') || photo.startsWith('http')) return photo;
+    return `${getServerUrl()}/uploads/${type}/${photo}`;
+};
+
+/**
  * Download a blob as a file.
  * @param {Blob} blob
  * @param {string} filename

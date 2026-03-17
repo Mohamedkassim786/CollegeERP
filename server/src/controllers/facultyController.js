@@ -273,7 +273,7 @@ const getSubjectMarks = async (req, res) => {
 };
 
 const updateMarks = async (req, res) => {
-    const { studentId, subjectId, fieldMarks } = req.body;
+    const { studentId, subjectId, fieldMarks = {} } = req.body;
     try {
         const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
@@ -317,7 +317,7 @@ const updateMarks = async (req, res) => {
 };
 
 const bulkUpdateMarks = async (req, res) => {
-    const { updates, subjectId } = req.body; // updates = [{ studentId, ...fieldMarks }]
+    const { updates = [], subjectId } = req.body; // updates = [{ studentId, ...fieldMarks }]
     try {
         const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });

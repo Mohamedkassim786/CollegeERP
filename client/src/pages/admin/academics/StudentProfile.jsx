@@ -8,6 +8,7 @@ import {
 import { getStudent, updateStudent, getGradeSheet } from '../../../services/student.service';
 import { getDepartments } from '../../../services/department.service';
 import { handleApiError } from '../../../utils/errorHandler';
+import { getPhotoUrl } from '../../../utils/helpers';
 import AuthContext from '../../../context/AuthProvider';
 import toast from 'react-hot-toast';
 
@@ -127,11 +128,6 @@ const StudentProfile = () => {
         } catch (err) { toast.dismiss(); handleApiError(err, "Download failed"); }
     };
 
-    const getPhotoUrl = (p) => {
-        if (!p) return null;
-        if (p.startsWith('data:') || p.startsWith('http')) return p;
-        return `http://localhost:3000/uploads/students/${p}`;
-    };
 
     const goBack = () => navigate(`/${location.pathname.split('/')[1]}/students`);
 

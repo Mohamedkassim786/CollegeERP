@@ -39,7 +39,12 @@ exports.generateHallTickets = async (req, res) => {
             },
             include: {
                 student: {
-                    include: { departmentRef: true }
+                    include: { 
+                        departmentRef: true,
+                        eligibility: {
+                            where: { semester: parseInt(semester) || undefined }
+                        }
+                    }
                 },
                 hall: true,
                 subject: true
@@ -55,18 +60,35 @@ exports.generateHallTickets = async (req, res) => {
         const byStudent = {};
         for (const alloc of allocations) {
             const sid = alloc.studentId;
+            const student = alloc.student;
+            const subject = alloc.subject;
+
+            // Enforcement of Attendance Eligibility (SA Check)
+            const eligibility = student.eligibility?.find(e => e.subjectId === subject.id);
+            if (eligibility && eligibility.status === 'DETAINED' && !eligibility.isException) {
+                logger.warn(`Skipping Hall Ticket for Student ${student.rollNo}, Subject ${subject.code} - DETAINED (No Exception)`);
+                continue;
+            }
+
+            // Find specific date for this subject in this session
+            const sessionSubject = examSession.subjects.find(s => s.subjectId === subject.id);
+            const rawDate = sessionSubject?.examDate || examSession.examDate || examSession.date || Date.now();
+            const formattedDate = new Date(rawDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
             if (!byStudent[sid]) {
                 byStudent[sid] = {
-                    ...alloc.student,
+                    ...student,
                     subjects: []
                 };
             }
             byStudent[sid].subjects.push({
-                code: alloc.subject?.code,
-                name: alloc.subject?.name,
-                examDate: examSession.date ? new Date(examSession.date).toLocaleDateString('en-IN') : 'TBD',
+                code: subject?.code,
+                name: subject?.name,
+                subjectCategory: subject?.subjectCategory || 'THEORY',
+                semester: subject?.semester,
+                examDate: formattedDate,
                 session: examSession.session || 'FN',
-                hallNumber: alloc.hall?.name || alloc.hallId?.toString(),
+                hallNumber: alloc.hall?.hallName || alloc.hall?.name || '',
                 seatNumber: alloc.seatNumber || ''
             });
         }
@@ -75,7 +97,13 @@ exports.generateHallTickets = async (req, res) => {
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=hall_tickets_sem${semester}_${department || 'ALL'}.pdf`);
-        pdfService.generateHallTicket(res, { students });
+        
+        // Use month/year from session if available for the session name/header
+        const headerTitle = examSession.month && examSession.year 
+            ? `${examSession.examName} (${examSession.month} ${examSession.year})`
+            : examSession.examName || '';
+            
+        pdfService.generateHallTicket(res, { students, sessionName: headerTitle });
 
         logger.info(`Hall tickets generated for ${students.length} students — Session ${examSessionId}`);
     } catch (error) {
@@ -112,6 +140,84 @@ exports.getHallTicketStatus = async (req, res) => {
             isReady: allocCount > 0
         });
     } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.generateHallApplication = async (req, res) => {
+    try {
+        const { department, semester, section, examSessionId } = req.query;
+        if (!examSessionId) return res.status(400).json({ message: 'examSessionId is required' });
+
+        const examSession = await prisma.examSession.findUnique({
+            where: { id: parseInt(examSessionId) },
+            include: { subjects: { include: { subject: true } } }
+        });
+        if (!examSession) return res.status(404).json({ message: 'Exam session not found' });
+
+        const students = await prisma.student.findMany({
+            where: {
+                ...(department ? { department } : {}),
+                ...(semester ? { semester: parseInt(semester) } : {}),
+                ...(section ? { section } : {}),
+                status: 'ACTIVE'
+            },
+            include: {
+                departmentRef: true,
+                marks: {
+                    include: { subject: true }
+                },
+                arrears: {
+                    where: { isCleared: false },
+                    include: { subject: true }
+                },
+                eligibility: {
+                    where: { semester: parseInt(semester) }
+                }
+            },
+            orderBy: { rollNo: 'asc' }
+        });
+
+        if (!students.length) return res.status(404).json({ message: 'No students found.' });
+
+        const studentData = students.map(s => {
+            const currentSubjects = s.marks
+                .filter(m => {
+                    // Filter out DETAINED subjects without exception
+                    const eligibility = s.eligibility?.find(e => e.subjectId === m.subjectId);
+                    if (eligibility && eligibility.status === 'DETAINED' && !eligibility.isException) {
+                        return false;
+                    }
+                    return true;
+                })
+                .map(m => ({
+                    code: m.subject?.code,
+                    name: m.subject?.name,
+                    subjectCategory: m.subject?.subjectCategory || 'THEORY',
+                    semester: m.subject?.semester,
+                    isArrear: false
+                }));
+
+            const arrearSubjects = s.arrears.map(a => ({
+                code: a.subject?.code,
+                name: a.subject?.name,
+                subjectCategory: a.subject?.subjectCategory || 'THEORY',
+                semester: a.subject?.semester,
+                isArrear: true
+            }));
+
+            return {
+                ...s,
+                subjects: [...currentSubjects, ...arrearSubjects]
+            };
+        });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=hall_application_sem${semester}_${department || 'ALL'}.pdf`);
+        pdfService.generateHallApplication(res, { students: studentData, sessionName: examSession.examName || '' });
+
+    } catch (error) {
+        logger.error('generateHallApplication failed', error);
         res.status(500).json({ message: error.message });
     }
 };

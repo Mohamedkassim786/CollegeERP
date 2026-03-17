@@ -4642,3 +4642,356 @@ Unknown field `employeeId` for select statement on model `User`. Available optio
 [2026-03-17T06:38:49.312Z] [INFO] - Network: http://192.168.1.8:3000
 [2026-03-17T06:38:49.352Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
 [2026-03-17T06:38:49.351Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:18:35.678Z] [INFO] Faculty Login: E23422 (Roles: FACULTY)
+[2026-03-17T07:20:14.995Z] [INFO] Server running on:
+[2026-03-17T07:20:14.996Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:14.997Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:14.997Z] [INFO] Server running on:
+[2026-03-17T07:20:15.000Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:15.001Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:16.099Z] [INFO] Server running on:
+[2026-03-17T07:20:16.100Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:16.101Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:16.101Z] [INFO] Server running on:
+[2026-03-17T07:20:16.103Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:16.103Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:16.133Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:20:16.139Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:20:43.580Z] [INFO] Server running on:
+[2026-03-17T07:20:43.582Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:43.582Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:43.610Z] [INFO] Server running on:
+[2026-03-17T07:20:43.612Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:43.613Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:43.619Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:20:43.647Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:20:45.190Z] [INFO] Server running on:
+[2026-03-17T07:20:45.192Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:45.192Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:45.216Z] [INFO] Server running on:
+[2026-03-17T07:20:45.217Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:45.218Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:45.219Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:20:45.245Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:20:47.164Z] [INFO] Server running on:
+[2026-03-17T07:20:47.166Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:47.166Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:47.188Z] [INFO] Server running on:
+[2026-03-17T07:20:47.190Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:20:47.191Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:20:47.198Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:20:47.222Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:22:59.524Z] [INFO] Login: admin (ADMIN)
+[2026-03-17T07:24:33.937Z] [INFO] Server running on:
+[2026-03-17T07:24:33.938Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:24:33.939Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:24:33.946Z] [INFO] Server running on:
+[2026-03-17T07:24:33.947Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T07:24:33.948Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T07:24:33.966Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:24:33.975Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T07:26:29.688Z] [INFO] Faculty Login: E23422 (Roles: FACULTY)
+[2026-03-17T07:44:53.113Z] [INFO] Login: admin (ADMIN)
+[2026-03-17T07:49:01.987Z] [INFO] Faculty Login: E23422 (Roles: FACULTY)
+[2026-03-17T07:49:43.871Z] [INFO] Login: admin (ADMIN)
+[2026-03-17T08:05:37.759Z] [ERROR] getProfile error 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getProfile (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:22)
+[2026-03-17T08:05:37.794Z] [ERROR] getProfile error 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:40
+
+  54 }
+  55 
+  56 // Admin / External / Principal / Chief Secretary roles (stored in User table)
+→ 57 const user = await prisma.user.findUnique({
+       where: {
+         id: 1
+       },
+       select: {
+         id: true,
+         username: true,
+         role: true,
+         fullName: true,
+         email: true,
+         phoneNumber: true,
+         department: true,
+         designation: true,
+         employeeId: true,
+         ~~~~~~~~~~
+         dateOfBirth: true,
+         photoUrl: true,
+         isHOD: true,
+         lastPasswordChange: true,
+         lastLogin: true,
+     ?   password?: true,
+     ?   isDisabled?: true,
+     ?   forcePasswordChange?: true,
+     ?   createdAt?: true,
+     ?   activityPerformed?: true,
+     ?   announcements?: true,
+     ?   externalStaffTasks?: true,
+     ?   marksApproved?: true,
+     ?   externalMarksSubmitted?: true,
+     ?   examSessions?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `employeeId` for select statement on model `User`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getProfile (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\profileController.js:57:22)
+[2026-03-17T08:06:22.599Z] [INFO] Login: mutton (CHIEF_SECRETARY)
+[2026-03-17T08:07:45.531Z] [INFO] Login: admin (ADMIN)
+[2026-03-17T08:08:07.235Z] [INFO] Updating subjects for session 1: [1]
+[2026-03-17T08:10:37.800Z] [INFO] Hall tickets generated for 4 students — Session 1
+[2026-03-17T08:52:46.424Z] [INFO] Server running on:
+[2026-03-17T08:52:46.425Z] [INFO] Server running on:
+[2026-03-17T08:52:46.427Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:52:46.428Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:52:46.428Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:52:46.429Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:52:46.482Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:52:46.482Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:53:55.007Z] [INFO] Server running on:
+[2026-03-17T08:53:55.007Z] [INFO] Server running on:
+[2026-03-17T08:53:55.010Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:53:55.010Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:53:55.010Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:53:55.010Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:53:55.041Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:53:55.042Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:21.389Z] [INFO] Server running on:
+[2026-03-17T08:54:21.391Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:21.391Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:21.395Z] [INFO] Server running on:
+[2026-03-17T08:54:21.397Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:21.398Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:21.426Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:21.432Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:23.204Z] [INFO] Server running on:
+[2026-03-17T08:54:23.205Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:23.206Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:23.205Z] [INFO] Server running on:
+[2026-03-17T08:54:23.207Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:23.208Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:23.233Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:23.236Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:25.439Z] [INFO] Server running on:
+[2026-03-17T08:54:25.439Z] [INFO] Server running on:
+[2026-03-17T08:54:25.440Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:25.441Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:25.441Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:25.442Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:25.468Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:25.468Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:27.367Z] [INFO] Server running on:
+[2026-03-17T08:54:27.368Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:27.369Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:27.390Z] [INFO] Server running on:
+[2026-03-17T08:54:27.391Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:54:27.392Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:54:27.397Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:54:27.421Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:55:06.826Z] [INFO] Server running on:
+[2026-03-17T08:55:06.827Z] [INFO] Server running on:
+[2026-03-17T08:55:06.829Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:55:06.829Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T08:55:06.830Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:55:06.830Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T08:55:06.868Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T08:55:06.890Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:02:27.742Z] [INFO] Server running on:
+[2026-03-17T09:02:27.744Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T09:02:27.745Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T09:02:27.749Z] [INFO] Server running on:
+[2026-03-17T09:02:27.751Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T09:02:27.752Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T09:02:27.781Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:02:27.783Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:02:42.494Z] [INFO] Server running on:
+[2026-03-17T09:02:42.494Z] [INFO] Server running on:
+[2026-03-17T09:02:42.497Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T09:02:42.497Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T09:02:42.498Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T09:02:42.498Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T09:02:42.545Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:02:42.546Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:09:13.764Z] [INFO] Server running on:
+[2026-03-17T09:09:13.767Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T09:09:13.768Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T09:09:13.801Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:17:12.070Z] [INFO] Server running on:
+[2026-03-17T09:17:12.071Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T09:17:12.072Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T09:17:12.091Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:17:50.569Z] [INFO] Login: admin (ADMIN)
+[2026-03-17T09:21:16.893Z] [INFO] Updating subjects for session 2: [{"subjectId":1,"examDate":"2026-03-18"},{"subjectId":2,"examDate":"2026-03-18"}]
+[2026-03-17T09:28:23.148Z] [INFO] Updating subjects for session 2: [{"subjectId":1,"examDate":"2026-03-18"},{"subjectId":2,"examDate":"2026-03-18"}]
+[2026-03-17T09:39:15.030Z] [INFO] Server running on:
+[2026-03-17T09:39:15.031Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T09:39:15.032Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T09:39:15.056Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T09:39:28.509Z] [INFO] Login: admin (ADMIN)
+[2026-03-17T10:08:19.547Z] [INFO] Server running on:
+[2026-03-17T10:08:19.548Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T10:08:19.548Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T10:08:19.568Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T10:18:22.983Z] [INFO] Server running on:
+[2026-03-17T10:18:22.985Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T10:18:22.986Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T10:18:23.004Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T10:32:15.199Z] [INFO] Server running on:
+[2026-03-17T10:32:15.200Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T10:32:15.200Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T10:32:15.221Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T10:36:01.914Z] [INFO] Server running on:
+[2026-03-17T10:36:01.915Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T10:36:01.916Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T10:36:01.935Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T10:40:21.194Z] [INFO] Server running on:
+[2026-03-17T10:40:21.195Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T10:40:21.196Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T10:40:21.216Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T10:43:18.193Z] [INFO] Server running on:
+[2026-03-17T10:43:18.194Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T10:43:18.194Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T10:43:18.215Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T10:43:32.232Z] [INFO] Server running on:
+[2026-03-17T10:43:32.234Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T10:43:32.234Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T10:43:32.251Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T10:45:21.619Z] [INFO] Hall tickets generated for 4 students — Session 6

@@ -168,16 +168,20 @@ const EnterMarks = () => {
         };
 
         const isLabExam = selectedExam === 'integrated_lab' || selectedExam === 'lab_marks';
+        const fieldMarks = {};
+
         if (isLabExam) {
-          payload.lab_attendance = toVal(s.marks.lab_attendance);
-          payload.lab_observation = toVal(s.marks.lab_observation);
-          payload.lab_record = toVal(s.marks.lab_record);
-          payload.lab_model = toVal(s.marks.lab_model);
+            fieldMarks.lab_attendance = toVal(s.marks.lab_attendance);
+            fieldMarks.lab_observation = toVal(s.marks.lab_observation);
+            fieldMarks.lab_record = toVal(s.marks.lab_record);
+            fieldMarks.lab_model = toVal(s.marks.lab_model);
         } else {
-          payload[`${selectedExam}_test`] = toVal(s.marks[`${selectedExam}_test`]);
-          payload[`${selectedExam}_assignment`] = toVal(s.marks[`${selectedExam}_assignment`]);
-          payload[`${selectedExam}_attendance`] = toVal(s.marks[`${selectedExam}_attendance`]);
+            fieldMarks[`${selectedExam}_test`] = toVal(s.marks[`${selectedExam}_test`]);
+            fieldMarks[`${selectedExam}_assignment`] = toVal(s.marks[`${selectedExam}_assignment`]);
+            fieldMarks[`${selectedExam}_attendance`] = toVal(s.marks[`${selectedExam}_attendance`]);
         }
+
+        payload.fieldMarks = fieldMarks;
 
         return submitFacultyMarks(payload);
       });

@@ -9,6 +9,7 @@ const sheetCtrl = require('../controllers/examSheetController');
 
 // Hall Ticket
 router.get('/hall-ticket/generate',   verifyToken, isAdmin, hallCtrl.generateHallTickets);
+router.get('/hall-ticket/application', verifyToken, isAdmin, hallCtrl.generateHallApplication);
 router.get('/hall-ticket/status',      verifyToken, isAdmin, hallCtrl.getHallTicketStatus);
 
 // Exam Attendance Sheet (by hall)

@@ -139,11 +139,11 @@ const StudentPromotion = () => {
 
   const handlePromote = async () => {
     if (selectedStudents.length === 0)
-      return alert("Select students to promote");
+      return toast.error("Select students to promote");
 
     // PASSED OUT branch
     if (isPassOut) {
-      if (!confirm(`Mark ${selectedStudents.length} students as PASSED OUT?`)) return;
+      if (!window.confirm(`Mark ${selectedStudents.length} students as PASSED OUT?`)) return;
       setPassingOut(true);
       try {
         const batchVal = students.find(s => selectedStudents.includes(s.id))?.batch || '';
@@ -160,10 +160,10 @@ const StudentPromotion = () => {
     }
 
     if (parseInt(promoYear) > 1 && !promoDept)
-      return alert("Select target department");
+      return toast.error("Select target department");
 
     if (
-      !confirm(
+      !window.confirm(
         `Promote ${selectedStudents.length} students to ${promoDept || "General"} Year ${promoYear}?`,
       )
     )
@@ -177,11 +177,11 @@ const StudentPromotion = () => {
         year: promoYear,
         semester: promoSem,
       });
-      alert(res.data.message);
+      toast.success(res.data.message);
       setSelectedStudents([]);
       fetchStudents();
     } catch (err) {
-      alert(
+      toast.error(
         "Promotion failed: " + (err.response?.data?.message || err.message),
       );
     }

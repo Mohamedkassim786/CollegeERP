@@ -19,8 +19,8 @@ const {
 } = require('../controllers/subjectController');
 const {
     getSessions, createSession, deleteSession, updateSessionSubjects,
-    toggleSessionLock, getSessionAllocations, getHalls, addHall, deleteHall,
-    generateAllocations, exportConsolidatedPlan, exportSeatingGrid
+    toggleSessionLock, getSessionAllocations, getHalls, addHall, updateHall, deleteHall,
+    generateAllocations, deleteAllocationByDate, exportConsolidatedPlan, exportSeatingGrid
 } = require('../controllers/hallAllocationController');
 const {
     getSubjectMarksForAdmin, updateMarksForAdmin, getPendingMarks, getMarksForApproval,
@@ -156,8 +156,10 @@ router.patch('/hall-allocation/sessions/:id/lock', isCOE, toggleSessionLock);
 router.get('/hall-allocation/sessions/:id/allocations', isChiefSecretary, getSessionAllocations);
 router.get('/hall-allocation/halls', isChiefSecretary, getHalls);
 router.post('/hall-allocation/halls', isCOE, addHall);
+router.put('/hall-allocation/halls/:id', isCOE, updateHall);
 router.delete('/hall-allocation/halls/:id', isCOE, deleteHall);
 router.post('/hall-allocation/generate', isCOE, generateAllocations);
+router.post('/hall-allocation/delete-date', isCOE, deleteAllocationByDate);
 router.get('/hall-allocation/sessions/:id/export', isChiefSecretary, exportConsolidatedPlan);
 router.get('/hall-allocation/sessions/:id/export-grid', isChiefSecretary, exportSeatingGrid);
 

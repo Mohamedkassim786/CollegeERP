@@ -51,7 +51,7 @@ const UserManager = () => {
     };
 
     const handleToggleStatus = async (user) => {
-        if (!confirm(`Are you sure you want to ${user.isDisabled ? 'ENABLE' : 'DISABLE'} this account?`)) return;
+        if (!window.confirm(`Are you sure you want to ${user.isDisabled ? 'ENABLE' : 'DISABLE'} this account?`)) return;
         try {
             await toggleUserStatus(user.id, { isDisabled: !user.isDisabled });
             toast.success(`Account ${user.isDisabled ? 'enabled' : 'disabled'}`);
@@ -62,7 +62,7 @@ const UserManager = () => {
     };
 
     const handleDeleteUser = async (user) => {
-        if (!confirm(`Permanently delete account @${user.username}? This cannot be undone.`)) return;
+        if (!window.confirm(`Permanently delete account @${user.username}? This cannot be undone.`)) return;
         try {
             await deleteSystemUser(user.id);
             toast.success("User deleted");

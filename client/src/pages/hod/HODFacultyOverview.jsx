@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Mail, Eye } from 'lucide-react';
 import api from '../../api/axios';
 import AuthContext from '../../context/AuthProvider';
+import { getPhotoUrl } from '../../utils/helpers';
 
 const HODFacultyOverview = () => {
     const { auth } = useContext(AuthContext);
@@ -39,12 +40,6 @@ const HODFacultyOverview = () => {
         fetchFaculty();
     }, [auth?.department, auth?.departmentId]);
 
-    const getPhotoUrl = (photo) => {
-        if (!photo) return null;
-        if (photo.startsWith('http')) return photo;
-        // Constructing photo URL based on the backend uploads path
-        return `${api.defaults.baseURL.replace('/api', '')}/uploads/faculty/${photo}`;
-    };
 
     if (loading) return (
         <div className="h-64 flex items-center justify-center">
@@ -70,7 +65,7 @@ const HODFacultyOverview = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {facultyList.map((faculty) => {
-                        const photoUrl = getPhotoUrl(faculty.photo);
+                        const photoUrl = getPhotoUrl(faculty.photo, 'faculty');
                         const initials = (faculty.fullName || 'F')
                             .split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
                         return (

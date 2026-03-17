@@ -22,6 +22,7 @@ import {
 import ExcelJS from "exceljs";
 import toast from "react-hot-toast";
 import { handleApiError } from "../../../utils/errorHandler";
+import { getPhotoUrl, getServerUrl } from "../../../utils/helpers";
 import { SEMESTER_OPTIONS } from "../../../utils/constants";
 import { 
   getStudents, 
@@ -1569,7 +1570,7 @@ const StudentManager = () => {
                           <td className="pl-6 pr-4 py-6 text-left">
                             {s.photo ? (
                               <div className="w-12 h-12 rounded-2xl overflow-hidden border border-gray-100 shadow-sm group-hover:shadow-lg transition-all duration-500">
-                                <img src={s.photo} alt={s.name} className="w-full h-full object-cover group-hover:scale-150 transition-transform duration-700" />
+                                <img src={getPhotoUrl(s.photo, 'students')} alt={s.name} className="w-full h-full object-cover group-hover:scale-150 transition-transform duration-700" />
                               </div>
                             ) : (
                               <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-[#003B73] shadow-sm border border-gray-100 group-hover:scale-125 transition-all duration-500 group-hover:shadow-blue-100">
@@ -2122,7 +2123,7 @@ const StudentManager = () => {
                 <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 hover:border-[#003B73] transition-all group relative overflow-hidden">
                   {editingStudent.photo ? (
                     <div className="relative w-32 h-32">
-                      <img src={editingStudent.photo} alt="Preview" className="w-full h-full object-cover rounded-[24px] shadow-lg" />
+                      <img src={getPhotoUrl(editingStudent.photo, 'students')} alt="Preview" className="w-full h-full object-cover rounded-[24px] shadow-lg" />
                       <button
                         type="button"
                         onClick={() => setEditingStudent({ ...editingStudent, photo: '' })}

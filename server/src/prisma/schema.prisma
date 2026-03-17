@@ -522,7 +522,9 @@ model ExternalMark {
 model ExamSession {
   id        Int      @id @default(autoincrement())
   examName  String
-  examDate  DateTime
+  examDate  DateTime?
+  month     String?
+  year      String?
   session   String // "FN" or "AN"
   examMode  String   @default("CIA")
   isLocked  Boolean  @default(false)
@@ -533,12 +535,14 @@ model ExamSession {
   author      User                  @relation("CreatedSessions", fields: [createdBy], references: [id])
   subjects    ExamSessionSubjects[]
   allocations HallAllocation[]
+  halls       Hall[]
 }
 
 model ExamSessionSubjects {
-  id            Int @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   examSessionId Int
   subjectId     Int
+  examDate      DateTime?
 
   examSession ExamSession @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
   subject     Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
@@ -547,21 +551,23 @@ model ExamSessionSubjects {
 }
 
 model Hall {
-  id            Int      @id @default(autoincrement())
-  hallName      String
-  blockName     String
-  totalRows     Int? // Legacy (moving to columns)
-  benchesPerRow Int? // Legacy (moving to columns)
-  totalBenches  Int      @default(0)
-  capacityCIA   Int      @default(0)
-  capacityEND   Int      @default(0)
-  capacity      Int? // Legacy
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  columns     HallColumn[]
-  allocations HallAllocation[]
+  id             Int             @id @default(autoincrement())
+  hallName       String
+  blockName      String
+  examSessionId  Int?            // Optional for migration, but will be required for session-local halls
+  totalRows      Int?            // Legacy (moving to columns)
+  benchesPerRow  Int?            // Legacy (moving to columns)
+  totalBenches   Int             @default(0)
+  capacityCIA    Int             @default(0)
+  capacityEND    Int             @default(0)
+  capacity       Int?            // Legacy
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  
+  examSession    ExamSession?    @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  columns        HallColumn[]
+  allocations    HallAllocation[]
 }
 
 model HallColumn {
@@ -589,6 +595,7 @@ model HallAllocation {
   hallId        Int
   studentId     Int
   subjectId     Int
+  examDate      DateTime? // New: Store date directly for easy grouping/deletion
   department    String
   year          Int
   seatNumber    String

@@ -22,13 +22,15 @@ exports.getSessions = async (req, res) => {
 
 exports.createSession = async (req, res) => {
     try {
-        const { examName, examDate, session, examMode, subjectIds } = req.body;
+        const { examName, examDate, month, year, session, examMode, subjectIds } = req.body;
 
         const result = await prisma.$transaction(async (tx) => {
             const newSession = await tx.examSession.create({
                 data: {
                     examName,
-                    examDate: new Date(examDate),
+                    examDate: examDate ? new Date(examDate) : null,
+                    month,
+                    year,
                     session,
                     examMode: examMode || "CIA",
                     createdBy: req.user.id
@@ -55,8 +57,19 @@ exports.createSession = async (req, res) => {
 
 exports.getHalls = async (req, res) => {
     try {
+        const { sessionId } = req.query;
+        const whereClause = { isActive: true };
+        if (sessionId) {
+            whereClause.examSessionId = parseInt(sessionId);
+        }
+
         const halls = await prisma.hall.findMany({
-            where: { isActive: true },
+            where: whereClause,
+            include: { 
+                columns: { 
+                    include: { benchData: true } 
+                } 
+            },
             orderBy: { hallName: 'asc' }
         });
         res.json(halls);
@@ -69,16 +82,34 @@ exports.addHall = async (req, res) => {
     try {
         const { hallName, blockName, columns } = req.body;
 
-        const totalBenches = columns.reduce((acc, col) => acc + parseInt(col.benches), 0);
+        let totalBenches = 0;
+        let capacityCIA = 0;
+        let capacityEND = 0;
+
+        if (columns && columns.length > 0) {
+            columns.forEach(col => {
+                const bCount = parseInt(col.benches) || 0;
+                totalBenches += bCount;
+                if (col.benchData && col.benchData.length > 0) {
+                    col.benchData.forEach(b => {
+                        capacityCIA += parseInt(b.capacity) || 0;
+                    });
+                } else {
+                    capacityCIA += bCount * 2; // Fallback
+                }
+                capacityEND += bCount; // 1 student per bench for END SEM
+            });
+        }
 
         // 1. Create Hall
         const hall = await prisma.hall.create({
             data: {
                 hallName,
                 blockName,
+                examSessionId: req.body.sessionId ? parseInt(req.body.sessionId) : null,
                 totalBenches,
-                capacityCIA: totalBenches * 2,
-                capacityEND: totalBenches * 1
+                capacityCIA,
+                capacityEND
             }
         });
 
@@ -101,6 +132,16 @@ exports.addHall = async (req, res) => {
                             capacity: parseInt(bench.capacity)
                         }))
                     });
+                } else {
+                    // Create default 2-person benches if no detailed data provided
+                    const benches = Array.from({ length: parseInt(col.benches) }, (_, i) => ({
+                        columnId: createdCol.id,
+                        benchNumber: i + 1,
+                        capacity: 2
+                    }));
+                    if (benches.length > 0) {
+                        await prisma.hallBench.createMany({ data: benches });
+                    }
                 }
             }
         }
@@ -109,8 +150,87 @@ exports.addHall = async (req, res) => {
             where: { id: hall.id },
             include: { columns: true }
         });
+        res.status(201).json(result);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 
-        res.json(result);
+exports.updateHall = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { hallName, blockName, columns } = req.body;
+
+        let totalBenches = 0;
+        let capacityCIA = 0;
+        let capacityEND = 0;
+
+        if (columns && columns.length > 0) {
+            columns.forEach(col => {
+                const bCount = parseInt(col.benches) || 0;
+                totalBenches += bCount;
+                if (col.benchData && col.benchData.length > 0) {
+                    col.benchData.forEach(b => {
+                        capacityCIA += parseInt(b.capacity) || 0;
+                    });
+                } else {
+                    capacityCIA += bCount * 2;
+                }
+                capacityEND += bCount;
+            });
+        }
+
+        // 1. Delete existing columns (benches will be cascading deleted or manual)
+        // Check if Bench has cascade or handle manually
+        // For safety, let's delete benches first if needed, but usually prisma handle cascade if defined in schema.
+        await prisma.hallColumn.deleteMany({ where: { hallId: parseInt(id) } });
+
+        // 2. Update Hall metadata
+        const hall = await prisma.hall.update({
+            where: { id: parseInt(id) },
+            data: {
+                hallName,
+                blockName,
+                examSessionId: req.body.sessionId ? parseInt(req.body.sessionId) : undefined, // Keep existing if not provided
+                totalBenches,
+                capacityCIA,
+                capacityEND
+            }
+        });
+
+        // 3. Re-create Columns and Benches
+        if (columns && columns.length > 0) {
+            for (const col of columns) {
+                const createdCol = await prisma.hallColumn.create({
+                    data: {
+                        hallId: hall.id,
+                        label: col.label,
+                        benches: parseInt(col.benches)
+                    }
+                });
+
+                if (col.benchData && col.benchData.length > 0) {
+                    await prisma.hallBench.createMany({
+                        data: col.benchData.map(bench => ({
+                            columnId: createdCol.id,
+                            benchNumber: parseInt(bench.benchNumber),
+                            capacity: parseInt(bench.capacity)
+                        }))
+                    });
+                } else {
+                    const benches = Array.from({ length: parseInt(col.benches) }, (_, i) => ({
+                        columnId: createdCol.id,
+                        benchNumber: i + 1,
+                        capacity: 2
+                    }));
+                    if (benches.length > 0) {
+                        await prisma.hallBench.createMany({ data: benches });
+                    }
+                }
+            }
+        }
+
+        res.json({ message: "Infrastructure updated successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -128,7 +248,7 @@ exports.deleteHall = async (req, res) => {
 
 exports.generateAllocations = async (req, res) => {
     try {
-        const { sessionId, hallIds } = req.body;
+        const { sessionId, hallIds, subjectIds, date } = req.body;
 
         const session = await prisma.examSession.findUnique({
             where: { id: parseInt(sessionId) },
@@ -138,10 +258,10 @@ exports.generateAllocations = async (req, res) => {
         if (!session) return res.status(404).json({ message: "Session not found" });
         if (session.isLocked) return res.status(403).json({ message: "Session is locked. Unlock to regenerate." });
 
-        // 1. Fetch all students registered for these subjects
-        const subjectIds = session.subjects.map(s => s.subjectId);
+        // 1. Fetch only the requested subjects for this date
+        const targetSubjectIds = subjectIds ? subjectIds.map(id => parseInt(id)) : session.subjects.map(s => s.subjectId);
         const subjects = await prisma.subject.findMany({
-            where: { id: { in: subjectIds } }
+            where: { id: { in: targetSubjectIds } }
         });
 
         let allEligibleStudents = [];
@@ -154,10 +274,24 @@ exports.generateAllocations = async (req, res) => {
                     ...deptCriteria,
                     semester: sub.semester
                 },
+                include: {
+                    eligibility: {
+                        where: { subjectId: sub.id, semester: sub.semester }
+                    }
+                },
                 orderBy: { rollNo: 'asc' }
             });
-            regularStudents.forEach(s => s.currentSubjectId = sub.id);
-            allEligibleStudents = [...allEligibleStudents, ...regularStudents];
+            
+            // Filter by eligibility
+            const filteredRegular = regularStudents.filter(s => {
+                const eligibility = s.eligibility?.[0];
+                if (!eligibility) return true; 
+                if (eligibility.status === 'DETAINED' && !eligibility.isException) return false;
+                return true;
+            });
+
+            filteredRegular.forEach(s => s.currentSubjectId = sub.id);
+            allEligibleStudents = [...allEligibleStudents, ...filteredRegular];
 
             // 1b. Fetch Arrear Students IF mode is END_SEM
             if (session.examMode === 'END_SEM') {
@@ -185,19 +319,19 @@ exports.generateAllocations = async (req, res) => {
         const uniqueStudents = [];
         const seenIds = new Set();
         for (const s of allEligibleStudents) {
-            if (!seenIds.has(s.id)) {
+            if (!seenIds.has(s.id + '-' + s.currentSubjectId)) { // Allow same student for different subjects if they have arrears
                 uniqueStudents.push(s);
-                seenIds.add(s.id);
+                seenIds.add(s.id + '-' + s.currentSubjectId);
             }
         }
 
         if (uniqueStudents.length === 0) {
             return res.status(400).json({
-                message: "No eligible students found for the selected subjects. Please check if students are added for the correct department and semester."
+                message: "No eligible students found for the selected subjects."
             });
         }
 
-        // 2. Fetch selected halls with columns
+        // 2. Fetch selected halls
         const halls = await prisma.hall.findMany({
             where: { id: { in: hallIds.map(id => parseInt(id)) }, isActive: true },
             include: { columns: { include: { benchData: true }, orderBy: { label: 'asc' } } }
@@ -213,14 +347,31 @@ exports.generateAllocations = async (req, res) => {
             });
         }
 
-        // 3. Algorithm choice based on Exam Mode
+        // 3. Algorithm
         const { allocations, remaining } = session.examMode === 'CIA'
             ? calculateSeatingCIA(uniqueStudents, halls)
             : calculateSeatingENDSEM(uniqueStudents, halls);
 
-        // 4. Save to DB within transaction
+        // 4. Save to DB
         await prisma.$transaction(async (tx) => {
-            await tx.hallAllocation.deleteMany({ where: { examSessionId: session.id } });
+            // Delete allocations for these specific subjects in this session
+            await tx.hallAllocation.deleteMany({ 
+                where: { 
+                    examSessionId: session.id,
+                    subjectId: { in: targetSubjectIds }
+                } 
+            });
+
+            // Update subject dates in the session reference as well
+            if (date) {
+                for (const sid of targetSubjectIds) {
+                    await tx.examSessionSubjects.upsert({
+                        where: { examSessionId_subjectId: { examSessionId: session.id, subjectId: sid } },
+                        update: { examDate: new Date(date) },
+                        create: { examSessionId: session.id, subjectId: sid, examDate: new Date(date) }
+                    });
+                }
+            }
 
             // Batch create allocations
             for (let i = 0; i < allocations.length; i += 100) {
@@ -231,6 +382,7 @@ exports.generateAllocations = async (req, res) => {
                         hallId: a.hallId,
                         studentId: a.studentId,
                         subjectId: a.subjectId,
+                        examDate: date ? new Date(date) : null,
                         department: a.department,
                         year: a.year,
                         seatNumber: a.seatNumber,
@@ -242,11 +394,26 @@ exports.generateAllocations = async (req, res) => {
         });
 
         res.json({
-            message: `Allocation generated successfully for ${session.examMode} mode`,
+            message: `Allocation generated successfully for ${date || 'session'}`,
             count: allocations.length,
             unallocated: remaining.length
         });
 
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.deleteAllocationByDate = async (req, res) => {
+    try {
+        const { sessionId, date } = req.body;
+        await prisma.hallAllocation.deleteMany({
+            where: {
+                examSessionId: parseInt(sessionId),
+                examDate: new Date(date)
+            }
+        });
+        res.json({ message: "Allocations for the specific date deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -304,9 +471,9 @@ exports.deleteSession = async (req, res) => {
 exports.updateSessionSubjects = async (req, res) => {
     try {
         const { id } = req.params;
-        const { subjectIds } = req.body;
+        const { subjects } = req.body; // Expecting [{ subjectId, examDate }]
 
-        logger.info(`Updating subjects for session ${id}: ${JSON.stringify(subjectIds)}`);
+        logger.info(`Updating subjects for session ${id}: ${JSON.stringify(subjects)}`);
 
         const session = await prisma.examSession.findUnique({ where: { id: parseInt(id) } });
         if (!session) return res.status(404).json({ message: "Session not found" });
@@ -318,13 +485,13 @@ exports.updateSessionSubjects = async (req, res) => {
             });
 
             // 2. Add new subjects if any
-            if (subjectIds && subjectIds.length > 0) {
-                // Using individual creates for better compatibility across all DB types
-                for (const sid of subjectIds) {
+            if (subjects && subjects.length > 0) {
+                for (const sub of subjects) {
                     await tx.examSessionSubjects.create({
                         data: {
                             examSessionId: parseInt(id),
-                            subjectId: parseInt(sid)
+                            subjectId: parseInt(sub.subjectId),
+                            examDate: sub.examDate ? new Date(sub.examDate) : null
                         }
                     });
                 }
@@ -381,6 +548,7 @@ const getRomanNumeral = (num) => {
 exports.exportConsolidatedPlan = async (req, res) => {
     try {
         const { id } = req.params;
+        const { date } = req.query; // Support date-specific export
         const session = await prisma.examSession.findUnique({
             where: { id: parseInt(id) }
         });
@@ -393,8 +561,13 @@ exports.exportConsolidatedPlan = async (req, res) => {
             deptMap[d.name] = d.code || d.name;
         });
 
+        const whereClause = { examSessionId: parseInt(id) };
+        if (date) {
+            whereClause.examDate = new Date(date);
+        }
+
         const allocations = await prisma.hallAllocation.findMany({
-            where: { examSessionId: parseInt(id) },
+            where: whereClause,
             include: {
                 student: true,
                 subject: true,

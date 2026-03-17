@@ -61,9 +61,11 @@ exports.generateSheet = async (req, res) => {
 
         pdfService.generateExamAttendanceSheet(res, {
             subject,
+            department: subject.departmentRef?.name || subject.department || '',
+            semester: subject.semester || '',
             hallNumber: hall?.name || `Hall ${hallId}`,
-            date: dateStr,
-            session: session.session || 'FN',
+            dateSession: `${dateStr} / ${session.session || 'FN'}`,
+            sessionName: session.examName || '',
             entries
         });
 
