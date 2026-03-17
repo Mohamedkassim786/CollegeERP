@@ -105,7 +105,6 @@ export const ROUTES = {
         RESULTS: '/student/results',
         MATERIALS: '/student/materials',
         ANNOUNCEMENTS: '/student/announcements',
-        SETTINGS: '/student/settings',
     },
     HOD: {
         ROOT: '/hod',

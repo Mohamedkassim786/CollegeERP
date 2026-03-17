@@ -12,4 +12,4 @@ export const getFacultyProfile = () => api.get('/profile/faculty');
 export const getActivityLogs = () => api.get('/profile/activity-logs');
 
 export const updateSettingsProfile = (data) => api.put('/profile', data);
-export const changeSettingsPassword = (data) => api.post('/profile/change-password', data);
+export const changeSettingsPassword = (data) => api.post('/auth/change-password', data);

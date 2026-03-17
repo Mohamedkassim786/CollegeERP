@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from 'react-hot-toast';
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getClassDetails, getClassStudents, getClassAttendanceLogs, exportClassAttendance } from "../../services/class.service";
 import { getAttendanceReport } from "../../services/attendance.service";
@@ -258,7 +259,7 @@ const AttendanceTab = ({ subjectId, details }) => {
       setViewMode("detailed");
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch detailed report");
+      toast.error("Failed to fetch detailed report");
     } finally {
       setFetchingReport(false);
     }
@@ -287,7 +288,7 @@ const AttendanceTab = ({ subjectId, details }) => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export error:", err);
-      alert("Failed to export Excel");
+      toast.error("Failed to export Excel");
     } finally {
       setExporting(false);
     }

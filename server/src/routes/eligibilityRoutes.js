@@ -12,7 +12,7 @@ const ctrl = require('../controllers/eligibilityController');
 router.get('/', verifyToken, ctrl.getEligibility);
 
 // POST /api/eligibility/calculate  — calc + persist to DB
-router.post('/calculate', verifyToken, isAdmin, ctrl.calculateAndSave);
+router.post('/calculate', verifyToken, isHod, ctrl.calculateAndSave);
 
 // POST /api/eligibility/exception  — grant/reject condonation exception
 router.post('/exception', verifyToken, isAdmin, ctrl.grantException);

@@ -42,6 +42,7 @@ const AttendanceEligibility = () => {
     }, []);
 
     const isAdmin = auth?.role === 'ADMIN';
+    const canCalculate = auth?.role === 'ADMIN' || auth?.role === 'HOD';
 
     const fetchEligibility = async () => {
         if (!filters.department || !filters.semester) return;
@@ -70,7 +71,8 @@ const AttendanceEligibility = () => {
         if (!window.confirm('Lock eligibility? This cannot be undone.')) return;
         try {
             await lockEligibility(filters);
-            alert('Eligibility list locked.');
+            setError('');
+            await fetchEligibility();
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to lock.');
         }
@@ -105,7 +107,7 @@ const AttendanceEligibility = () => {
                         <p className="text-gray-500 text-sm">Exam-eligibility based on attendance: Eligible ≥75% · Condonation 65–74% · Detained &lt;65%</p>
                     </div>
                 </div>
-                {isAdmin && data.length > 0 && (
+                {canCalculate && data.length > 0 && (
                     <div className="flex gap-3">
                         <button onClick={calculateAndSave} disabled={saving}
                             className="px-4 py-2 bg-[#003B73] text-white rounded-xl text-sm font-bold hover:bg-[#002850] transition-all disabled:opacity-60">

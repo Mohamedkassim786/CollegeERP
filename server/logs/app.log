@@ -4634,3 +4634,11 @@ Unknown field `employeeId` for select statement on model `User`. Available optio
 [2026-03-17T06:17:42.648Z] [INFO] - Network: http://192.168.1.8:3000
 [2026-03-17T06:17:42.671Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
 [2026-03-17T06:17:42.691Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:38:49.309Z] [INFO] Server running on:
+[2026-03-17T06:38:49.308Z] [INFO] Server running on:
+[2026-03-17T06:38:49.311Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:38:49.312Z] [INFO] - Local:   http://localhost:3000
+[2026-03-17T06:38:49.313Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:38:49.312Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-17T06:38:49.352Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-17T06:38:49.351Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)

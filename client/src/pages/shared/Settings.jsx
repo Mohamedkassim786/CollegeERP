@@ -182,10 +182,10 @@ const Settings = () => {
     setSaving(true);
     try {
       await updateSettingsProfile(personalInfo);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       fetchProfile();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update profile");
+      toast.error(err.response?.data?.message || "Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -194,7 +194,7 @@ const Settings = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (passwords.newPassword !== passwords.confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
     setSaving(true);
@@ -203,14 +203,14 @@ const Settings = () => {
         currentPassword: passwords.currentPassword,
         newPassword: passwords.newPassword,
       });
-      alert("Password changed successfully!");
+      toast.success("Password changed successfully!");
       setPasswords({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to change password");
+      toast.error(err.response?.data?.message || "Failed to change password");
     } finally {
       setSaving(false);
     }
@@ -231,7 +231,7 @@ const Settings = () => {
       fetchFaculty();
       fetchActivities();
     } catch (err) {
-      alert("Failed to toggle status");
+      toast.error("Failed to toggle status");
     }
   };
 
@@ -242,12 +242,12 @@ const Settings = () => {
         facultyId: selectedFaculty.id,
         newPassword: newFacultyPassword,
       });
-      alert("Password reset successfully!");
+      toast.success("Password reset successfully!");
       setShowResetModal(false);
       setNewFacultyPassword("");
       fetchActivities();
     } catch (err) {
-      alert("Failed to reset password");
+      toast.error("Failed to reset password");
     }
   };
 
