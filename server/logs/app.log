@@ -4995,3 +4995,1070 @@ Unknown field `employeeId` for select statement on model `User`. Available optio
 [2026-03-17T10:43:32.234Z] [INFO] - Network: http://192.168.1.8:3000
 [2026-03-17T10:43:32.251Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
 [2026-03-17T10:45:21.619Z] [INFO] Hall tickets generated for 4 students — Session 6
+[2026-03-18T06:53:35.830Z] [INFO] Server running on:
+[2026-03-18T06:53:35.833Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T06:53:35.834Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T06:53:35.973Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T06:54:08.367Z] [INFO] Login: admin (ADMIN)
+[2026-03-18T07:49:48.035Z] [INFO] Server running on:
+[2026-03-18T07:49:48.037Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T07:49:48.038Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T07:49:48.110Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T07:49:56.163Z] [INFO] Server running on:
+[2026-03-18T07:49:56.164Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T07:49:56.165Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T07:49:56.192Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T07:50:14.757Z] [INFO] Server running on:
+[2026-03-18T07:50:14.760Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T07:50:14.760Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T07:50:14.795Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T07:51:18.790Z] [INFO] Login: admin (ADMIN)
+[2026-03-18T07:52:28.904Z] [INFO] Server running on:
+[2026-03-18T07:52:28.906Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T07:52:28.907Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T07:52:28.931Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T07:54:35.677Z] [INFO] Server running on:
+[2026-03-18T07:54:35.679Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T07:54:35.680Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T07:54:35.712Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T07:55:29.741Z] [ERROR] generateHallApplication failed 
+Invalid `prisma.student.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\hallTicketController.js:158:47
+
+  155 });
+  156 if (!examSession) return res.status(404).json({ message: 'Exam session not found' });
+  157 
+→ 158 const students = await prisma.student.findMany({
+        where: {
+          status: "ACTIVE"
+        },
+        include: {
+          departmentRef: true,
+          marks: {
+            include: {
+              subject: true
+            }
+          },
+          arrears: {
+            where: {
+              isCleared: false
+            },
+            include: {
+              subject: true
+            }
+          },
+          eligibility: {
+            where: {
+      +       semester: {
+      +         equals: Int | IntFieldRefInput,
+      +         in: Int[],
+      +         notIn: Int[],
+      +         lt: Int | IntFieldRefInput,
+      +         lte: Int | IntFieldRefInput,
+      +         gt: Int | IntFieldRefInput,
+      +         gte: Int | IntFieldRefInput,
+      +         not: Int | NestedIntFilter
+      +       }
+            }
+          }
+        },
+        orderBy: {
+          rollNo: "asc"
+        }
+      })
+
+Argument `semester` is missing.
+PrismaClientValidationError: 
+Invalid `prisma.student.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\hallTicketController.js:158:47
+
+  155 });
+  156 if (!examSession) return res.status(404).json({ message: 'Exam session not found' });
+  157 
+→ 158 const students = await prisma.student.findMany({
+        where: {
+          status: "ACTIVE"
+        },
+        include: {
+          departmentRef: true,
+          marks: {
+            include: {
+              subject: true
+            }
+          },
+          arrears: {
+            where: {
+              isCleared: false
+            },
+            include: {
+              subject: true
+            }
+          },
+          eligibility: {
+            where: {
+      +       semester: {
+      +         equals: Int | IntFieldRefInput,
+      +         in: Int[],
+      +         notIn: Int[],
+      +         lt: Int | IntFieldRefInput,
+      +         lte: Int | IntFieldRefInput,
+      +         gt: Int | IntFieldRefInput,
+      +         gte: Int | IntFieldRefInput,
+      +         not: Int | NestedIntFilter
+      +       }
+            }
+          }
+        },
+        orderBy: {
+          rollNo: "asc"
+        }
+      })
+
+Argument `semester` is missing.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateHallApplication (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\hallTicketController.js:158:26)
+[2026-03-18T08:00:17.134Z] [INFO] Server running on:
+[2026-03-18T08:00:17.135Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:00:17.136Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:00:17.170Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:00:43.026Z] [INFO] Server running on:
+[2026-03-18T08:00:43.028Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:00:43.028Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:00:43.058Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:01:52.618Z] [INFO] Server running on:
+[2026-03-18T08:01:52.619Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:01:52.620Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:01:52.655Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:02:53.819Z] [INFO] Hall tickets generated for 4 students — Session 7
+[2026-03-18T08:06:15.866Z] [INFO] Server running on:
+[2026-03-18T08:06:15.868Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:06:15.869Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:06:15.905Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:16:16.498Z] [INFO] Server running on:
+[2026-03-18T08:16:16.500Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:16:16.500Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:16:16.532Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:16:18.992Z] [INFO] Hall tickets generated for 4 students — Session 7
+[2026-03-18T08:16:38.246Z] [INFO] Server running on:
+[2026-03-18T08:16:38.248Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:16:38.249Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:16:38.284Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:17:49.572Z] [INFO] Server running on:
+[2026-03-18T08:17:49.574Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:17:49.575Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:17:49.604Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:18:12.720Z] [INFO] Hall tickets generated for 4 students — Session 7
+[2026-03-18T08:32:32.153Z] [INFO] Server running on:
+[2026-03-18T08:32:32.157Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:32:32.157Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:32:32.192Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:32:59.596Z] [INFO] Hall tickets generated for 4 students — Session 7
+[2026-03-18T08:34:28.653Z] [INFO] Server running on:
+[2026-03-18T08:34:28.656Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:34:28.657Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:34:28.686Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:34:38.660Z] [INFO] Hall tickets generated for 4 students — Session 7
+[2026-03-18T08:34:49.318Z] [INFO] Hall tickets generated for 4 students — Session 7
+[2026-03-18T08:38:29.830Z] [INFO] Server running on:
+[2026-03-18T08:38:29.833Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:38:29.834Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:38:29.875Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:38:44.364Z] [INFO] Hall tickets generated for 2 students — Session 7
+[2026-03-18T08:39:14.030Z] [INFO] Hall tickets generated for 2 students — Session 7
+[2026-03-18T08:42:32.749Z] [INFO] Server running on:
+[2026-03-18T08:42:32.751Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:42:32.752Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:42:32.788Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:48:02.119Z] [INFO] Server running on:
+[2026-03-18T08:48:02.120Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:48:02.121Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:48:02.148Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:52:43.740Z] [INFO] Server running on:
+[2026-03-18T08:52:43.742Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:52:43.743Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:52:43.785Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:53:19.927Z] [INFO] Server running on:
+[2026-03-18T08:53:19.929Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:53:19.930Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:53:19.975Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:54:14.863Z] [ERROR] generateSheet failed 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:25)
+[2026-03-18T08:54:44.949Z] [INFO] Server running on:
+[2026-03-18T08:54:44.951Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:54:44.951Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:54:44.985Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:55:33.682Z] [INFO] Server running on:
+[2026-03-18T08:55:33.684Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:55:33.685Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:55:33.724Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:55:44.731Z] [INFO] Server running on:
+[2026-03-18T08:55:44.732Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T08:55:44.733Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T08:55:44.765Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T08:55:54.784Z] [INFO] Hall tickets generated for 4 students — Session 7
+[2026-03-18T08:56:16.997Z] [ERROR] generateSheet failed 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:25)
+[2026-03-18T09:11:02.002Z] [INFO] Server running on:
+[2026-03-18T09:11:02.004Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:11:02.005Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:11:02.034Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:16:47.112Z] [ERROR] generateSheet failed 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:25)
+[2026-03-18T09:18:02.643Z] [INFO] Server running on:
+[2026-03-18T09:18:02.645Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:18:02.646Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:18:02.687Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:28:22.899Z] [ERROR] generateSheet failed 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:25)
+[2026-03-18T09:29:34.797Z] [INFO] Server running on:
+[2026-03-18T09:29:34.799Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:29:34.800Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:29:34.828Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:29:39.081Z] [ERROR] generateSheet failed 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:25)
+[2026-03-18T09:30:45.851Z] [INFO] Server running on:
+[2026-03-18T09:30:45.852Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:30:45.853Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:30:45.881Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:33:23.647Z] [ERROR] generateSheet failed 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:25)
+[2026-03-18T09:34:17.750Z] [INFO] Server running on:
+[2026-03-18T09:34:17.753Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:34:17.754Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:34:17.792Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:34:36.431Z] [INFO] Server running on:
+[2026-03-18T09:34:36.432Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:34:36.433Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:34:36.460Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:38:04.810Z] [INFO] Server running on:
+[2026-03-18T09:38:04.812Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:38:04.813Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:38:04.847Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:41:44.292Z] [INFO] Server running on:
+[2026-03-18T09:41:44.294Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:41:44.295Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:41:44.328Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:44:10.260Z] [INFO] Faculty Login: E23422 (Roles: FACULTY)
+[2026-03-18T09:44:26.701Z] [INFO] Login: admin (ADMIN)
+[2026-03-18T09:46:45.398Z] [INFO] Server running on:
+[2026-03-18T09:46:45.400Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:46:45.401Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:46:45.436Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:46:56.598Z] [INFO] [generateAllocations] Subject 2 (CHIKEN), dept="", sem=1, isFirstYear=true
+[2026-03-18T09:46:56.602Z] [INFO] [generateAllocations] Found 0 regular students for subject 2
+[2026-03-18T09:47:03.200Z] [INFO] [generateAllocations] Subject 2 (CHIKEN), dept="", sem=1, isFirstYear=true
+[2026-03-18T09:47:03.205Z] [INFO] [generateAllocations] Found 0 regular students for subject 2
+[2026-03-18T09:48:41.991Z] [INFO] Server running on:
+[2026-03-18T09:48:41.992Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:48:41.993Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:48:42.027Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:49:12.546Z] [INFO] [generateAllocations] Subject 2 (CHIKEN), dept="", sem=1, isFirstYear=true
+[2026-03-18T09:49:12.551Z] [INFO] [generateAllocations] Found 1 regular students for subject 2
+[2026-03-18T09:49:37.073Z] [INFO] [generateAllocations] Subject 1 (MUTTON), dept="CSE,MECH", sem=5, isFirstYear=false
+[2026-03-18T09:49:37.078Z] [INFO] [generateAllocations] Found 4 regular students for subject 1
+[2026-03-18T09:49:37.080Z] [INFO] [generateAllocations] Subject 2 (CHIKEN), dept="", sem=1, isFirstYear=true
+[2026-03-18T09:49:37.084Z] [INFO] [generateAllocations] Found 1 regular students for subject 2
+[2026-03-18T09:51:14.800Z] [ERROR] generateSheet failed 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.subject.findUnique()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:46
+
+  22 });
+  23 if (!session) return res.status(404).json({ message: 'Exam session not found' });
+  24 
+→ 25 const subject = await prisma.subject.findUnique({
+       where: {
+         id: 1
+       },
+       include: {
+         departmentRef: true,
+         ~~~~~~~~~~~~~
+     ?   arrears?: true,
+     ?   externalStaffTasks?: true,
+     ?   facultyAssignments?: true,
+     ?   marks?: true,
+     ?   materials?: true,
+     ?   attendance?: true,
+     ?   timetables?: true,
+     ?   dummyMappings?: true,
+     ?   externalMarks?: true,
+     ?   examSessionLinks?: true,
+     ?   hallAllocations?: true,
+     ?   eligibility?: true
+       }
+     })
+
+Unknown field `departmentRef` for include statement on model `Subject`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:25:25)
+[2026-03-18T09:52:04.787Z] [INFO] Server running on:
+[2026-03-18T09:52:04.789Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:52:04.790Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:52:04.827Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:52:26.555Z] [INFO] Server running on:
+[2026-03-18T09:52:26.557Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:52:26.558Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:52:26.588Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:53:07.272Z] [ERROR] generateSheet failed 
+Invalid `prisma.hallAllocation.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:41:57
+
+  38     whereAlloc.session = allocSession;
+  39 }
+  40 
+→ 41 const allocations = await prisma.hallAllocation.findMany({
+       where: {
+         examSessionId: 12,
+         subjectId: 1,
+         session: "FN"
+       },
+       include: {
+         hall: true,
+         student: {
+           include: {
+             dummyMappings: {
+               where: {
+                 subjectId: 1,
+                 examSessionId: 12,
+                 ~~~~~~~~~~~~~
+     ?           AND?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           OR?: SubjectDummyMappingWhereInput[],
+     ?           NOT?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           id?: IntFilter | Int,
+     ?           studentId?: IntFilter | Int,
+     ?           originalRegisterNo?: StringFilter | String,
+     ?           subjectCode?: StringFilter | String,
+     ?           department?: StringFilter | String,
+     ?           semester?: IntFilter | Int,
+     ?           section?: StringFilter | String,
+     ?           academicYear?: StringFilter | String,
+     ?           dummyNumber?: StringNullableFilter | String | Null,
+     ?           answerScriptNo?: StringNullableFilter | String | Null,
+     ?           isAbsent?: BoolFilter | Boolean,
+     ?           boardCode?: StringNullableFilter | String | Null,
+     ?           qpCode?: StringNullableFilter | String | Null,
+     ?           marks?: FloatNullableFilter | Float | Null,
+     ?           mappingLocked?: BoolFilter | Boolean,
+     ?           createdAt?: DateTimeFilter | DateTime,
+     ?           student?: StudentRelationFilter | StudentWhereInput,
+     ?           subject?: SubjectRelationFilter | SubjectWhereInput
+               },
+               take: 1
+             }
+           }
+         }
+       },
+       orderBy: [
+         {
+           hallId: "asc"
+         },
+         {
+           seatNumber: "asc"
+         }
+       ]
+     })
+
+Unknown argument `examSessionId`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.hallAllocation.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:41:57
+
+  38     whereAlloc.session = allocSession;
+  39 }
+  40 
+→ 41 const allocations = await prisma.hallAllocation.findMany({
+       where: {
+         examSessionId: 12,
+         subjectId: 1,
+         session: "FN"
+       },
+       include: {
+         hall: true,
+         student: {
+           include: {
+             dummyMappings: {
+               where: {
+                 subjectId: 1,
+                 examSessionId: 12,
+                 ~~~~~~~~~~~~~
+     ?           AND?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           OR?: SubjectDummyMappingWhereInput[],
+     ?           NOT?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           id?: IntFilter | Int,
+     ?           studentId?: IntFilter | Int,
+     ?           originalRegisterNo?: StringFilter | String,
+     ?           subjectCode?: StringFilter | String,
+     ?           department?: StringFilter | String,
+     ?           semester?: IntFilter | Int,
+     ?           section?: StringFilter | String,
+     ?           academicYear?: StringFilter | String,
+     ?           dummyNumber?: StringNullableFilter | String | Null,
+     ?           answerScriptNo?: StringNullableFilter | String | Null,
+     ?           isAbsent?: BoolFilter | Boolean,
+     ?           boardCode?: StringNullableFilter | String | Null,
+     ?           qpCode?: StringNullableFilter | String | Null,
+     ?           marks?: FloatNullableFilter | Float | Null,
+     ?           mappingLocked?: BoolFilter | Boolean,
+     ?           createdAt?: DateTimeFilter | DateTime,
+     ?           student?: StudentRelationFilter | StudentWhereInput,
+     ?           subject?: SubjectRelationFilter | SubjectWhereInput
+               },
+               take: 1
+             }
+           }
+         }
+       },
+       orderBy: [
+         {
+           hallId: "asc"
+         },
+         {
+           seatNumber: "asc"
+         }
+       ]
+     })
+
+Unknown argument `examSessionId`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:41:29)
+[2026-03-18T09:54:24.670Z] [INFO] Server running on:
+[2026-03-18T09:54:24.672Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:54:24.673Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:54:24.697Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:54:27.188Z] [ERROR] generateSheet failed 
+Invalid `prisma.hallAllocation.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:41:57
+
+  38     whereAlloc.session = allocSession;
+  39 }
+  40 
+→ 41 const allocations = await prisma.hallAllocation.findMany({
+       where: {
+         examSessionId: 12,
+         subjectId: 1,
+         session: "FN"
+       },
+       include: {
+         hall: true,
+         student: {
+           include: {
+             dummyMappings: {
+               where: {
+                 subjectId: 1,
+                 examSessionId: 12,
+                 ~~~~~~~~~~~~~
+     ?           AND?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           OR?: SubjectDummyMappingWhereInput[],
+     ?           NOT?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           id?: IntFilter | Int,
+     ?           studentId?: IntFilter | Int,
+     ?           originalRegisterNo?: StringFilter | String,
+     ?           subjectCode?: StringFilter | String,
+     ?           department?: StringFilter | String,
+     ?           semester?: IntFilter | Int,
+     ?           section?: StringFilter | String,
+     ?           academicYear?: StringFilter | String,
+     ?           dummyNumber?: StringNullableFilter | String | Null,
+     ?           answerScriptNo?: StringNullableFilter | String | Null,
+     ?           isAbsent?: BoolFilter | Boolean,
+     ?           boardCode?: StringNullableFilter | String | Null,
+     ?           qpCode?: StringNullableFilter | String | Null,
+     ?           marks?: FloatNullableFilter | Float | Null,
+     ?           mappingLocked?: BoolFilter | Boolean,
+     ?           createdAt?: DateTimeFilter | DateTime,
+     ?           student?: StudentRelationFilter | StudentWhereInput,
+     ?           subject?: SubjectRelationFilter | SubjectWhereInput
+               },
+               take: 1
+             }
+           }
+         }
+       },
+       orderBy: [
+         {
+           hallId: "asc"
+         },
+         {
+           seatNumber: "asc"
+         }
+       ]
+     })
+
+Unknown argument `examSessionId`. Available options are marked with ?.
+PrismaClientValidationError: 
+Invalid `prisma.hallAllocation.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:41:57
+
+  38     whereAlloc.session = allocSession;
+  39 }
+  40 
+→ 41 const allocations = await prisma.hallAllocation.findMany({
+       where: {
+         examSessionId: 12,
+         subjectId: 1,
+         session: "FN"
+       },
+       include: {
+         hall: true,
+         student: {
+           include: {
+             dummyMappings: {
+               where: {
+                 subjectId: 1,
+                 examSessionId: 12,
+                 ~~~~~~~~~~~~~
+     ?           AND?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           OR?: SubjectDummyMappingWhereInput[],
+     ?           NOT?: SubjectDummyMappingWhereInput | SubjectDummyMappingWhereInput[],
+     ?           id?: IntFilter | Int,
+     ?           studentId?: IntFilter | Int,
+     ?           originalRegisterNo?: StringFilter | String,
+     ?           subjectCode?: StringFilter | String,
+     ?           department?: StringFilter | String,
+     ?           semester?: IntFilter | Int,
+     ?           section?: StringFilter | String,
+     ?           academicYear?: StringFilter | String,
+     ?           dummyNumber?: StringNullableFilter | String | Null,
+     ?           answerScriptNo?: StringNullableFilter | String | Null,
+     ?           isAbsent?: BoolFilter | Boolean,
+     ?           boardCode?: StringNullableFilter | String | Null,
+     ?           qpCode?: StringNullableFilter | String | Null,
+     ?           marks?: FloatNullableFilter | Float | Null,
+     ?           mappingLocked?: BoolFilter | Boolean,
+     ?           createdAt?: DateTimeFilter | DateTime,
+     ?           student?: StudentRelationFilter | StudentWhereInput,
+     ?           subject?: SubjectRelationFilter | SubjectWhereInput
+               },
+               take: 1
+             }
+           }
+         }
+       },
+       orderBy: [
+         {
+           hallId: "asc"
+         },
+         {
+           seatNumber: "asc"
+         }
+       ]
+     })
+
+Unknown argument `examSessionId`. Available options are marked with ?.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:41:29)
+[2026-03-18T09:56:11.016Z] [INFO] Server running on:
+[2026-03-18T09:56:11.018Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:56:11.019Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:56:11.057Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:57:03.597Z] [ERROR] generateSheet failed rows is not defined
+ReferenceError: rows is not defined
+    at C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\services\pdf.service.js:1005:9
+    at Array.forEach (<anonymous>)
+    at exports.generateExamAttendanceSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\services\pdf.service.js:939:11)
+    at exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:90:20)
+[2026-03-18T09:57:17.896Z] [INFO] Server running on:
+[2026-03-18T09:57:17.898Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:57:17.898Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:57:17.923Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:57:27.214Z] [ERROR] generateSheet failed rows is not defined
+ReferenceError: rows is not defined
+    at C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\services\pdf.service.js:1005:9
+    at Array.forEach (<anonymous>)
+    at exports.generateExamAttendanceSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\services\pdf.service.js:939:11)
+    at exports.generateSheet (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\examSheetController.js:90:20)
+[2026-03-18T09:58:26.441Z] [INFO] Server running on:
+[2026-03-18T09:58:26.443Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T09:58:26.444Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T09:58:26.480Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T09:58:40.644Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 2
+[2026-03-18T10:00:18.782Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 1
+[2026-03-18T10:08:12.658Z] [INFO] Server running on:
+[2026-03-18T10:08:12.660Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:08:12.661Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:08:12.696Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:08:51.898Z] [INFO] Server running on:
+[2026-03-18T10:08:51.900Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:08:51.901Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:08:51.958Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:10:27.960Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 1
+[2026-03-18T10:11:09.815Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 2
+[2026-03-18T10:16:23.358Z] [INFO] Server running on:
+[2026-03-18T10:16:23.360Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:16:23.360Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:16:23.385Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:16:40.767Z] [INFO] Server running on:
+[2026-03-18T10:16:40.769Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:16:40.769Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:16:40.788Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:17:10.021Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 2
+[2026-03-18T10:17:49.216Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 1
+[2026-03-18T10:18:12.429Z] [INFO] Server running on:
+[2026-03-18T10:18:12.431Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:18:12.431Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:18:12.454Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:19:12.996Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 1
+[2026-03-18T10:20:39.546Z] [INFO] Server running on:
+[2026-03-18T10:20:39.552Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:20:39.552Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:20:39.573Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:20:56.483Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 1
+[2026-03-18T10:28:16.203Z] [INFO] Server running on:
+[2026-03-18T10:28:16.204Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:28:16.204Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:28:16.225Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:30:52.685Z] [INFO] Server running on:
+[2026-03-18T10:30:52.687Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:30:52.687Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:30:52.707Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T10:32:00.853Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 1
+[2026-03-18T10:32:40.944Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 2
+[2026-03-18T10:42:31.252Z] [INFO] Server running on:
+[2026-03-18T10:42:31.253Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T10:42:31.254Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T10:42:31.275Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T11:04:16.128Z] [INFO] Server running on:
+[2026-03-18T11:04:16.129Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T11:04:16.129Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T11:04:16.159Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T11:04:30.892Z] [INFO] Server running on:
+[2026-03-18T11:04:30.893Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T11:04:30.894Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T11:04:30.911Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T11:04:49.799Z] [INFO] Server running on:
+[2026-03-18T11:04:49.802Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T11:04:49.803Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T11:04:49.822Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T11:05:30.569Z] [INFO] Server running on:
+[2026-03-18T11:05:30.570Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T11:05:30.571Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T11:05:30.590Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)

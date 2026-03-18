@@ -26,9 +26,8 @@ const Login = () => {
       if (user.forcePasswordChange) {
         if (user.role === 'ADMIN') target = "/admin/settings";
         else if (user.role === 'FACULTY') target = "/faculty/settings";
-        else if (user.role === 'STUDENT') target = "/student/settings";
         else target = `/${user.role.toLowerCase()}/settings`;
-        
+
         setTargetPath(target);
         setShowTransition(true);
         return;

@@ -30,13 +30,38 @@ exports.generateHallTickets = async (req, res) => {
         if (!examSession) return res.status(404).json({ message: 'Exam session not found' });
 
         // Get hall allocations for this session
+        const where = { examSessionId: parseInt(examSessionId) };
+        const andConditions = [];
+        if (department) {
+            andConditions.push({
+                OR: [
+                    { department: department },
+                    { student: { department: department } },
+                    { student: { departmentRef: { code: department } } },
+                    { student: { departmentRef: { name: department } } }
+                ]
+            });
+        }
+        if (semester) {
+            andConditions.push({
+                OR: [
+                    { student: { semester: parseInt(semester) } },
+                    { student: { currentSemester: parseInt(semester) } }
+                ]
+            });
+        }
+        if (section) {
+            andConditions.push({
+                OR: [
+                    { student: { section: section } },
+                    { student: { sectionRef: { name: section } } }
+                ]
+            });
+        }
+        if (andConditions.length > 0) where.AND = andConditions;
+
         const allocations = await prisma.hallAllocation.findMany({
-            where: {
-                examSessionId: parseInt(examSessionId),
-                ...(department ? { student: { department } } : {}),
-                ...(semester ? { student: { semester: parseInt(semester) } } : {}),
-                ...(section ? { student: { section } } : {}),
-            },
+            where,
             include: {
                 student: {
                     include: { 
@@ -100,7 +125,7 @@ exports.generateHallTickets = async (req, res) => {
         
         // Use month/year from session if available for the session name/header
         const headerTitle = examSession.month && examSession.year 
-            ? `${examSession.examName} (${examSession.month} ${examSession.year})`
+            ? `(${examSession.month} ${examSession.year})`
             : examSession.examName || '';
             
         pdfService.generateHallTicket(res, { students, sessionName: headerTitle });
@@ -155,13 +180,37 @@ exports.generateHallApplication = async (req, res) => {
         });
         if (!examSession) return res.status(404).json({ message: 'Exam session not found' });
 
+        const whereS = { status: 'ACTIVE' };
+        const andS = [];
+        if (department) {
+            andS.push({
+                OR: [
+                    { department: department },
+                    { departmentRef: { code: department } },
+                    { departmentRef: { name: department } }
+                ]
+            });
+        }
+        if (semester) {
+            andS.push({
+                OR: [
+                    { semester: parseInt(semester) },
+                    { currentSemester: parseInt(semester) }
+                ]
+            });
+        }
+        if (section) {
+            andS.push({
+                OR: [
+                    { section: section },
+                    { sectionRef: { name: section } }
+                ]
+            });
+        }
+        if (andS.length > 0) whereS.AND = andS;
+
         const students = await prisma.student.findMany({
-            where: {
-                ...(department ? { department } : {}),
-                ...(semester ? { semester: parseInt(semester) } : {}),
-                ...(section ? { section } : {}),
-                status: 'ACTIVE'
-            },
+            where: whereS,
             include: {
                 departmentRef: true,
                 marks: {
@@ -214,7 +263,11 @@ exports.generateHallApplication = async (req, res) => {
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=hall_application_sem${semester}_${department || 'ALL'}.pdf`);
-        pdfService.generateHallApplication(res, { students: studentData, sessionName: examSession.examName || '' });
+        const sessionName = examSession.month && examSession.year 
+            ? `${examSession.month} - ${examSession.year}`
+            : examSession.examName || '';
+
+        pdfService.generateHallApplication(res, { students: studentData, sessionName });
 
     } catch (error) {
         logger.error('generateHallApplication failed', error);

@@ -31,7 +31,7 @@ exports.createSession = async (req, res) => {
                     examDate: examDate ? new Date(examDate) : null,
                     month,
                     year,
-                    session,
+                    session: session || "", // Now optional
                     examMode: examMode || "CIA",
                     createdBy: req.user.id
                 }
@@ -248,7 +248,7 @@ exports.deleteHall = async (req, res) => {
 
 exports.generateAllocations = async (req, res) => {
     try {
-        const { sessionId, hallIds, subjectIds, date } = req.body;
+        const { sessionId, hallIds, subjectIds, date, session: allocSession } = req.body; // Accept session (FN/AN) from body
 
         const session = await prisma.examSession.findUnique({
             where: { id: parseInt(sessionId) },
@@ -269,11 +269,33 @@ exports.generateAllocations = async (req, res) => {
             const deptCriteria = await getDeptCriteria(sub.department);
 
             // 1a. Fetch Regular Students
-            const regularStudents = await prisma.student.findMany({
-                where: {
-                    ...deptCriteria,
+            // If subject has no department (empty/null), it's a common/First Year subject.
+            // Fetch ALL students of that semester across all departments.
+            let studentWhereClause;
+            const isFirstYear = !sub.department; // empty string or null = common subject
+
+            if (isFirstYear) {
+                // Common subject (First Year): match ALL students of this semester
+                studentWhereClause = {
                     semester: sub.semester
-                },
+                };
+            } else {
+                // Dept-specific subject
+                const isOr = deptCriteria.OR != null;
+                if (isOr) {
+                    studentWhereClause = {
+                        AND: [deptCriteria, { semester: sub.semester }]
+                    };
+                } else {
+                    studentWhereClause = {
+                        ...deptCriteria,
+                        semester: sub.semester
+                    };
+                }
+            }
+
+            const regularStudents = await prisma.student.findMany({
+                where: studentWhereClause,
                 include: {
                     eligibility: {
                         where: { subjectId: sub.id, semester: sub.semester }
@@ -383,6 +405,7 @@ exports.generateAllocations = async (req, res) => {
                         studentId: a.studentId,
                         subjectId: a.subjectId,
                         examDate: date ? new Date(date) : null,
+                        session: allocSession || null,
                         department: a.department,
                         year: a.year,
                         seatNumber: a.seatNumber,
@@ -406,11 +429,17 @@ exports.generateAllocations = async (req, res) => {
 
 exports.deleteAllocationByDate = async (req, res) => {
     try {
-        const { sessionId, date } = req.body;
+        const { sessionId, date, session: allocSession } = req.body;
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+
         await prisma.hallAllocation.deleteMany({
             where: {
                 examSessionId: parseInt(sessionId),
-                examDate: new Date(date)
+                examDate: { gte: dayStart, lte: dayEnd },
+                ...(allocSession ? { session: allocSession } : {})
             }
         });
         res.json({ message: "Allocations for the specific date deleted successfully" });
@@ -563,7 +592,15 @@ exports.exportConsolidatedPlan = async (req, res) => {
 
         const whereClause = { examSessionId: parseInt(id) };
         if (date) {
-            whereClause.examDate = new Date(date);
+            // Filter by date using a date-range to avoid millisecond mismatch
+            const dayStart = new Date(date);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(date);
+            dayEnd.setHours(23, 59, 59, 999);
+            whereClause.examDate = { gte: dayStart, lte: dayEnd };
+        }
+        if (req.query.session) {
+            whereClause.session = req.query.session;
         }
 
         const allocations = await prisma.hallAllocation.findMany({

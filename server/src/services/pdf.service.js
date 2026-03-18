@@ -7,7 +7,7 @@ const COLLEGE_NAME_BOLD = '(AUTONOMOUS)';
 const COLLEGE_SUB = '(Affiliated to Anna University, Chennai)';
 const COLLEGE_CITY = 'TIRUCHIRAPPALLI';
 const CONTROLLER_LINE = 'OFFICE OF THE CONTROLLER OF EXAMINATIONS';
-const MIET_LOGO = path.join(__dirname, '../../client/public/miet-logo.png');
+const MIET_LOGO = path.join(__dirname, '../../../client/public/miet-logo.png');
 
 // ─── Helper: number to words ──────────────────────────────────────────────────
 function numberToWords(num) {
@@ -30,6 +30,8 @@ function romanize(num) {
     for (const [r, v] of val) { while (n >= v) { result += r; n -= v; } }
     return result;
 }
+
+const drawLine = (doc, x1, y1, x2, y2) => doc.moveTo(x1, y1).lineTo(x2, y2).stroke();
 
 // ─── Helper: draw MIET college header ────────────────
 function drawMIETHeader(doc, startY) {
@@ -441,7 +443,7 @@ exports.generateConsolidatedTabulationSheet = (res, data) => {
     // Tiny sub-column relative widths
     const subParts = { int: 0.12, pext: 0.15, text: 0.15, total: 0.18, agrade: 0.20, rgrade: 0.20 };
 
-    const drawLine = (x1, y1, x2, y2) => doc.moveTo(x1, y1).lineTo(x2, y2).stroke();
+    const drawLineLocal = (x1, y1, x2, y2) => drawLine(doc, x1, y1, x2, y2);
 
     const drawEnhancedRow = (row, isHeader = false) => {
         const rowH = isHeader ? 60 : 32;
@@ -455,9 +457,9 @@ exports.generateConsolidatedTabulationSheet = (res, data) => {
 
         let curX = M;
         // S.No
-        doc.text(row.sno || '', curX, y + (rowH / 2) - 4, { width: colWidths.sno, align: 'center' }); curX += colWidths.sno; drawLine(curX, y, curX, y + rowH);
+        doc.text(row.sno || '', curX, y + (rowH / 2) - 4, { width: colWidths.sno, align: 'center' }); curX += colWidths.sno; drawLineLocal(curX, y, curX, y + rowH);
         // Register No
-        doc.text(row.regno || '', curX, y + (rowH / 2) - 4, { width: colWidths.regno, align: 'center' }); curX += colWidths.regno; drawLine(curX, y, curX, y + rowH);
+        doc.text(row.regno || '', curX, y + (rowH / 2) - 4, { width: colWidths.regno, align: 'center' }); curX += colWidths.regno; drawLineLocal(curX, y, curX, y + rowH);
 
         // Subjects
         subjects.forEach(sub => {
@@ -468,20 +470,20 @@ exports.generateConsolidatedTabulationSheet = (res, data) => {
             if (isHeader) {
                 // Subject Code Header
                 doc.fontSize(9).text(sub.code, bx, y + 6, { width: bw, align: 'center' });
-                drawLine(bx, y + 18, bx + bw, y + 18);
+                drawLineLocal(bx, y + 18, bx + bw, y + 18);
 
                 const subY = y + 18;
                 let sx = bx;
                 doc.fontSize(6);
 
                 // Sub-headers: Int, P-Ext, T-Ext, Total
-                doc.text('Int', sx, subY + 14, { width: bw * subParts.int, align: 'center' }); sx += bw * subParts.int; drawLine(sx, subY, sx, y + rowH);
-                doc.text('P-E', sx, subY + 14, { width: bw * subParts.pext, align: 'center' }); sx += bw * subParts.pext; drawLine(sx, subY, sx, y + rowH);
-                doc.text('T-E', sx, subY + 14, { width: bw * subParts.text, align: 'center' }); sx += bw * subParts.text; drawLine(sx, subY, sx, y + rowH);
-                doc.text('Tot', sx, subY + 14, { width: bw * subParts.total, align: 'center' }); sx += bw * subParts.total; drawLine(sx, subY, sx, y + rowH);
+                doc.text('Int', sx, subY + 14, { width: bw * subParts.int, align: 'center' }); sx += bw * subParts.int; drawLineLocal(sx, subY, sx, y + rowH);
+                doc.text('P-E', sx, subY + 14, { width: bw * subParts.pext, align: 'center' }); sx += bw * subParts.pext; drawLineLocal(sx, subY, sx, y + rowH);
+                doc.text('T-E', sx, subY + 14, { width: bw * subParts.text, align: 'center' }); sx += bw * subParts.text; drawLineLocal(sx, subY, sx, y + rowH);
+                doc.text('Tot', sx, subY + 14, { width: bw * subParts.total, align: 'center' }); sx += bw * subParts.total; drawLineLocal(sx, subY, sx, y + rowH);
 
                 doc.fontSize(6);
-                doc.text('A-G', sx, subY + 14, { width: bw * subParts.agrade, align: 'center' }); sx += bw * subParts.agrade; drawLine(sx, subY, sx, y + rowH);
+                doc.text('A-G', sx, subY + 14, { width: bw * subParts.agrade, align: 'center' }); sx += bw * subParts.agrade; drawLineLocal(sx, subY, sx, y + rowH);
                 doc.text('R-G', sx, subY + 14, { width: bw * subParts.rgrade, align: 'center' });
 
                 // Max marks line
@@ -501,37 +503,37 @@ exports.generateConsolidatedTabulationSheet = (res, data) => {
                 doc.fontSize(8);
 
                 // Int
-                doc.text(mark.internal != null ? Math.round(mark.internal).toString() : '-', sx, y + 10, { width: bw * subParts.int, align: 'center' }); sx += bw * subParts.int; drawLine(sx, y, sx, y + rowH);
+                doc.text(mark.internal != null ? Math.round(mark.internal).toString() : '-', sx, y + 10, { width: bw * subParts.int, align: 'center' }); sx += bw * subParts.int; drawLineLocal(sx, y, sx, y + rowH);
 
                 // P-Ext
-                doc.text(mark.labExt != null ? Math.round(mark.labExt).toString() : '-', sx, y + 10, { width: bw * subParts.pext, align: 'center' }); sx += bw * subParts.pext; drawLine(sx, y, sx, y + rowH);
+                doc.text(mark.labExt != null ? Math.round(mark.labExt).toString() : '-', sx, y + 10, { width: bw * subParts.pext, align: 'center' }); sx += bw * subParts.pext; drawLineLocal(sx, y, sx, y + rowH);
 
                 // T-Ext
-                doc.text(mark.theoryExt != null ? Math.round(mark.theoryExt).toString() : '-', sx, y + 10, { width: bw * subParts.text, align: 'center' }); sx += bw * subParts.text; drawLine(sx, y, sx, y + rowH);
+                doc.text(mark.theoryExt != null ? Math.round(mark.theoryExt).toString() : '-', sx, y + 10, { width: bw * subParts.text, align: 'center' }); sx += bw * subParts.text; drawLineLocal(sx, y, sx, y + rowH);
 
                 // Total
-                doc.font('Helvetica-Bold').text(mark.total != null ? Math.round(mark.total).toString() : '-', sx, y + 10, { width: bw * subParts.total, align: 'center' }); sx += bw * subParts.total; drawLine(sx, y, sx, y + rowH);
+                doc.font('Helvetica-Bold').text(mark.total != null ? Math.round(mark.total).toString() : '-', sx, y + 10, { width: bw * subParts.total, align: 'center' }); sx += bw * subParts.total; drawLineLocal(sx, y, sx, y + rowH);
 
                 // Grades (A and R)
                 doc.font('Helvetica').fontSize(mark.grade?.length > 2 ? 6 : 8);
-                doc.text(mark.grade || '-', sx, y + 10, { width: bw * subParts.agrade, align: 'center' }); sx += bw * subParts.agrade; drawLine(sx, y, sx, y + rowH);
+                doc.text(mark.grade || '-', sx, y + 10, { width: bw * subParts.agrade, align: 'center' }); sx += bw * subParts.agrade; drawLineLocal(sx, y, sx, y + rowH);
                 doc.text(mark.grade || '-', sx, y + 10, { width: bw * subParts.rgrade, align: 'center' });
                 doc.font('Helvetica');
             }
-            curX += bw; drawLine(curX, y, curX, y + rowH);
+            curX += bw; drawLineLocal(curX, y, curX, y + rowH);
         });
 
         // Stats at the end
         doc.fontSize(8.5);
-        doc.text(row.gpa || '0.00', curX, y + 10, { width: statCols.gpa, align: 'center' }); curX += statCols.gpa; drawLine(curX, y, curX, y + rowH);
-        doc.text(row.cgpa || '0.00', curX, y + 10, { width: statCols.cgpa, align: 'center' }); curX += statCols.cgpa; drawLine(curX, y, curX, y + rowH);
-        doc.text(row.cr || '0', curX, y + 10, { width: statCols.cr, align: 'center' }); curX += statCols.cr; drawLine(curX, y, curX, y + rowH);
-        
+        doc.text(row.gpa || '0.00', curX, y + 10, { width: statCols.gpa, align: 'center' }); curX += statCols.gpa; drawLineLocal(curX, y, curX, y + rowH);
+        doc.text(row.cgpa || '0.00', curX, y + 10, { width: statCols.cgpa, align: 'center' }); curX += statCols.cgpa; drawLineLocal(curX, y, curX, y + rowH);
+        doc.text(row.cr || '0', curX, y + 10, { width: statCols.cr, align: 'center' }); curX += statCols.cr; drawLineLocal(curX, y, curX, y + rowH);
+
         let status = row.result;
         if (status === 'PASS') doc.fillColor('#006400');
         else if (status === 'FAIL') doc.fillColor('#8B0000');
         else doc.fillColor('#444444');
-        
+
         doc.text(status || 'PENDING', curX, y + 10, { width: statCols.result, align: 'center' });
         doc.fillColor('#000000');
 
@@ -583,9 +585,9 @@ exports.generateHallTicket = (res, data) => {
 
     const PW = doc.page.width;
     const PH = doc.page.height;
-    const TICKET_H = PH / 2;
     const M = 28;
     const CW = PW - 2 * M;
+    const TICKET_H = PH - 2 * M;
 
     const drawTicket = (student, startY) => {
         // Outer border
@@ -602,7 +604,7 @@ exports.generateHallTicket = (res, data) => {
         const PHOTO_W = 65, PHOTO_H = 75;
         const photoX = M + CW - PHOTO_W - 10;
         doc.rect(photoX, y, PHOTO_W, PHOTO_H).stroke();
-        
+
         const photoPath = student.photo ? path.join(__dirname, '../../uploads/students', student.photo) : null;
         if (photoPath && fs.existsSync(photoPath)) {
             doc.image(photoPath, photoX + 2, y + 2, { fit: [PHOTO_W - 4, PHOTO_H - 4] });
@@ -610,15 +612,16 @@ exports.generateHallTicket = (res, data) => {
             doc.fontSize(7).text('PHOTO', photoX, y + PHOTO_H / 2, { width: PHOTO_W, align: 'center' });
         }
 
-        // College header (centered between logo and photo)
+        // College header (centered)
         const TX = M + LOGO_SZ + 8;
         const TW = CW - LOGO_SZ - PHOTO_W - 20;
         doc.font('Helvetica-Bold').fontSize(13).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', TX, y + 2, { width: TW, align: 'center' });
         doc.fontSize(10).text('(Autonomous)', TX, y + 16, { width: TW, align: 'center' });
         doc.font('Helvetica').fontSize(8).text('Affiliated to Anna University, Chennai', TX, y + 28, { width: TW, align: 'center' });
-        doc.font('Helvetica-Bold').fontSize(8).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', TX, y + 39, { width: TW, align: 'center' });
-        doc.fontSize(8).text(`UG/PG DEGREE END SEMESTER EXAMINATIONS ${sessionName}`, TX, y + 50, { width: TW, align: 'center' });
-        y += LOGO_SZ + 8;
+        doc.font('Helvetica-Bold').fontSize(10).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', TX, y + 42, { width: TW, align: 'center' });
+        const cleanSessionName = sessionName.replace(/END SEMESTER/gi, '').replace(/EXAMINATIONS/gi, '').replace(/\s+/g, ' ').trim();
+        doc.fontSize(10).text(`UG/PG DEGREE END SEMESTER EXAMINATIONS ${cleanSessionName}`, TX, y + 56, { width: TW, align: 'center' });
+        y += Math.max(LOGO_SZ, PHOTO_H) + 2;
 
         // Divider
         doc.moveTo(M + 4, y).lineTo(M + CW - 4, y).stroke();
@@ -628,42 +631,53 @@ exports.generateHallTicket = (res, data) => {
         doc.font('Helvetica-Bold').fontSize(12).text('HALL TICKET', M, y, { width: CW, align: 'center', underline: true });
         y += 16;
 
-        // Student info table (bordered)
-        const infoTableW = CW - PHOTO_W - 14;
-        const labelW = 90, valueW = infoTableW - labelW;
-        const rowH = 14;
+        // Student info table (bordered grid)
+        const rowH = 16;
+        const col1 = 120, col2 = 230, col3 = 80, col4 = CW - col1 - col2 - col3;
 
-        const infoRows = [
-            ['Registration Number', student.registerNumber || student.rollNo, 'Semester', String(student.semester || '')],
-            ['Name', student.name || '', null, null],
-            ['Degree & Branch', `${student.departmentRef?.degree || 'B.E.'} ${student.departmentRef?.name || student.department || ''}`, null, null],
-            ['Date of Birth', student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-IN') : '', null, null],
-        ];
+        // Row 1: Reg No | Semester
+        doc.rect(M, y, col1, rowH).stroke();
+        doc.rect(M + col1, y, col2, rowH).stroke();
+        doc.rect(M + col1 + col2, y, col3, rowH).stroke();
+        doc.rect(M + col1 + col2 + col3, y, col4, rowH).stroke();
+        doc.font('Helvetica-Bold').fontSize(9).text('Registration Number', M + 4, y + 4);
+        doc.font('Helvetica').fontSize(9).text(student.registerNumber || student.rollNo || '-', M + col1 + 4, y + 4);
+        doc.font('Helvetica-Bold').fontSize(9).text('Semester', M + col1 + col2 + 4, y + 4);
+        doc.font('Helvetica').fontSize(9).text(String(student.semester || '-'), M + col1 + col2 + col3 + 4, y + 4);
+        y += rowH;
 
-        infoRows.forEach((row) => {
-            const [l1, v1, l2, v2] = row;
-            doc.rect(M, y, infoTableW, rowH).stroke();
-            doc.font('Helvetica-Bold').fontSize(8).text(l1, M + 2, y + 3, { width: labelW, align: 'left' });
-            doc.font('Helvetica').fontSize(8).text(String(v1 || ''), M + labelW, y + 3, { width: l2 ? valueW / 2 : valueW, align: 'left' });
-            if (l2) {
-                doc.moveTo(M + labelW + valueW / 2, y).lineTo(M + labelW + valueW / 2, y + rowH).stroke();
-                doc.font('Helvetica-Bold').fontSize(8).text(l2, M + labelW + valueW / 2 + 2, y + 3, { width: 55 });
-                doc.font('Helvetica').fontSize(8).text(String(v2 || ''), M + labelW + valueW / 2 + 57, y + 3, { width: 50 });
-            }
-            y += rowH;
-        });
+        // Row 2: Name
+        doc.rect(M, y, col1, rowH).stroke();
+        doc.rect(M + col1, y, col2 + col3 + col4, rowH).stroke();
+        doc.font('Helvetica-Bold').fontSize(9).text('Name', M + 4, y + 4);
+        doc.font('Helvetica').fontSize(9).text(student.name || '-', M + col1 + 4, y + 4);
+        y += rowH;
+
+        // Row 3: Degree & Branch | Date of Birth
+        doc.rect(M, y, col1, rowH).stroke();
+        doc.rect(M + col1, y, col2, rowH).stroke();
+        doc.rect(M + col1 + col2, y, col3, rowH).stroke();
+        doc.rect(M + col1 + col2 + col3, y, col4, rowH).stroke();
+        doc.font('Helvetica-Bold').fontSize(9).text('Degree & Branch', M + 4, y + 4);
+        const degreeText = `${student.departmentRef?.degree || 'B.E.'}. ${student.departmentRef?.name || student.department || ''}`;
+        doc.font('Helvetica').fontSize(9).text(degreeText, M + col1 + 4, y + 4, { width: col2 - 8 });
+        doc.font('Helvetica-Bold').fontSize(9).text('Date of Birth', M + col1 + col2 + 4, y + 4);
+        const dob = student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-IN') : '-';
+        doc.font('Helvetica').fontSize(9).text(dob, M + col1 + col2 + col3 + 4, y + 4);
+        y += rowH;
 
         y += 4;
 
         // Subjects table header
-        const colW = [28, 68, 55, 65, 50, 280];
-        const hdrs = ['Sl.No', 'Date', 'Session', 'Sub.Code', 'Semester', 'Subject Title'];
-        const subH = 15;
-        doc.rect(M, y, CW, subH).fillAndStroke('#003B73', '#000');
-        doc.fillColor('#fff').font('Helvetica-Bold').fontSize(7.5);
+        const colW = [30, 70, 55, 65, 55, CW - 30 - 70 - 55 - 65 - 55];
+        const hdrs = ['Sl.No', 'Date', 'Session', 'Sub.Code', 'semester', 'Subject Title'];
+        const subH = 18;
+        doc.rect(M, y, CW, subH).fillAndStroke('#F2F2F2', '#000');
+        doc.fillColor('#000').font('Helvetica-Bold').fontSize(8.5);
         let cx = M;
         hdrs.forEach((h, i) => {
-            doc.text(h, cx + 2, y + 4, { width: colW[i] - 4, align: 'center' });
+            doc.rect(cx, y, colW[i], subH).stroke();
+            doc.text(h, cx + 2, y + 5, { width: colW[i] - 4, align: 'center' });
             cx += colW[i];
         });
         doc.fillColor('#000');
@@ -671,9 +685,8 @@ exports.generateHallTicket = (res, data) => {
 
         // Subject rows
         (student.subjects || []).forEach((sub, idx) => {
-            const fill = idx % 2 === 0 ? '#f9f9f9' : '#fff';
-            doc.rect(M, y, CW, 14).fillAndStroke(fill, '#ccc');
-            doc.font('Helvetica').fontSize(7.5).fillColor('#000');
+            doc.rect(M, y, CW, 16).stroke();
+            doc.font('Helvetica').fontSize(8.5).fillColor('#000');
             let cx2 = M;
             const vals = [
                 String(idx + 1),
@@ -684,10 +697,11 @@ exports.generateHallTicket = (res, data) => {
                 sub.name || ''
             ];
             vals.forEach((v, i) => {
-                doc.text(v, cx2 + 2, y + 3, { width: colW[i] - 4, align: i === 5 ? 'left' : 'center' });
+                doc.rect(cx2, y, colW[i], 16).stroke();
+                doc.text(v, cx2 + 2, y + 4, { width: colW[i] - 4, align: i === 5 ? 'left' : 'center' });
                 cx2 += colW[i];
             });
-            y += 14;
+            y += 16;
         });
 
         y += 6;
@@ -698,28 +712,23 @@ exports.generateHallTicket = (res, data) => {
         y += 4;
         doc.font('Helvetica-Bold').fontSize(8.5).text(`No. of Subjects Registered : ${(student.subjects || []).length}`, M + 12, y);
 
-        // Signatures pinned to bottom
-        const sigY = PH - 70;
+        // Signatures
+        const sigY = startY + TICKET_H - 60;
         doc.font('Helvetica').fontSize(9);
         doc.text('Signature of the Candidate', M + 14, sigY);
         doc.font('Helvetica-Bold').text('Controller of Examinations', M, sigY, { width: CW - 14, align: 'right' });
-        
-        // Note pinned to bottom
-        doc.fontSize(7.5).font('Helvetica').text('Note: If any discrepancies are found in the Hall Ticket, report to the COE office immediately.', M + 14, sigY + 22);
 
-        // Dashed cut line
-        doc.lineCap('round').dash(3, { space: 4 })
-            .moveTo(M, startY + TICKET_H - 6).lineTo(M + CW, startY + TICKET_H - 6)
-            .stroke().undash();
+        // Note
+        doc.fontSize(8).font('Helvetica').text('Note: If any discrepancies are found in the Hall Ticket, report to the COE office immediately.', M + 14, sigY + 24);
     };
 
     students.forEach((student, i) => {
         if (i > 0) doc.addPage();
-        drawTicket(student, 0);
+        drawTicket(student, M);
     });
     doc.end();
 };
-
+// ─── HALL APPLICATION ────────────────────────────────────────────────────────
 exports.generateHallApplication = (res, data) => {
     const students = data.students || [];
     const sessionName = data.sessionName || '';
@@ -746,7 +755,7 @@ exports.generateHallApplication = (res, data) => {
         const PHOTO_W = 70, PHOTO_H = 85;
         const photoX = M + CW - PHOTO_W - 10;
         doc.rect(photoX, y, PHOTO_W, PHOTO_H).stroke();
-        
+
         const photoPath = student.photo ? path.join(__dirname, '../../uploads/students', student.photo) : null;
         if (photoPath && fs.existsSync(photoPath)) {
             doc.image(photoPath, photoX + 2, y + 2, { fit: [PHOTO_W - 4, PHOTO_H - 4] });
@@ -760,8 +769,9 @@ exports.generateHallApplication = (res, data) => {
         doc.font('Helvetica-Bold').fontSize(14).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', TX, y + 2, { width: TW, align: 'center' });
         doc.fontSize(10).text('(Autonomous)', TX, y + 18, { width: TW, align: 'center' });
         doc.font('Helvetica').fontSize(8.5).text('Affiliated to Anna University, Chennai', TX, y + 30, { width: TW, align: 'center' });
-        doc.font('Helvetica-Bold').fontSize(9).text(`APPLICATION FOR SEMESTER EXAMINATIONS ${sessionName}`, TX, y + 44, { width: TW, align: 'center' });
-        y += LOGO_SZ + 10;
+        doc.font('Helvetica-Bold').fontSize(10).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', TX, y + 42, { width: TW, align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(10).text(`APPLICATION FOR SEMESTER EXAMINATIONS ${sessionName}`, TX, y + 55, { width: TW, align: 'center' });
+        y += Math.max(LOGO_SZ, PHOTO_H) + 15;
 
         doc.moveTo(M + 4, y).lineTo(M + CW - 4, y).stroke();
         y += 6;
@@ -784,20 +794,21 @@ exports.generateHallApplication = (res, data) => {
             ['Mobile Number', student.phoneNumber || ''],
         ];
 
+        // Student details grid
         leftInfo.forEach((row, i) => {
             const fy = y + i * rowH;
             doc.rect(M + 4, fy, halfW, rowH).stroke();
-            doc.font('Helvetica-Bold').fontSize(8).text(`: ${row[0]}`, M + 6, fy + 4, { width: lw });
-            doc.font('Helvetica').fontSize(8).text(`: ${String(row[1] || '')}`, M + 6 + lw, fy + 4, { width: vw });
+            doc.font('Helvetica-Bold').fontSize(8).text(String(row[0]), M + 8, fy + 4, { width: lw - 4 });
+            doc.font('Helvetica').fontSize(8).text(`: ${String(row[1] || '')}`, M + 4 + lw, fy + 4, { width: vw + 4 });
         });
         rightInfo.forEach((row, i) => {
             const fy = y + i * rowH;
-            const rx = M + 4 + halfW + 2;
-            doc.rect(rx, fy, halfW, rowH).stroke();
-            doc.font('Helvetica-Bold').fontSize(8).text(row[0], rx + 2, fy + 4, { width: lw });
-            doc.font('Helvetica').fontSize(8).text(`: ${String(row[1] || '')}`, rx + 2 + lw, fy + 4, { width: vw });
+            const rx = M + 4 + halfW;
+            doc.rect(rx, fy, halfW + 4, rowH).stroke();
+            doc.font('Helvetica-Bold').fontSize(8).text(String(row[0]), rx + 4, fy + 4, { width: lw - 4 });
+            doc.font('Helvetica').fontSize(8).text(`: ${String(row[1] || '')}`, rx + lw, fy + 4, { width: vw + 8 });
         });
-        y += leftInfo.length * rowH + 4;
+        y += leftInfo.length * rowH + 8;
 
         // Subject table header
         const subjColW = [30, 65, 180, 30, 65, 170];
@@ -846,30 +857,39 @@ exports.generateHallApplication = (res, data) => {
         const footerStartY = doc.page.height - 200;
         let fy = footerStartY;
 
-        // Totals row (Relative to Bottom)
+        // Totals row
         const theoryTotal = theorySubjects.length + (allSubjects.filter(s => s.isArrear && s.subjectCategory !== 'LAB').length);
         const practicalTotal = labSubjects.length + (allSubjects.filter(s => s.isArrear && s.subjectCategory === 'LAB').length);
         const totalPapers = allSubjects.length;
 
         doc.rect(M + 4, fy, CW - 8, 16).fillAndStroke('#f0f0f0', '#000');
         doc.fillColor('#000').font('Helvetica-Bold').fontSize(8);
-        const totW = (CW - 8) / 6;
-        doc.text('Theory Total', M + 4, fy + 4, { width: totW * 2, align: 'center' });
-        doc.text(String(theoryTotal), M + 4 + totW * 2, fy + 4, { width: totW, align: 'center' });
-        doc.text('Practical Total', M + 4 + totW * 3, fy + 4, { width: totW, align: 'center' });
-        doc.text(String(practicalTotal), M + 4 + totW * 4, fy + 4, { width: totW * 0.5, align: 'center' });
-        doc.text('Total No of Papers', M + 4 + totW * 4.5, fy + 4, { width: totW, align: 'center' });
-        doc.text(String(totalPapers), M + 4 + totW * 5.5, fy + 4, { width: totW * 0.5, align: 'center' });
-        fy += 24;
+        const col1 = (CW - 8) * 0.25;
+        const col2 = (CW - 8) * 0.1;
+        const col3 = (CW - 8) * 0.25;
+        const col4 = (CW - 8) * 0.1;
+        const col5 = (CW - 8) * 0.2;
+        const col6 = (CW - 8) * 0.1;
 
-        // Declaration
-        doc.font('Helvetica').fontSize(7.5).text('I here by declare that the particulars furnished by me in this application are correct', M + 6, fy, { width: 160 });
+        let tx = M + 4;
+        doc.text('Theory Total', tx, fy + 4, { width: col1, align: 'center' }); tx += col1; drawLine(doc, tx, fy, tx, fy + 16);
+        doc.text(String(theoryTotal), tx, fy + 4, { width: col2, align: 'center' }); tx += col2; drawLine(doc, tx, fy, tx, fy + 16);
+        doc.text('Practical Total', tx, fy + 4, { width: col3, align: 'center' }); tx += col3; drawLine(doc, tx, fy, tx, fy + 16);
+        doc.text(String(practicalTotal), tx, fy + 4, { width: col4, align: 'center' }); tx += col4; drawLine(doc, tx, fy, tx, fy + 16);
+        doc.text('Total No Of Papers', tx, fy + 4, { width: col5, align: 'center' }); tx += col5; drawLine(doc, tx, fy, tx, fy + 16);
+        doc.text(String(totalPapers), tx, fy + 4, { width: col6, align: 'center' });
+        fy += 26;
 
         // 3 Signature boxes
         const sigBoxW = (CW - 8) / 3;
         ['Signature of the Candidate', 'Signature of the Class Coordinator', 'Recommended & forwarded to Office of CoE by HoD'].forEach((label, i) => {
             const bx = M + 4 + i * sigBoxW;
             doc.rect(bx, fy, sigBoxW, 55).stroke();
+
+            if (i === 0) {
+                doc.font('Helvetica').fontSize(7.5).text('I hereby declare that the particulars furnished by me in this application are correct', bx + 4, fy + 4, { width: sigBoxW - 8, align: 'left' });
+            }
+
             doc.font('Helvetica').fontSize(7).text(label, bx + 2, fy + 42, { width: sigBoxW - 4, align: 'center' });
         });
         fy += 62;
@@ -881,18 +901,21 @@ exports.generateHallApplication = (res, data) => {
         fy += 16;
 
         // Accepted/Rejected
-        doc.rect(M + 4, fy, CW - 8, 20).stroke();
-        doc.font('Helvetica-Bold').fontSize(10).text('ACCEPTED / REJECTED', M + 4, fy + 5, { width: CW - 8, align: 'center' });
+        const arW = 150;
+        const arX = M + (CW - arW) / 2;
+        doc.rect(arX, fy, arW, 18).stroke();
+        doc.font('Helvetica-Bold').fontSize(9).text('ACCEPTED / REJECTED', arX, fy + 5, { width: arW, align: 'center' });
         fy += 24;
 
         // If Rejected line
-        doc.font('Helvetica').fontSize(8).text('If Rejected ,', M + 6, fy + 4);
-        doc.rect(M + 70, fy, CW - 80, 18).stroke();
-        fy += 22;
+        doc.font('Helvetica').fontSize(9).text('If Rejected, Reason:', M + 4, fy + 4);
+        doc.rect(M + 90, fy, CW - 100, 18).stroke();
+        fy += 32;
 
         // Note
-        doc.fontSize(7.5).text('Note : 1. If any discrepancy is found in the form, report to office of CoE immediately.', M + 6, fy + 3);
-        doc.font('Helvetica-Bold').text('Controller of Examinations', M + 6, fy + 3, { width: CW - 10, align: 'right' });
+        doc.fontSize(8.5).font('Helvetica-Bold').text('Note :', M + 4, fy + 12);
+        doc.font('Helvetica').fontSize(8.5).text('1. If any discrepancy is found in the form, report to office of CoE immediately.', M + 35, fy + 12);
+        doc.font('Helvetica-Bold').fontSize(9.5).text('Controller of Examinations', M + 4, fy + 12, { width: CW - 8, align: 'right' });
     };
 
     students.forEach((student, idx) => {
@@ -904,143 +927,142 @@ exports.generateHallApplication = (res, data) => {
 
 // ── Exam Attendance Sheet PDF ─────────────────────────────────────────────────
 exports.generateExamAttendanceSheet = (res, data) => {
-    const entries = data.entries || [];
-    const PAGE_ROWS = 20;
-    const pages = [];
-    for (let i = 0; i < entries.length; i += PAGE_ROWS) pages.push(entries.slice(i, i + PAGE_ROWS));
-    if (pages.length === 0) pages.push([]);
-    const totalPages = pages.length;
-
-    const doc = new PDFDocument({ margin: 0, size: 'A4' });
+    const doc = new PDFDocument({ size: 'A4', margin: 30, autoFirstPage: false });
     doc.pipe(res);
+
+    const CW = 535;
     const M = 30;
-    const CW = doc.page.width - 2 * M;
+    const LOGO_SZ = 50;
 
-    pages.forEach((rows, pageIdx) => {
-        if (pageIdx > 0) doc.addPage();
-        let y = 20;
+    const halls = data.halls || [];
+    const PAGE_ROWS = 25;
 
-        // Logo
-        const LOGO_SZ = 55;
-        if (fs.existsSync(MIET_LOGO)) {
-            doc.image(MIET_LOGO, M, y, { width: LOGO_SZ, height: LOGO_SZ });
-        }
+    halls.forEach((hall) => {
+        const depts = hall.depts || [];
+        
+        depts.forEach((dept) => {
+            const rows = dept.entries || [];
+            const totalPages = Math.ceil(rows.length / PAGE_ROWS) || 1;
 
-        // Header text — centered
-        const TX = M + LOGO_SZ + 8;
-        const TW = CW - LOGO_SZ - 8;
-         doc.font('Helvetica-Bold').fontSize(13).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', TX, y + 2, { width: TW, align: 'center' });
-        doc.fontSize(10).text('(Autonomous)', TX, y + 16, { width: TW, align: 'center' });
-        doc.font('Helvetica').fontSize(8).text('Affiliated to Anna University, Chennai', TX, y + 28, { width: TW, align: 'center' });
-        doc.font('Helvetica-Bold').fontSize(8).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', TX, y + 39, { width: TW, align: 'center' });
-        doc.font('Helvetica-Bold').fontSize(10).text(`ATTENDANCE FOR END SEMESTER EXAMINATIONS ${data.sessionName || 'NOV - ' + new Date().getFullYear()}`, TX, y + 44, { width: TW, align: 'center' });
-        y += LOGO_SZ + 10;
+            for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+                doc.addPage();
+                
+                // Outer page border
+                doc.rect(M - 10, M - 10, CW + 20, 780).stroke();
 
-        doc.moveTo(M, y).lineTo(M + CW, y).stroke();
-        y += 8;
+                let y = 30;
+                
+                // Logo
+                const logoPath = path.join(__dirname, '../../../client/public/miet-logo.png');
+                if (fs.existsSync(logoPath)) {
+                    doc.image(logoPath, M, y, { width: LOGO_SZ });
+                }
 
-        // Info fields
-        const c1 = M, c2 = M + 110, c3 = M + 290, c4 = M + 380;
-        doc.font('Helvetica-Bold').fontSize(9);
-        doc.text('Degree & Branch', c1, y);
-        doc.font('Helvetica').text(`: ${data.department || ''}`, c2, y);
-        doc.font('Helvetica-Bold').text('Semester', c3, y);
-        doc.font('Helvetica').text(`: ${data.semester || ''}`, c4, y);
-        y += 14;
-        doc.font('Helvetica-Bold').text('Subject Code', c1, y);
-        doc.font('Helvetica').text(`: ${data.subject?.code || ''}`, c2, y);
-        doc.font('Helvetica-Bold').text('Date of Exam/Session', c3, y);
-        doc.font('Helvetica').text(`: ${data.dateSession || ''}`, c4, y);
-        y += 14;
-        doc.font('Helvetica-Bold').text('Subject Name', c1, y);
-        doc.font('Helvetica').text(`: ${data.subject?.name || ''}`, c2, y);
-        y += 16;
+                // Header text
+                const TX = M + LOGO_SZ + 8;
+                const TW = CW - LOGO_SZ - 8;
+                doc.font('Helvetica-Bold').fontSize(13).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', TX, y, { width: TW, align: 'center' });
+                doc.fontSize(10).text('(Autonomous)', TX, y + 16, { width: TW, align: 'center' });
+                doc.font('Helvetica').fontSize(8).text('Affiliated to Anna University, Chennai', TX, y + 28, { width: TW, align: 'center' });
+                doc.font('Helvetica-Bold').fontSize(8).text('OFFICE OF THE CONTROLLER OF EXAMINATIONS', TX, y + 42, { width: TW, align: 'center' });
+                doc.font('Helvetica-Bold').fontSize(10).text(`ATTENDANCE FOR SEMESTER EXAMINATIONS ${data.sessionName || ''}`, TX, y + 54, { width: TW, align: 'center' });
+                y += LOGO_SZ + 18;
 
-        // Table header
-        // Columns: S.No | Register Number | Name | Answer Booklet No (5 cells) | HS To Write AB | Signature | Photo
-        const colW = [30, 100, 150, 20, 20, 20, 20, 20, 55, 65, 35];
-        const hdrs = ['S.No', 'Register\nNumber', 'Name of the\nCandidate', '', '', 'Answer Booklet No', '', '', 'HS To Write\nAB For Absent', 'Signature of\nthe Candidate', 'Photo'];
-        const rowH = 30;
+                doc.moveTo(M, y).lineTo(M + CW, y).stroke();
+                y += 10;
 
-        doc.rect(M, y, CW, rowH).stroke();
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000');
+                // Info fields - High horizontal gap for long dept names
+                const c1 = M, c2 = M + 110, c3 = M + 350, c4 = M + 440;
+                doc.font('Helvetica-Bold').fontSize(9);
+                doc.text('Degree & Branch', c1, y);
+                doc.font('Helvetica').text(`: ${dept.deptName || data.department || ''}`, c2, y, { width: c3 - c2 - 10 }); 
+                doc.font('Helvetica-Bold').text('Semester', c3, y);
+                doc.font('Helvetica').text(`: ${data.semester || ''}`, c4, y);
+                y += 18; 
+                doc.font('Helvetica-Bold').text('Subject Code', c1, y);
+                doc.font('Helvetica').text(`: ${data.subject?.code || ''}`, c2, y);
+                doc.font('Helvetica-Bold').text('Date of Exam/Session', c3, y);
+                doc.font('Helvetica').text(`: ${data.dateSession || ''}`, c4, y);
+                y += 14;
+                doc.font('Helvetica-Bold').text('Subject Name', c1, y);
+                doc.font('Helvetica').text(`: ${data.subject?.name || ''}`, c2, y, { width: c3 - c2 - 10 });
+                doc.font('Helvetica-Bold').text('Hall Number', c3, y);
+                doc.font('Helvetica').text(`: ${hall.hallName}`, c4, y);
+                y += 18;
 
-        // Draw Answer Booklet No spanning header
-        const abStartX = M + colW[0] + colW[1] + colW[2];
-        const abSpanW = colW[3] + colW[4] + colW[5] + colW[6] + colW[7];
-        doc.text('Answer Booklet No', abStartX, y + 4, { width: abSpanW, align: 'center' });
-        doc.moveTo(abStartX, y + 16).lineTo(abStartX + abSpanW, y + 16).stroke();
+                // Table
+                const colW = [30, 85, 130, 90, 60, 75, 35]; 
+                const abSubW = 18;
+                const rowH = 30;
+                doc.rect(M, y, CW, rowH).stroke();
+                doc.font('Helvetica-Bold').fontSize(7.5);
+                let hx = M;
+                doc.text('S.No', hx, y + 10, { width: colW[0], align: 'center' }); hx += colW[0]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                doc.text('Register Number', hx, y + 10, { width: colW[1], align: 'center' }); hx += colW[1]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                doc.text('Name of the Candidate', hx, y + 10, { width: colW[2], align: 'center' }); hx += colW[2]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                const abX = hx;
+                doc.text('Answer Booklet No', abX, y + 4, { width: colW[3], align: 'center' });
+                doc.moveTo(abX, y + 15).lineTo(abX + colW[3], y + 15).stroke();
+                for (let i = 1; i < 5; i++) {
+                    doc.moveTo(abX + i * abSubW, y + 15).lineTo(abX + i * abSubW, y + rowH).stroke();
+                }
+                hx += colW[3]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                doc.text('HS To Write\nAB For Absent', hx + 2, y + 8, { width: colW[4] - 4, align: 'center' }); hx += colW[4]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                doc.text('Signature of\nthe Candidate', hx + 2, y + 8, { width: colW[5] - 4, align: 'center' }); hx += colW[5]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                doc.text('Photo', hx, y + 10, { width: colW[6], align: 'center' });
+                y += rowH;
 
-        let hx = M;
-        [0, 1, 2].forEach(i => {
-            doc.text(['S.No', 'Register\nNumber', 'Name of the\nCandidate'][i], hx + 2, y + 8, { width: colW[i] - 4, align: 'center' });
-            hx += colW[i];
-            doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
-        });
-        // 5 small cells under Answer Booklet No
-        for (let i = 3; i <= 7; i++) {
-            doc.moveTo(hx + colW[i], y).lineTo(hx + colW[i], y + rowH).stroke();
-            hx += colW[i];
-        }
-        doc.text('HS To Write\nAB For Absent', hx + 2, y + 8, { width: colW[8] - 4, align: 'center' });
-        hx += colW[8]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
-        doc.text('Signature of\nthe Candidate', hx + 2, y + 8, { width: colW[9] - 4, align: 'center' });
-        hx += colW[9]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
-        doc.text('Photo', hx + 2, y + 8, { width: colW[10] - 4, align: 'center' });
-        y += rowH;
+                const pageEntries = rows.slice(pageIdx * PAGE_ROWS, (pageIdx + 1) * PAGE_ROWS);
+                pageEntries.forEach((row, ri) => {
+                    const dataRowH = 22;
+                    doc.rect(M, y, CW, dataRowH).stroke();
+                    let rx = M;
+                    doc.font('Helvetica').fontSize(8).text(String(pageIdx * PAGE_ROWS + ri + 1), rx + 2, y + 7, { width: colW[0] - 4, align: 'center' }); rx += colW[0]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                    doc.text(String(row.registerNumber || ''), rx + 2, y + 7, { width: colW[1] - 4, align: 'center' }); rx += colW[1]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                    doc.text(String(row.name || ''), rx + 4, y + 7, { width: colW[2] - 8, align: 'left' }); rx += colW[2]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                    const abStartX = rx;
+                    for (let i = 1; i <= 5; i++) {
+                        doc.moveTo(abStartX + i * abSubW, y).lineTo(abStartX + i * abSubW, y + dataRowH).stroke();
+                    }
+                    rx += colW[3]; rx += colW[4]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                    rx += colW[5]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                    if (row.photo) {
+                        const cleanPhoto = row.photo.replace(/^\/uploads\/students\//, '').replace(/^\/uploads\//, '').replace(/^public\//, '').replace(/^students\//, '');
+                        const fullPhotoPath = path.join(__dirname, '../../uploads/students', cleanPhoto);
+                        if (fs.existsSync(fullPhotoPath)) {
+                            doc.image(fullPhotoPath, rx + 4, y + 2, { fit: [colW[6] - 8, dataRowH - 4], align: 'center' });
+                        }
+                    }
+                    rx += colW[6];
+                    y += dataRowH;
+                });
 
-        // Data rows
-        rows.forEach((row, ri) => {
-            const dataRowH = 22;
-            doc.rect(M, y, CW, dataRowH).stroke();
-            let rx = M;
-            // S.No
-            doc.font('Helvetica').fontSize(8).text(String(pageIdx * PAGE_ROWS + ri + 1), rx + 2, y + 7, { width: colW[0] - 4, align: 'center' }); rx += colW[0]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
-            // Register Number
-            doc.text(row.registerNumber || '', rx + 2, y + 7, { width: colW[1] - 4, align: 'center' }); rx += colW[1]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
-            // Name
-            doc.text(row.name || '', rx + 2, y + 7, { width: colW[2] - 4, align: 'left' }); rx += colW[2]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
-            // 5 Answer Booklet cells
-            for (let i = 3; i <= 7; i++) { rx += colW[i]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke(); }
-            // HS To Write AB
-            rx += colW[8]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
-            // Signature
-            rx += colW[9]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
-            // Photo box
-            if (row.photo && fs.existsSync(row.photo)) {
-                doc.image(row.photo, rx + 2, y + 2, { fit: [colW[10] - 4, dataRowH - 4] });
+                y += 2;
+                doc.font('Helvetica').fontSize(7.5).text('* Hall SuperIntendent should mark \'AB\' for Absent', M, y, { width: CW, align: 'right' });
+                y += 6;
+
+                const botY = 675; 
+                const certW = CW * 0.70;
+                const certH = 90;
+                doc.rect(M, botY, certW, certH).stroke();
+                doc.font('Helvetica-Bold').fontSize(8).text('Certified that the following particulars have been verified', M + 4, botY + 6);
+                doc.font('Helvetica').fontSize(7.2);
+                doc.text('1.The Register No. in the attendance sheet with that in the hall ticket.', M + 4, botY + 16);
+                doc.text('2.The identification of the candidate with the photo pasted in the hall ticket', M + 4, botY + 28);
+                doc.text('3.The answer book number entered in the attendance sheet by the candidate with the Serial No. on the Answer Book.', M + 4, botY + 36);
+                const signSubY = botY + 70;
+                doc.font('Helvetica').fontSize(8);
+                doc.text('Signature of the Hall SuperIntendent', M + 10, signSubY);
+                doc.text('Signature of the Chief SuperIntendent', M + certW - 150, signSubY);
+                const totLX = M + certW + 20; 
+                const totBOX = totLX + 65;
+                doc.font('Helvetica').fontSize(8.2).text('Total Present', totLX, botY + 10);
+                doc.rect(totBOX, botY + 4, 35, 22).stroke();
+                doc.text('Total Absent', totLX, botY + 45);
+                doc.rect(totBOX, botY + 39, 35, 22).stroke();
+                doc.font('Helvetica-Bold').fontSize(8.5).text(`Page ${pageIdx + 1} of ${totalPages}`, M, 800-40, { width: CW, align: 'right' });
             }
-            y += dataRowH;
         });
-
-        y += 8;
-        // Note
-        doc.font('Helvetica').fontSize(7.5).text('* Hall SuperIntendent should mark \'AB\' for Absent', M, y, { width: CW, align: 'right' });
-        y += 12;
-
-        // Certification box
-        const certH = 65;
-        doc.rect(M, y, CW * 0.6, certH).stroke();
-        doc.font('Helvetica-Bold').fontSize(8).text('Certified that the following particulars have been verified', M + 4, y + 4, { width: CW * 0.6 - 8 });
-        doc.font('Helvetica').fontSize(7.5);
-        doc.text('1. The Register No. in the attendance sheet with that in the hall ticket.', M + 4, y + 16);
-        doc.text('2. The identification of the candidate with the photo pasted in the hall ticket', M + 4, y + 26);
-        doc.text('3. The answer book number entered in the attendance sheet by the candidate\n   with the Serial No. on the Answer Book.', M + 4, y + 36);
-
-        // Total Present / Absent boxes
-        const totX = M + CW * 0.6 + 5;
-        const totW2 = CW * 0.4 - 5;
-        doc.rect(totX, y, totW2, certH / 2).stroke();
-        doc.font('Helvetica-Bold').fontSize(8).text('Total Present', totX + 4, y + 8, { width: totW2 / 2 });
-        doc.rect(totX, y + certH / 2, totW2, certH / 2).stroke();
-        doc.text('Total Absent', totX + 4, y + certH / 2 + 8, { width: totW2 / 2 });
-        y += certH + 8;
-
-        // Signature lines + Page number
-        doc.font('Helvetica').fontSize(8);
-        doc.text('Signature of the Hall SuperIntendent', M, y + 10);
-        doc.text('Signature of the Chief SuperIntendent', M, y + 10, { width: CW, align: 'center' });
-        doc.font('Helvetica-Bold').text(`Page ${pageIdx + 1} of ${totalPages}`, M, y + 10, { width: CW, align: 'right' });
     });
 
     doc.end();

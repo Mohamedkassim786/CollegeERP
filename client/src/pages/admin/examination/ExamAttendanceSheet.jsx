@@ -5,7 +5,7 @@ import CustomSelect from '../../../components/CustomSelect';
 
 const ExamAttendanceSheet = () => {
     const [sessions, setSessions] = useState([]);
-    const [form, setForm] = useState({ examSessionId: '', semester: '', subjectId: '' });
+    const [form, setForm] = useState({ examSessionId: '', semester: '', subjectId: '', session: 'FN' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [initLoading, setInitLoading] = useState(true);
@@ -64,7 +64,7 @@ const ExamAttendanceSheet = () => {
                         <CustomSelect value={form.examSessionId} onChange={e => { set('examSessionId', e.target.value); set('subjectId', ''); }}>
                             <option value="">Select Session...</option>
                             {sessions.map(s => (
-                                <option key={s.id} value={s.id}>{s.name} ({new Date(s.date).toLocaleDateString()} {s.session})</option>
+                                <option key={s.id} value={s.id}>{s.examName} ({s.month} {s.year} {s.examMode})</option>
                             ))}
                         </CustomSelect>
                     </div>
@@ -83,6 +83,21 @@ const ExamAttendanceSheet = () => {
                                 <option key={sub.id} value={sub.id}>{sub.code} - {sub.name}</option>
                             ))}
                         </CustomSelect>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Time Session *</label>
+                        <div className="flex gap-2">
+                            {['FN', 'AN'].map(s => (
+                                <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => set('session', s)}
+                                    className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all border-2 ${form.session === s ? 'bg-[#003B73] text-white border-[#003B73]' : 'bg-gray-50 text-gray-400 border-transparent hover:border-gray-200'}`}
+                                >
+                                    {s === 'FN' ? 'Forenoon (FN)' : 'Afternoon (AN)'}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 

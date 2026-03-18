@@ -85,7 +85,7 @@ const HallTicket = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-[40px] shadow-2xl shadow-blue-900/5 border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[40px] shadow-2xl shadow-blue-900/5 border border-gray-100">
                 {/* Modern Mode Switcher */}
                 <div className="flex p-3 bg-gray-50/50">
                     <button 
