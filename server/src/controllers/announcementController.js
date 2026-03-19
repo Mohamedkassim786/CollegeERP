@@ -42,11 +42,9 @@ exports.getAnnouncements = async (req, res) => {
                     { department: null }
                 ]
             };
-        } else if (role === 'STUDENT') {
             // Students see only their matching announcements
-            // Look up the student's section and semester using their username (rollNo = username)
-            const student = await prisma.student.findFirst({
-                where: { rollNo: req.user.username }
+            const student = await prisma.student.findUnique({
+                where: { id: req.user.id }
             });
 
             if (student) {

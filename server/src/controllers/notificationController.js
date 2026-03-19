@@ -45,7 +45,7 @@ exports.markAsRead = async (req, res) => {
         const { id } = req.params;
 
         await prisma.notification.update({
-            where: { id },
+            where: { id: parseInt(id) },
             data: { isRead: true }
         });
 

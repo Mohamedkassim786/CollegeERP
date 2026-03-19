@@ -66,19 +66,8 @@ exports.promoteAll = async (req, res) => {
         const isGraduating = semInt === 8;
 
         let promoted = 0, graduated = 0;
-        const skippedDueToArrears = [];
 
         for (const student of students) {
-            // Check if student has any active arrears — if so, skip promotion
-            const arrears = await prisma.arrear.count({
-                where: { studentId: student.id, isCleared: false }
-            });
-
-            if (arrears > 0 && !isGraduating) {
-                skippedDueToArrears.push({ id: student.id, rollNo: student.rollNo, name: student.name });
-                continue;
-            }
-
             if (isGraduating) {
                 await prisma.student.update({
                     where: { id: student.id },
@@ -99,13 +88,11 @@ exports.promoteAll = async (req, res) => {
             }
         }
 
-        logger.info(`Promote All: ${promoted} promoted, ${graduated} graduated, ${skippedDueToArrears.length} skipped in ${department} Sem ${semInt}`);
+        logger.info(`Promote All: ${promoted} promoted, ${graduated} graduated in ${department} Sem ${semInt}`);
         res.json({
-            message: `Promotion complete. ${promoted} students promoted to Sem ${nextSemester}. ${graduated} students marked as Passed Out. ${skippedDueToArrears.length} students skipped due to arrears.`,
+            message: `Promotion complete. ${promoted} students promoted to Sem ${nextSemester}. ${graduated} students marked as Passed Out.`,
             promoted,
-            graduated,
-            skippedCount: skippedDueToArrears.length,
-            skippedDueToArrears
+            graduated
         });
     } catch (error) {
         logger.error('promoteAll failed', error);

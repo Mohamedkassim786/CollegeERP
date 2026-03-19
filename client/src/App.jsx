@@ -6,13 +6,9 @@ import HODDashboard from './pages/hod/HODPortal';
 import ExternalDashboard from './pages/external/ExternalDashboard';
 import ExternalMarkEntry from './pages/external/ExternalMarkEntry';
 import ProtectedRoute from './components/ProtectedRoute';
-import DashboardLayout from './components/DashboardLayout';
 import PrincipalDashboard from './pages/principal/PrincipalPortal';
-import AdminHome from './pages/admin/Dashboard';
 import ChiefSecretaryPortal from './pages/chiefsecretary/ChiefSecretaryPortal';
 import StudentDashboard from './pages/student/StudentPortal';
-import StudentManager from './pages/admin/academics/StudentManager';
-import StudentProfile from './pages/admin/academics/StudentProfile';
 
 function App() {
     return (

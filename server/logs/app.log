@@ -6062,3 +6062,237 @@ ReferenceError: rows is not defined
 [2026-03-18T11:05:30.570Z] [INFO] - Local:   http://localhost:3000
 [2026-03-18T11:05:30.571Z] [INFO] - Network: http://192.168.1.8:3000
 [2026-03-18T11:05:30.590Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T11:30:35.508Z] [INFO] Server running on:
+[2026-03-18T11:30:35.509Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T11:30:35.509Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T11:30:35.529Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:00:18.152Z] [INFO] Server running on:
+[2026-03-18T12:00:18.153Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:00:18.153Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:00:18.176Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:00:40.336Z] [INFO] Server running on:
+[2026-03-18T12:00:40.337Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:00:40.337Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:00:40.358Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:01:57.929Z] [INFO] Server running on:
+[2026-03-18T12:01:57.931Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:01:57.931Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:01:57.953Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:02:31.421Z] [INFO] Server running on:
+[2026-03-18T12:02:31.422Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:02:31.423Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:02:31.443Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:04:33.570Z] [INFO] Server running on:
+[2026-03-18T12:04:33.572Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:04:33.572Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:04:33.591Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:04:42.917Z] [INFO] Server running on:
+[2026-03-18T12:04:42.919Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:04:42.920Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:04:42.938Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:08:53.101Z] [INFO] Server running on:
+[2026-03-18T12:08:53.102Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:08:53.103Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:08:53.123Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:09:38.634Z] [INFO] Server running on:
+[2026-03-18T12:09:38.635Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:09:38.636Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:09:38.657Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:10:19.335Z] [INFO] Server running on:
+[2026-03-18T12:10:19.336Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:10:19.336Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:10:19.356Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:10:21.444Z] [INFO] Server running on:
+[2026-03-18T12:10:21.446Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:10:21.447Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:10:21.466Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:10:34.465Z] [INFO] Server running on:
+[2026-03-18T12:10:34.466Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:10:34.466Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:10:34.484Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:12:39.652Z] [INFO] Server running on:
+[2026-03-18T12:12:39.653Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:12:39.653Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:12:39.671Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:14:07.802Z] [INFO] Server running on:
+[2026-03-18T12:14:07.803Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:14:07.804Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:14:07.823Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-18T12:16:14.017Z] [INFO] Server running on:
+[2026-03-18T12:16:14.019Z] [INFO] - Local:   http://localhost:3000
+[2026-03-18T12:16:14.019Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-18T12:16:14.039Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T04:34:21.365Z] [INFO] Server running on:
+[2026-03-19T04:34:21.370Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T04:34:21.370Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T04:34:21.506Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T04:53:50.874Z] [INFO] Login: admin (ADMIN)
+[2026-03-19T04:58:46.552Z] [WARN] Failed login attempt: mutton  (User not found)
+[2026-03-19T04:58:53.244Z] [WARN] Failed login attempt: mutton  (User not found)
+[2026-03-19T04:58:55.138Z] [WARN] Failed login attempt: mutton  (User not found)
+[2026-03-19T04:59:06.559Z] [INFO] Login: mutton (CHIEF_SECRETARY)
+[2026-03-19T05:00:03.062Z] [INFO] Login: admin (ADMIN)
+[2026-03-19T05:02:30.926Z] [INFO] Login: ganesh (EXTERNAL_STAFF)
+[2026-03-19T05:03:07.008Z] [INFO] Login: admin (ADMIN)
+[2026-03-19T05:09:25.081Z] [INFO] Server running on:
+[2026-03-19T05:09:25.083Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:09:25.084Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:09:25.163Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:10:30.394Z] [INFO] Login: ganesh (EXTERNAL_STAFF)
+[2026-03-19T05:19:56.232Z] [INFO] Login: admin (ADMIN)
+[2026-03-19T05:20:06.564Z] [ERROR] generateHallApplication failed 
+Invalid `prisma.student.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\hallTicketController.js:212:47
+
+  209 }
+  210 if (andS.length > 0) whereS.AND = andS;
+  211 
+→ 212 const students = await prisma.student.findMany({
+        where: {
+          status: "ACTIVE"
+        },
+        include: {
+          departmentRef: true,
+          marks: {
+            include: {
+              subject: true
+            }
+          },
+          arrears: {
+            where: {
+              isCleared: false
+            },
+            include: {
+              subject: true
+            }
+          },
+          eligibility: {
+            where: {
+      +       semester: {
+      +         equals: Int | IntFieldRefInput,
+      +         in: Int[],
+      +         notIn: Int[],
+      +         lt: Int | IntFieldRefInput,
+      +         lte: Int | IntFieldRefInput,
+      +         gt: Int | IntFieldRefInput,
+      +         gte: Int | IntFieldRefInput,
+      +         not: Int | NestedIntFilter
+      +       }
+            }
+          }
+        },
+        orderBy: {
+          rollNo: "asc"
+        }
+      })
+
+Argument `semester` is missing.
+PrismaClientValidationError: 
+Invalid `prisma.student.findMany()` invocation in
+C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\hallTicketController.js:212:47
+
+  209 }
+  210 if (andS.length > 0) whereS.AND = andS;
+  211 
+→ 212 const students = await prisma.student.findMany({
+        where: {
+          status: "ACTIVE"
+        },
+        include: {
+          departmentRef: true,
+          marks: {
+            include: {
+              subject: true
+            }
+          },
+          arrears: {
+            where: {
+              isCleared: false
+            },
+            include: {
+              subject: true
+            }
+          },
+          eligibility: {
+            where: {
+      +       semester: {
+      +         equals: Int | IntFieldRefInput,
+      +         in: Int[],
+      +         notIn: Int[],
+      +         lt: Int | IntFieldRefInput,
+      +         lte: Int | IntFieldRefInput,
+      +         gt: Int | IntFieldRefInput,
+      +         gte: Int | IntFieldRefInput,
+      +         not: Int | NestedIntFilter
+      +       }
+            }
+          }
+        },
+        orderBy: {
+          rollNo: "asc"
+        }
+      })
+
+Argument `semester` is missing.
+    at wn (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async exports.generateHallApplication (C:\Users\haafi\Desktop\chickjen\CollegeERP\server\src\controllers\hallTicketController.js:212:26)
+[2026-03-19T05:34:26.151Z] [INFO] Server running on:
+[2026-03-19T05:34:26.153Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:34:26.153Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:34:26.189Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:34:56.871Z] [INFO] Server running on:
+[2026-03-19T05:34:56.873Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:34:56.874Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:34:56.914Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:35:29.126Z] [INFO] Login: ganesh (EXTERNAL_STAFF)
+[2026-03-19T05:42:20.972Z] [INFO] Server running on:
+[2026-03-19T05:42:20.974Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:42:20.975Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:42:21.010Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:43:27.418Z] [INFO] Server running on:
+[2026-03-19T05:43:27.420Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:43:27.421Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:43:27.454Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:44:08.374Z] [INFO] Server running on:
+[2026-03-19T05:44:08.376Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:44:08.376Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:44:08.413Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:48:03.479Z] [INFO] Server running on:
+[2026-03-19T05:48:03.481Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:48:03.481Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:48:03.513Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:48:20.132Z] [INFO] Server running on:
+[2026-03-19T05:48:20.133Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:48:20.134Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:48:20.164Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:48:33.151Z] [INFO] Server running on:
+[2026-03-19T05:48:33.153Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:48:33.154Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:48:33.195Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:49:25.521Z] [INFO] Login: ganesh (EXTERNAL_STAFF)
+[2026-03-19T05:50:48.285Z] [INFO] Server running on:
+[2026-03-19T05:50:48.287Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:50:48.288Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:50:48.321Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:51:00.663Z] [INFO] Server running on:
+[2026-03-19T05:51:00.668Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:51:00.669Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:51:00.741Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T05:51:46.327Z] [INFO] Login: admin (ADMIN)
+[2026-03-19T05:52:09.420Z] [INFO] Login: ganesh (EXTERNAL_STAFF)
+[2026-03-19T05:57:13.338Z] [INFO] Server running on:
+[2026-03-19T05:57:13.340Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T05:57:13.341Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T05:57:13.375Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T06:00:00.451Z] [INFO] Server running on:
+[2026-03-19T06:00:00.453Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T06:00:00.453Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T06:00:00.488Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-19T06:00:19.340Z] [INFO] Server running on:
+[2026-03-19T06:00:19.341Z] [INFO] - Local:   http://localhost:3000
+[2026-03-19T06:00:19.342Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-19T06:00:19.366Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)

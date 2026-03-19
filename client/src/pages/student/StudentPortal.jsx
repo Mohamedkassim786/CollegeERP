@@ -8,6 +8,7 @@ import StudentAttendance from "./StudentAttendance";
 import StudentMarks from "./StudentMarks";
 import StudentTimetable from "./StudentTimetable";
 import Announcements from "../shared/Announcements";
+import Materials from "../shared/Materials";
 
 const StudentPortal = () => {
   return (
@@ -21,6 +22,7 @@ const StudentPortal = () => {
             <Route path="/profile" element={<StudentProfile role="STUDENT" />} />
             <Route path="/attendance" element={<StudentAttendance />} />
             <Route path="/marks" element={<StudentMarks />} />
+            <Route path="/materials" element={<Materials role="STUDENT" />} />
             <Route path="/results" element={<StudentResult />} />
             <Route path="/timetable" element={<StudentTimetable />} />
             <Route path="/announcements" element={<Announcements role="STUDENT" />} />

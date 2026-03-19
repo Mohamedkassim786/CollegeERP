@@ -71,13 +71,7 @@ const login = async (req, res) => {
                 return res.status(403).json({ message: 'Account inactive. Contact administrator.' });
             }
 
-            // For faculty, password123 is plain default, or hashed if changed
-            let valid = false;
-            if (faculty.password === 'password123') {
-                valid = (password === 'password123');
-            } else {
-                valid = await bcrypt.compare(password, faculty.password);
-            }
+            const valid = await bcrypt.compare(password, faculty.password);
 
             if (!valid) {
                 return res.status(401).json({ message: 'Invalid credentials.' });
@@ -101,7 +95,8 @@ const login = async (req, res) => {
                     role: faculty.role,
                     computedRoles: computedRoles,
                     department: faculty.department,
-                    departmentId: faculty.departmentId
+                    departmentId: faculty.departmentId,
+                    isFirstLogin: faculty.isFirstLogin
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: '8h' }
@@ -231,12 +226,7 @@ const changePassword = async (req, res) => {
             const faculty = await prisma.faculty.findUnique({ where: { id } });
             if (!faculty) return res.status(404).json({ message: 'Faculty not found.' });
 
-            let valid = false;
-            if (faculty.password === 'password123') {
-                valid = currentPassword === 'password123';
-            } else {
-                valid = await bcrypt.compare(currentPassword, faculty.password);
-            }
+            const valid = await bcrypt.compare(currentPassword, faculty.password);
 
             if (!valid) {
                 return res.status(401).json({ message: 'Current password is incorrect.' });

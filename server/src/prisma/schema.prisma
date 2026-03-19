@@ -35,7 +35,7 @@ model User {
 model Faculty {
   id              Int      @id @default(autoincrement())
   staffId         String   @unique // used as username
-  password        String   @default("password123")
+  password        String
   fullName        String
   department      String?
   role            String   @default("FACULTY") // FACULTY or HOD
@@ -259,8 +259,8 @@ model Material {
   instructorId Int
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  instructor   Faculty  @relation("FacultyMaterials", fields: [instructorId], references: [id])
-  subject      Subject  @relation(fields: [subjectId], references: [id])
+  instructor   Faculty  @relation("FacultyMaterials", fields: [instructorId], references: [id], onDelete: Cascade)
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 }
 
 model FacultyAssignment {
@@ -269,8 +269,8 @@ model FacultyAssignment {
   subjectId  Int
   section    String
   department String?
-  subject    Subject @relation(fields: [subjectId], references: [id])
-  faculty    Faculty @relation(fields: [facultyId], references: [id])
+  subject    Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  faculty    Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 }
 
 model Marks {
@@ -309,9 +309,9 @@ model Marks {
   approvedAt      DateTime?
   updatedAt       DateTime     @updatedAt
   endSemMarks     EndSemMarks?
-  approver        User?        @relation("MarksApprover", fields: [approvedBy], references: [id])
-  subject         Subject      @relation(fields: [subjectId], references: [id])
-  student         Student      @relation(fields: [studentId], references: [id])
+  approver        User?        @relation("MarksApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  subject         Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  student         Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, subjectId])
   @@index([studentId])
@@ -330,7 +330,7 @@ model EndSemMarks {
   isLocked           Boolean  @default(false)
   attendanceSnapshot Float?
   updatedAt          DateTime @updatedAt
-  marks              Marks    @relation(fields: [marksId], references: [id])
+  marks              Marks    @relation(fields: [marksId], references: [id], onDelete: Cascade)
 
   @@index([marksId])
 }
@@ -378,7 +378,7 @@ model SemesterResult {
   isLocked      Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  student       Student  @relation(fields: [studentId], references: [id])
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, semester])
 }
@@ -393,8 +393,8 @@ model Arrear {
   clearedInSem Int?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
-  subject      Subject         @relation(fields: [subjectId], references: [id])
-  student      Student         @relation(fields: [studentId], references: [id])
+  subject      Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  student      Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
   attempts     ArrearAttempt[]
 
   @@unique([studentId, subjectId])
@@ -411,7 +411,7 @@ model ArrearAttempt {
   resultStatus  String?
   examDate      DateTime?
   createdAt     DateTime  @default(now())
-  arrear        Arrear    @relation(fields: [arrearId], references: [id])
+  arrear        Arrear    @relation(fields: [arrearId], references: [id], onDelete: Cascade)
 }
 
 model ExternalMarkAssignment {
@@ -462,9 +462,9 @@ model StudentAttendance {
   period    Int      @default(0)
   status    String
   createdAt DateTime @default(now())
-  faculty   Faculty  @relation(fields: [facultyId], references: [id])
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-  student   Student  @relation(fields: [studentId], references: [id])
+  faculty   Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, subjectId, date, period])
 }
@@ -488,8 +488,8 @@ model SubjectDummyMapping {
   mappingLocked      Boolean  @default(false)
   createdAt          DateTime @default(now())
 
-  student Student @relation(fields: [studentId], references: [id])
-  subject Subject @relation(fields: [subjectId], references: [id])
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, subjectId])
   @@unique([subjectId, dummyNumber])

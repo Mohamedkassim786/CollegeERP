@@ -38,7 +38,12 @@ const extractPhotosFromZip = async (zipBuffer) => {
 
                         // Flatten everything and rename strictly based on original basename
                         // We rely entirely on the exact filename inside the zip (e.g., E1225001.jpg)
+                        // Strict filename validation to prevent path traversal
                         const fileName = path.basename(file.path);
+                        if (!/^[a-zA-Z0-9_\-\.]+\.(jpg|jpeg|png)$/i.test(fileName)) {
+                            console.warn(`[ZIP] Skipping suspicious filename: ${fileName}`);
+                            continue;
+                        }
                         const destPath = path.join(defaultUploadDir, fileName);
 
                         await new Promise((resolveWrite, rejectWrite) => {

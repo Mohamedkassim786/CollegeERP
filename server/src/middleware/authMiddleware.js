@@ -36,13 +36,8 @@ const isPrincipal = (req, res, next) => {
     return res.status(403).json({ message: 'Require Principal Role' });
 };
 
-const isCOE = (req, res, next) => {
-    if (req.user && (req.user.role === 'COE' || req.user.role === ROLES.ADMIN)) return next();
-    return res.status(403).json({ message: 'Require COE Role' });
-};
-
 const isChiefSecretary = (req, res, next) => {
-    if (req.user && (req.user.role === ROLES.CHIEF_SECRETARY || req.user.role === 'COE' || req.user.role === ROLES.ADMIN)) return next();
+    if (req.user && (req.user.role === ROLES.CHIEF_SECRETARY || req.user.role === ROLES.ADMIN)) return next();
     return res.status(403).json({ message: 'Require Chief Secretary Role' });
 };
 
@@ -57,7 +52,7 @@ const isFaculty = (req, res, next) => {
 };
 
 const isExternal = (req, res, next) => {
-    if (req.user && (req.user.role === ROLES.EXTERNAL || req.user.role === ROLES.ADMIN)) return next();
+    if (req.user && (req.user.role === ROLES.EXTERNAL_STAFF || req.user.role === ROLES.ADMIN)) return next();
     return res.status(403).json({ message: 'Require External Role' });
 };
 
@@ -75,11 +70,19 @@ module.exports = {
     verifyToken, 
     isAdmin, 
     isPrincipal, 
-    isCOE, 
     isChiefSecretary, 
     isHod, 
     isFaculty, 
     isExternal, 
     isStudent,
-    isFirstYearCoordinator
+    isFirstYearCoordinator,
+    checkFirstLogin: (req, res, next) => {
+        if (req.user && req.user.isFirstLogin && req.user.role !== ROLES.ADMIN) {
+            return res.status(403).json({ 
+                message: 'Password change required on first login',
+                forcePasswordChange: true 
+            });
+        }
+        next();
+    }
 };

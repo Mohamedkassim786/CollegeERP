@@ -29,7 +29,8 @@
     "pdfkit": "^0.17.2",
     "prisma": "5.22.0",
     "sqlite3": "^5.1.7",
-    "unzipper": "^0.12.3"
+    "unzipper": "^0.12.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

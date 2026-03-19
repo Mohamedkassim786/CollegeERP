@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Upload,
   FileSpreadsheet,
@@ -20,6 +20,7 @@ const ArrearManagement = () => {
   const [uploadResult, setUploadResult] = useState(null);
   const [arrears, setArrears] = useState([]);
   const [fetching, setFetching] = useState(true);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchArrears();
@@ -86,6 +87,7 @@ const ArrearManagement = () => {
   const handleCancelFile = () => {
     setFile(null);
     setUploadResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const downloadTemplate = async () => {
@@ -146,6 +148,8 @@ const ArrearManagement = () => {
         message: response.data.message,
         errors: response.data.errors,
       });
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       fetchArrears(); // Refresh table
     } catch (error) {
       console.error("Upload error:", error);
@@ -245,6 +249,7 @@ const ArrearManagement = () => {
                   className="hidden"
                   accept=".xlsx, .xls"
                   onChange={handleFileChange}
+                  ref={fileInputRef}
                 />
               </label>
               <div className="mt-8 text-sm text-gray-400 font-medium">

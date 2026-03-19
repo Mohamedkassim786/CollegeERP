@@ -23,7 +23,7 @@ const calculateInternalMarks = (currentMarks, updates, subjectCategory = 'THEORY
     const keys = Object.keys(updates);
 
     if (subjectCategory === 'LAB') {
-        // LAB Categories: Attendance (5), Observation (10), Record (10), Model (75)
+        // LAB Categories: Attendance (25), Observation (25), Record (25), Model (25)
         const t = (merged.lab_attendance === -1 || merged.lab_attendance === null) ? 0 : merged.lab_attendance;
         const o = (merged.lab_observation === -1 || merged.lab_observation === null) ? 0 : merged.lab_observation;
         const r = (merged.lab_record === -1 || merged.lab_record === null) ? 0 : merged.lab_record;
@@ -130,24 +130,24 @@ const checkLockStatus = async (studentId, currentMark, updatedFields) => {
 };
 
 const MARKS_LIMITS = {
-  cia1_test: 60, cia1_assignment: 20, cia1_attendance: 20,
-  cia2_test: 60, cia2_assignment: 20, cia2_attendance: 20,
-  cia3_test: 60, cia3_assignment: 20, cia3_attendance: 20,
-  lab_attendance: 25, lab_observation: 25, lab_record: 25, lab_model: 25,
-  lab_assessment: 25
+    cia1_test: 60, cia1_assignment: 20, cia1_attendance: 20,
+    cia2_test: 60, cia2_assignment: 20, cia2_attendance: 20,
+    cia3_test: 60, cia3_assignment: 20, cia3_attendance: 20,
+    lab_attendance: 25, lab_observation: 25, lab_record: 25, lab_model: 25,
+    lab_assessment: 25
 };
 
 const validateMarksRange = (marksData) => {
-  const errors = [];
-  for (const [field, value] of Object.entries(marksData)) {
-    if (MARKS_LIMITS[field] !== undefined && value !== null && value !== undefined) {
-      const num = parseFloat(value);
-      if (isNaN(num) || num < 0 || num > MARKS_LIMITS[field]) {
-        errors.push(`${field} must be between 0 and ${MARKS_LIMITS[field]}`);
-      }
+    const errors = [];
+    for (const [field, value] of Object.entries(marksData)) {
+        if (MARKS_LIMITS[field] !== undefined && value !== null && value !== undefined) {
+            const num = parseFloat(value);
+            if (isNaN(num) || num < 0 || num > MARKS_LIMITS[field]) {
+                errors.push(`${field} must be between 0 and ${MARKS_LIMITS[field]}`);
+            }
+        }
     }
-  }
-  return errors;
+    return errors;
 };
 
 module.exports = {

@@ -14,18 +14,10 @@ export const AuthProvider = ({ children }) => {
         }
     });
 
-    useEffect(() => {
-        // Auth state is now initialized synchronously from localStorage
-    }, []);
-
     const login = async (username, password) => {
         try {
             const response = await authLogin(username, password);
             const user = response.data;
-            // Normalize COE role to ADMIN so COE users get full admin portal
-            if (user.role === 'COE') {
-                user.role = 'ADMIN';
-            }
             localStorage.setItem('user', JSON.stringify(user));
             setAuth(user);
             return user;

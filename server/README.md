@@ -85,7 +85,7 @@ Frontend runs on: `http://localhost:5173`
 
 | Role    | Username | Password |
 |---------|----------|----------|
-| Admin   | admin    | admin123 |
+| Admin   | admin    | admin    |
 
 > Faculty and student accounts are created through the admin panel.
 > Student default password is their Date of Birth in `DDMMYYYY` format.

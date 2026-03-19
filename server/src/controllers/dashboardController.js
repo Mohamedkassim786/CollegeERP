@@ -44,35 +44,6 @@ const getPrincipalDashboard = async (req, res) => {
     }
 };
 
-const getCOEDashboard = async (req, res) => {
-    try {
-        const activeSessions = await prisma.examSession.findMany({
-            include: {
-                subjects: {
-                    include: {
-                        subject: true
-                    }
-                }
-            },
-            orderBy: { examDate: 'desc' },
-            take: 5
-        });
-
-        const pendingMarks = await prisma.marks.count({ where: { isApproved: false } });
-        const totalStudents = await prisma.student.count({ where: { status: 'ACTIVE' } });
-
-        res.json({
-            activeSessions,
-            stats: {
-                pendingMarks,
-                totalStudents
-            }
-        });
-    } catch (error) {
-        handleError(res, error, "Error fetching COE dashboard");
-    }
-};
-
 const getHODDashboard = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -143,7 +114,7 @@ const getHODDashboard = async (req, res) => {
             where: {
                 student: studentWhere,
                 isApproved: false,
-                isLocked: true
+                isLocked: false
             }
         });
 
@@ -161,31 +132,66 @@ const getHODDashboard = async (req, res) => {
     }
 };
 
+const getFacultyDashboard = async (req, res) => {
+    try {
+        const facultyId = parseInt(req.user.id);
+        const assignments = await prisma.facultyAssignment.findMany({
+            where: { facultyId },
+            include: { subject: true }
+        });
+
+        const assignedSubjects = assignments.length;
+        
+        // Simplified student count logic for dashboard
+        let totalStudents = 0;
+        if (assignments.length > 0) {
+            totalStudents = await prisma.student.count({
+                where: {
+                    OR: assignments.map(a => ({
+                        department: a.department || a.subject.department,
+                        semester: a.subject.semester,
+                        section: a.section
+                    }))
+                }
+            });
+        }
+
+        // Simplified stats for dashboard
+        const performance = await Promise.all(assignments.map(async (a) => {
+            const marks = await prisma.marks.findMany({
+                where: { subjectId: a.subject.id },
+                select: { internal: true }
+            });
+            const validMarks = marks.map(m => m.internal).filter(m => m != null);
+            const avg = validMarks.length > 0 ? (validMarks.reduce((acc, curr) => acc + curr, 0) / validMarks.length).toFixed(1) : 0;
+            return { subject: a.subject.shortName || a.subject.name, average: parseFloat(avg) };
+        }));
+
+        res.json({
+            assignedSubjects,
+            totalStudents,
+            performance,
+            department: req.user.department
+        });
+    } catch (error) {
+        handleError(res, error, "Error fetching Faculty dashboard");
+    }
+};
+
 const getStudentDashboard = async (req, res) => {
     try {
-        // Find the student linked to this user (assuming username matches rollNo or some mapping)
-        const student = await prisma.student.findFirst({
-            where: { rollNo: req.user.username }, // Standard mapping in many ERPs
+        const studentId = parseInt(req.user.id);
+        const student = await prisma.student.findUnique({
+            where: { id: studentId },
             include: {
-                departmentRef: true,
-                sectionRef: true,
                 results: true,
-                marks: {
-                    include: {
-                        subject: true
-                    }
-                },
-                arrears: {
-                    include: {
-                        subject: true
-                    }
-                }
+                marks: { include: { subject: true } },
+                arrears: { include: { subject: true } }
             }
         });
 
         if (!student) return res.status(404).json({ message: "Student record not found" });
 
-        // Calculate stats
         const attendanceRecords = await prisma.studentAttendance.findMany({
             where: { studentId: student.id }
         });
@@ -193,10 +199,7 @@ const getStudentDashboard = async (req, res) => {
         const attendancePercentage = attendanceRecords.length > 0 ? ((presentCount / attendanceRecords.length) * 100).toFixed(2) : 0;
 
         res.json({
-            profile: {
-                ...student,
-                fullName: student.name // Map for consistency
-            },
+            profile: { ...student, fullName: student.name },
             stats: {
                 attendancePercentage,
                 arrearsCount: student.arrears.filter(a => !a.isCleared).length,
@@ -216,9 +219,7 @@ const getChiefSecretaryDashboard = async (req, res) => {
             include: {
                 students: {
                     where: { status: 'ACTIVE' },
-                    include: {
-                        results: true
-                    }
+                    include: { results: true }
                 }
             }
         });
@@ -257,8 +258,8 @@ const getChiefSecretaryDashboard = async (req, res) => {
 
 module.exports = {
     getPrincipalDashboard,
-    getCOEDashboard,
     getHODDashboard,
+    getFacultyDashboard,
     getStudentDashboard,
     getChiefSecretaryDashboard
 };

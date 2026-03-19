@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const examController = require('../controllers/examController');
-const { verifyToken, isAdmin, isFaculty, isCOE, isChiefSecretary } = require('../middleware/authMiddleware');
+const { verifyToken, isAdmin, isFaculty } = require('../middleware/authMiddleware');
 
 // Results Consolidation (End Sem Marks)
 router.get('/end-sem-marks', verifyToken, isAdmin, examController.getEndSemMarks);
 router.post('/end-sem-marks', verifyToken, isAdmin, examController.updateEndSemMarks);
 
-// Faculty/HOD/COE can view published results
+// Faculty/HOD/ADMIN can view published results
 router.get('/faculty-results', verifyToken, isFaculty, examController.getFacultyResults);
 
 // GPA / CGPA
