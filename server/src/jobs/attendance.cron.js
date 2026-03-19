@@ -10,10 +10,8 @@
  */
 
 const cron = require('node-cron');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { logger } = require('../utils/logger.js');
-
-const prisma = new PrismaClient();
 
 /** Map JS getDay() → timetable day string */
 const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -23,21 +21,20 @@ const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDA
  * Creates Notification records for any faculty who missed submitting.
  */
 const runAttendanceCheck = async () => {
-    const log = logger.child('AttendanceCron');
-    log.info('Running 4:50 PM attendance check...');
+    logger.info('Running 4:50 PM attendance check...');
 
     try {
         const today = new Date();
         const dayName = WEEKDAYS[today.getDay()]; // e.g. 'FRIDAY'
 
         if (dayName === 'SUNDAY') {
-            log.info('No class on Sunday — skipping.');
+            logger.info('No class on Sunday — skipping.');
             return;
         }
 
         // Get today's date range (00:00 to 23:59)
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-        const endOfDay   = new Date(today.setHours(23, 59, 59, 999));
+        const startOfDay = new Date(new Date(today).setHours(0, 0, 0, 0));
+        const endOfDay   = new Date(new Date(today).setHours(23, 59, 59, 999));
 
         // Find all timetable entries for today
         const timetableEntries = await prisma.timetable.findMany({
@@ -50,7 +47,7 @@ const runAttendanceCheck = async () => {
         });
 
         if (!timetableEntries.length) {
-            log.info(`No timetable entries for ${dayName}.`);
+            logger.info(`No timetable entries for ${dayName}.`);
             return;
         }
 
@@ -118,10 +115,10 @@ const runAttendanceCheck = async () => {
             });
 
             notificationsCreated++;
-            log.warn(`Alert: ${faculty.fullName} (${faculty.department}) missed attendance on ${dayName}`);
+            logger.warn(`Alert: ${faculty.fullName} (${faculty.department}) missed attendance on ${dayName}`);
         }
 
-        log.success(`Attendance check complete. ${notificationsCreated} alerts created.`);
+        logger.info(`Attendance check complete. ${notificationsCreated} alerts created.`);
     } catch (err) {
         logger.error('AttendanceCron failed', err);
     }

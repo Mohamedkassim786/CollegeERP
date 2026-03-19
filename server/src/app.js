@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('./lib/prisma');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -15,7 +15,7 @@ const { logger } = require('./utils/logger');
 const { notFound, globalError } = require('./middleware/error.middleware');
 
 const app = express();
-const prisma = new PrismaClient();
+
 const PORT = process.env.PORT || 3000;
 const compression = require('compression');
 

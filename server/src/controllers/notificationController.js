@@ -4,9 +4,9 @@
  * Notifications are created automatically by the attendance cron job.
  */
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { logger } = require('../utils/logger');
+const { handleError } = require('../utils/errorUtils');
 
 /**
  * GET /api/notifications
@@ -31,8 +31,7 @@ exports.getNotifications = async (req, res) => {
 
         res.json({ notifications, unreadCount });
     } catch (error) {
-        logger.error('getNotifications failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get notifications");
     }
 };
 
@@ -51,8 +50,7 @@ exports.markAsRead = async (req, res) => {
 
         res.json({ message: 'Marked as read.' });
     } catch (error) {
-        logger.error('markAsRead failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to mark notification as read");
     }
 };
 
@@ -71,8 +69,7 @@ exports.markAllAsRead = async (req, res) => {
 
         res.json({ message: 'All notifications marked as read.' });
     } catch (error) {
-        logger.error('markAllAsRead failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to mark all notifications as read");
     }
 };
 
@@ -92,7 +89,6 @@ exports.clearOld = async (req, res) => {
 
         res.json({ message: `Cleared ${count} old notifications.` });
     } catch (error) {
-        logger.error('clearOld notifications failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to clear old notifications");
     }
 };

@@ -1,8 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const PDFDocument = require('pdfkit');
-const fs = require('fs');
-const path = require('path');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { handleError } = require('../utils/errorUtils');
 
 // GET /admin/dispatch/subjects

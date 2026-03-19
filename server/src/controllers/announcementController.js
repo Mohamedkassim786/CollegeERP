@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
+const { handleError } = require('../utils/errorUtils');
 
 exports.createAnnouncement = async (req, res) => {
     try {
@@ -21,7 +21,7 @@ exports.createAnnouncement = async (req, res) => {
 
         res.status(201).json(announcement);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to create announcement");
     }
 };
 
@@ -94,7 +94,7 @@ exports.getAnnouncements = async (req, res) => {
 
         res.json(announcements);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get announcements");
     }
 };
 
@@ -122,6 +122,6 @@ exports.deleteAnnouncement = async (req, res) => {
 
         res.json({ message: 'Announcement deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to delete announcement");
     }
 };

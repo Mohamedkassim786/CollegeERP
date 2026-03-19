@@ -1,17 +1,18 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /**
  * Calculates Internal/CIA marks based on best-of-two policy.
- * @param {Object} currentMarks - The current marks record from database.
- * @param {Object} updates - The new field updates from request.
- * @returns {Object} - Object containing calculated internal marks and flags for approved fields.
  */
-// Helper to check if a CIA is "Absent" (any component is -1)
-const isAbsent = (test, assign, att) => (test === -1 || assign === -1 || att === -1);
+
+const isCIAAbsent = (test, assign, att) =>
+  test === -1 || assign === -1 || att === -1;
+
+const isCIAEntered = (test, assign, att) =>
+  test !== null && test !== undefined &&
+  assign !== null && assign !== undefined &&
+  att !== null && att !== undefined;
 
 const calculateCIAlo = (test, assign, att) => {
-    // Treat -1 as 0 for sum but keep track of absence
     const t = (test === -1 || test === null) ? 0 : test;
     const as = (assign === -1 || assign === null) ? 0 : assign;
     const at = (att === -1 || att === null) ? 0 : att;
@@ -23,7 +24,6 @@ const calculateInternalMarks = (currentMarks, updates, subjectCategory = 'THEORY
     const keys = Object.keys(updates);
 
     if (subjectCategory === 'LAB') {
-        // LAB Categories: Attendance (25), Observation (25), Record (25), Model (25)
         const t = (merged.lab_attendance === -1 || merged.lab_attendance === null) ? 0 : merged.lab_attendance;
         const o = (merged.lab_observation === -1 || merged.lab_observation === null) ? 0 : merged.lab_observation;
         const r = (merged.lab_record === -1 || merged.lab_record === null) ? 0 : merged.lab_record;
@@ -41,18 +41,37 @@ const calculateInternalMarks = (currentMarks, updates, subjectCategory = 'THEORY
     }
 
     if (subjectCategory === 'INTEGRATED') {
-        // INTEGRATED: Theory CIAs (best of 2 converted to 25) + Lab (25)
-        // 1. Calculate theory internal using standard logic (Scale /100 -> /25)
-        const cia1Total = calculateCIAlo(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance);
-        const cia2Total = calculateCIAlo(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance);
-        const cia3Total = calculateCIAlo(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance);
+        const cias = [
+            {
+                total: calculateCIAlo(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance),
+                absent: isCIAAbsent(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance),
+                entered: isCIAEntered(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance)
+            },
+            {
+                total: calculateCIAlo(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance),
+                absent: isCIAAbsent(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance),
+                entered: isCIAEntered(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance)
+            },
+            {
+                total: calculateCIAlo(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance),
+                absent: isCIAAbsent(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance),
+                entered: isCIAEntered(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance)
+            }
+        ];
 
-        const totalsSorted = [cia1Total, cia2Total, cia3Total].sort((a, b) => b - a);
-        const theoryRaw = totalsSorted.length >= 2 ? (totalsSorted[0] + totalsSorted[1]) / 2 : (totalsSorted[0] || 0);
+        const validTotal = cias
+            .filter(c => c.entered && !c.absent)
+            .map(c => c.total)
+            .sort((a, b) => b - a);
+
+        let theoryRaw = 0;
+        if (validTotal.length >= 2) {
+            theoryRaw = (validTotal[0] + validTotal[1]) / 2;
+        } else if (validTotal.length === 1) {
+            theoryRaw = validTotal[0];
+        }
         const theory25 = (theoryRaw / 100) * 25;
 
-        // 2. Lab Portion (Total /100 scaled to /25)
-        // Components: Attendance (25), Observation (25), Record (25), Model (25) -> Total 100
         const la = (merged.lab_attendance === -1 || merged.lab_attendance === null) ? 0 : merged.lab_attendance;
         const lo = (merged.lab_observation === -1 || merged.lab_observation === null) ? 0 : merged.lab_observation;
         const lr = (merged.lab_record === -1 || merged.lab_record === null) ? 0 : merged.lab_record;
@@ -72,16 +91,34 @@ const calculateInternalMarks = (currentMarks, updates, subjectCategory = 'THEORY
     }
 
     // DEFAULT: THEORY (Best of 2 / 100)
-    const cia1Total = calculateCIAlo(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance);
-    const cia2Total = calculateCIAlo(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance);
-    const cia3Total = calculateCIAlo(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance);
+    const cias = [
+        {
+          total: calculateCIAlo(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance),
+          absent: isCIAAbsent(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance),
+          entered: isCIAEntered(merged.cia1_test, merged.cia1_assignment, merged.cia1_attendance)
+        },
+        {
+          total: calculateCIAlo(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance),
+          absent: isCIAAbsent(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance),
+          entered: isCIAEntered(merged.cia2_test, merged.cia2_assignment, merged.cia2_attendance)
+        },
+        {
+          total: calculateCIAlo(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance),
+          absent: isCIAAbsent(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance),
+          entered: isCIAEntered(merged.cia3_test, merged.cia3_assignment, merged.cia3_attendance)
+        }
+    ];
 
-    const availableTotals = [cia1Total, cia2Total, cia3Total].sort((a, b) => b - a);
+    const validCIAs = cias
+        .filter(c => c.entered && !c.absent)
+        .map(c => c.total)
+        .sort((a, b) => b - a);
+
     let internal = 0;
-    if (availableTotals.length >= 2) {
-        internal = (availableTotals[0] + availableTotals[1]) / 2;
-    } else if (availableTotals.length === 1) {
-        internal = availableTotals[0];
+    if (validCIAs.length >= 2) {
+        internal = (validCIAs[0] + validCIAs[1]) / 2;
+    } else if (validCIAs.length === 1) {
+        internal = validCIAs[0];
     }
 
     const cia1Fields = ['cia1_test', 'cia1_assignment', 'cia1_attendance'];
@@ -96,13 +133,6 @@ const calculateInternalMarks = (currentMarks, updates, subjectCategory = 'THEORY
     };
 };
 
-/**
- * Validates if marks are locked for a specific student and CIA component.
- * @param {number} studentId 
- * @param {Object} currentMark 
- * @param {Array} updatedFields 
- * @returns {Promise<string|null>} - Returns error message if locked, else null.
- */
 const checkLockStatus = async (studentId, currentMark, updatedFields) => {
     const cia1Fields = ['cia1_test', 'cia1_assignment', 'cia1_attendance'];
     const cia2Fields = ['cia2_test', 'cia2_assignment', 'cia2_attendance'];
@@ -115,12 +145,8 @@ const checkLockStatus = async (studentId, currentMark, updatedFields) => {
     const touchingLabOnly = updatedFields.every(k => labFields.includes(k));
 
     if (currentMark) {
-        // ✅ FIX Bug #8: Global lock always blocks editing — even for lab-only fields
         if (currentMark.isLocked) return "Marks are globally locked by Admin. Contact admin to unlock.";
-
-        // Lab-only updates skip CIA-specific lock checks (but global lock above still applies)
         if (touchingLabOnly) return null;
-
         if (touchingCia1 && currentMark.isLocked_cia1) return "CIA 1 marks are locked by Admin.";
         if (touchingCia2 && currentMark.isLocked_cia2) return "CIA 2 marks are locked by Admin.";
         if (touchingCia3 && currentMark.isLocked_cia3) return "CIA 3 marks are locked by Admin.";

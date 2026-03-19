@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
+const { handleError } = require('../utils/errorUtils');
 
 exports.uploadMaterial = async (req, res) => {
     try {
@@ -18,7 +18,7 @@ exports.uploadMaterial = async (req, res) => {
 
         res.status(201).json(material);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to upload material");
     }
 };
 
@@ -55,7 +55,7 @@ exports.getMaterials = async (req, res) => {
 
         res.json(materials);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get materials");
     }
 };
 
@@ -82,6 +82,6 @@ exports.deleteMaterial = async (req, res) => {
 
         res.json({ message: 'Material deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to delete material");
     }
 };

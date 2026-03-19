@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { getDeptCriteria } = require('../utils/deptUtils');
+const { handleError } = require('../utils/errorUtils');
 
 // --- Faculty Actions ---
 
@@ -49,7 +49,7 @@ const getStudentsForAttendance = async (req, res) => {
 
         res.json({ students: result, isAlreadyTaken: existingAttendance.length > 0 });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to fetch students for attendance");
     }
 };
 
@@ -61,6 +61,36 @@ const submitAttendance = async (req, res) => {
         const today = new Date().toISOString().split('T')[0];
         if (date > today) {
             return res.status(400).json({ message: 'Attendance cannot be submitted for a future date.' });
+        }
+
+        // 🔒 CHECK LOCK STATUS
+        const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
+        const studentObj = await prisma.student.findFirst({ where: { section: studentData?.section || undefined, id: attendanceData[0]?.studentId } }); // Sample to get dept/sec
+        
+        // This is a bit complex due to sparse data. Better check by subject's default target
+        const control = await prisma.semesterControl.findFirst({
+            where: {
+                semester: subject?.semester,
+                section: attendanceData[0]?.section || undefined // We might not have section in body
+            }
+        });
+
+        // Simpler lookup: Check if any published/locked control exists for this subject's semester/section
+        // We'll need to find the student's current assignment section
+        const assignment = await prisma.facultyAssignment.findFirst({
+            where: { facultyId: parseInt(facultyId), subjectId: parseInt(subjectId) }
+        });
+
+        if (assignment) {
+            const semControl = await prisma.semesterControl.findFirst({
+                where: {
+                    semester: subject.semester,
+                    section: assignment.section
+                }
+            });
+            if (semControl?.isLocked || semControl?.isPublished) {
+                return res.status(403).json({ message: 'Attendance is locked for this semester/section. Marks have been processed.' });
+            }
         }
 
         const sId = parseInt(subjectId);
@@ -77,7 +107,7 @@ const submitAttendance = async (req, res) => {
         await prisma.$transaction(operations);
         res.json({ message: 'Attendance submitted successfully', count: operations.length });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to submit attendance");
     }
 };
 
@@ -181,7 +211,7 @@ const getAttendanceReport = async (req, res) => {
             totalPeriodsConducted: distinctSlots.length
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to fetch attendance report");
     }
 };
 
@@ -217,18 +247,43 @@ const getDepartmentAttendanceReport = async (req, res) => {
             orderBy: { rollNo: 'asc' }
         });
 
+        // Get student IDs
+        const studentIds = students.map(s => s.id);
+        const subjectIds = subjects.map(s => s.id);
+
+        // Fetch attendance counts in a single grouped query
+        const attendanceStats = await prisma.studentAttendance.groupBy({
+            by: ['studentId', 'subjectId', 'status'],
+            where: {
+                studentId: { in: studentIds },
+                subjectId: { in: subjectIds }
+            },
+            _count: true
+        });
+
+        // Group stats into a nested map for O(1) lookup
+        const statsMap = {};
+        attendanceStats.forEach(stat => {
+            if (!statsMap[stat.studentId]) statsMap[stat.studentId] = {};
+            if (!statsMap[stat.studentId][stat.subjectId]) {
+                statsMap[stat.studentId][stat.subjectId] = { total: 0, present: 0 };
+            }
+            statsMap[stat.studentId][stat.subjectId].total += stat._count;
+            if (stat.status === 'PRESENT' || stat.status === 'OD') {
+                statsMap[stat.studentId][stat.subjectId].present += stat._count;
+            }
+        });
+
         const report = students.map(student => {
             const subjectData = subjects.map(subject => {
-                const subAtt = student.attendance.filter(a => a.subjectId === subject.id);
-                const total = subAtt.length;
-                const present = subAtt.filter(a => a.status === 'PRESENT' || a.status === 'OD').length;
-                const percent = total > 0 ? parseFloat(((present / total) * 100).toFixed(1)) : 0;
+                const stats = statsMap[student.id]?.[subject.id] || { total: 0, present: 0 };
+                const percent = stats.total > 0 ? parseFloat(((stats.present / stats.total) * 100).toFixed(1)) : 0;
                 return {
                     subjectId: subject.id,
                     subjectCode: subject.code,
                     subjectName: subject.name,
-                    total,
-                    present,
+                    total: stats.total,
+                    present: stats.present,
                     percent
                 };
             });
@@ -244,7 +299,7 @@ const getDepartmentAttendanceReport = async (req, res) => {
 
         res.json(report);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to fetch department attendance report");
     }
 };
 

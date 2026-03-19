@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const ExcelJS = require('exceljs');
+const { handleError } = require('../utils/errorUtils');
 
 const uploadArrears = async (req, res) => {
     try {
@@ -88,11 +88,10 @@ const uploadArrears = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: 'Error processing file', error: error.message });
+        handleError(res, error, "Error processing arrear upload");
     }
 };
 
-// ─── Auto-generate arrears from EndSemMarks failures ───────────────────────
 const autoGenerateArrears = async (req, res) => {
     try {
         const { semester } = req.body;
@@ -100,12 +99,11 @@ const autoGenerateArrears = async (req, res) => {
 
         const semInt = parseInt(semester);
 
-        // Find all FAIL or ABSENT EndSemMarks for subjects in this semester
         const failedMarks = await prisma.marks.findMany({
             where: {
                 subject: { semester: semInt },
                 endSemMarks: {
-                    resultStatus: { in: ['FAIL'] }
+                    resultStatus: { in: ['FAIL', 'AB'] }
                 }
             },
             include: {
@@ -124,7 +122,6 @@ const autoGenerateArrears = async (req, res) => {
                 const { studentId, subjectId, internal } = markRecord;
                 const originalSemester = markRecord.subject.semester;
 
-                // Upsert arrear header (no duplicates)
                 const arrear = await prisma.arrear.upsert({
                     where: { studentId_subjectId: { studentId, subjectId } },
                     update: {},
@@ -137,7 +134,6 @@ const autoGenerateArrears = async (req, res) => {
                     }
                 });
 
-                // Check if an un-resolved attempt already exists
                 const existingAttempt = await prisma.arrearAttempt.findFirst({
                     where: { arrearId: arrear.id, resultStatus: null }
                 });
@@ -171,14 +167,13 @@ const autoGenerateArrears = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: 'Error auto-generating arrears', error: error.message });
+        handleError(res, error, "Error auto-generating arrears");
     }
 };
 
-// ─── Get all arrears (with optional passed-out filter) ─────────────────────
 const getArrears = async (req, res) => {
     try {
-        const { type } = req.query; // type = 'active' | 'passedout' | undefined (all)
+        const { type } = req.query;
 
         let studentFilter = {};
         if (type === 'active') {
@@ -202,7 +197,7 @@ const getArrears = async (req, res) => {
 
         res.json(arrears);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching arrear records', error: error.message });
+        handleError(res, error, "Error fetching arrear records");
     }
 };
 
@@ -213,7 +208,7 @@ const deleteArrear = async (req, res) => {
         await prisma.arrear.delete({ where: { id: parseInt(id) } });
         res.json({ message: 'Arrear record and attempts deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting arrear record', error: error.message });
+        handleError(res, error, "Error deleting arrear record");
     }
 };
 
@@ -253,7 +248,6 @@ const bulkUploadPassedOutArrears = async (req, res) => {
 
             const semNum = parseInt(semester) || student.semester;
 
-            // Skip duplicates
             const exists = await prisma.arrear.findFirst({
                 where: { studentId: student.id, subjectId: subject.id, semester: semNum }
             });
@@ -270,7 +264,7 @@ const bulkUploadPassedOutArrears = async (req, res) => {
 
         res.json({ message: `Created ${added} arrear records`, count: added, errors });
     } catch (error) {
-        res.status(500).json({ message: 'Error bulk uploading passed-out arrears', error: error.message });
+        handleError(res, error, "Error bulk uploading passed-out arrears");
     }
 };
 

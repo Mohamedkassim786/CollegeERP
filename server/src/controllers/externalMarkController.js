@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const pdfService = require('../services/pdf.service.js');
+const { handleError } = require('../utils/errorUtils');
 
 // ─── Get dummy list for external staff ───────────────────────────────────────
 exports.getAssignedDummyList = async (req, res) => {
@@ -61,6 +61,7 @@ exports.getAssignedDummyList = async (req, res) => {
                 maxMark: 100,
                 convertedMax: 40,
                 deadline: assignment.deadline,
+                status: externalMarks[0]?.status || 'NOT_SUBMITTED',
                 dummyList: resultList
             });
         }
@@ -106,6 +107,7 @@ exports.getAssignedDummyList = async (req, res) => {
                     maxMark: 25,
                     convertedMax: 25,
                     deadline: assignment.deadline,
+                    status: externalMarks[0]?.status || 'NOT_SUBMITTED',
                     dummyList: resultList
                 });
             }
@@ -132,6 +134,7 @@ exports.getAssignedDummyList = async (req, res) => {
                 maxMark: 25,
                 convertedMax: 25,
                 deadline: assignment.deadline,
+                status: externalMarks[0]?.status || 'NOT_SUBMITTED',
                 dummyList: mappings.map(m => ({ dummyNumber: m.dummyNumber, mark: extMap[m.dummyNumber] ?? null }))
             });
         }
@@ -161,6 +164,7 @@ exports.getAssignedDummyList = async (req, res) => {
             maxMark: 60,
             convertedMax: 60,
             deadline: assignment.deadline,
+            status: existingExtMarks[0]?.status || 'NOT_SUBMITTED',
             dummyList: mappings.map(m => {
                 const dNo = (m.dummyNumber || '').trim();
                 return { dummyNumber: dNo, mark: extMap[dNo] ?? m.marks };
@@ -245,7 +249,8 @@ exports.submitMarks = async (req, res) => {
                         convertedExternal60: raw,
                         submittedBy: staffId,
                         submittedAt: new Date(),
-                        isApproved: true
+                        isApproved: false,
+                        status: 'PENDING' // Staff submission requires review
                     },
                     create: {
                         subjectId: subjectInt,
@@ -254,7 +259,8 @@ exports.submitMarks = async (req, res) => {
                         rawExternal100: raw,
                         convertedExternal60: raw,
                         submittedBy: staffId,
-                        isApproved: true
+                        isApproved: false,
+                        status: 'PENDING'
                     }
                 });
                 savedCount++;
@@ -342,6 +348,8 @@ exports.submitMarksAdmin = async (req, res) => {
                     });
                 }
 
+                const converted = (raw / 100) * convertFactor;
+
                 await tx.externalMark.upsert({
                     where: {
                         subjectId_dummyNumber_component: {
@@ -352,19 +360,21 @@ exports.submitMarksAdmin = async (req, res) => {
                     },
                     update: {
                         rawExternal100: raw,
-                        convertedExternal60: raw,
+                        convertedExternal60: converted,
                         submittedBy: req.user.id,
                         submittedAt: new Date(),
-                        isApproved: true
+                        isApproved: true,
+                        status: 'APPROVED' // Admin entry auto-approves
                     },
                     create: {
                         subjectId: subjectInt,
                         dummyNumber,
                         component,
                         rawExternal100: raw,
-                        convertedExternal60: raw,
+                        convertedExternal60: converted,
                         submittedBy: req.user.id,
-                        isApproved: true
+                        isApproved: true,
+                        status: 'APPROVED'
                     }
                 });
                 savedCount++;
@@ -380,7 +390,7 @@ exports.submitMarksAdmin = async (req, res) => {
             component 
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to submit marks as admin");
     }
 };
 
@@ -545,6 +555,45 @@ exports.generateStatementPDF = async (req, res) => {
             pdfService.generateTheoryStatementOfMarks(res, commonData);
         }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to generate statement PDF");
+    }
+};
+// ─── Approve External Marks ──────────────────────────────────────────────────
+exports.approveExternalMarks = async (req, res) => {
+    try {
+        const { subjectId } = req.body;
+        const subId = parseInt(subjectId);
+
+        await prisma.externalMark.updateMany({
+            where: { subjectId: subId, status: 'PENDING' },
+            data: { isApproved: true, status: 'APPROVED' }
+        });
+
+        res.json({ message: "External marks approved successfully" });
+    } catch (error) {
+        handleError(res, error, "Failed to approve external marks");
+    }
+};
+
+// ─── Reject External Marks ───────────────────────────────────────────────────
+exports.rejectExternalMarks = async (req, res) => {
+    try {
+        const { subjectId, reason } = req.body;
+        const subId = parseInt(subjectId);
+
+        await prisma.externalMark.updateMany({
+            where: { subjectId: subId, status: 'PENDING' },
+            data: { isApproved: false, status: 'REJECTED' }
+        });
+
+        // Re-open assignment for staff to resubmit
+        await prisma.externalMarkAssignment.updateMany({
+            where: { subjectId: subId, status: 'COMPLETED' },
+            data: { status: 'PENDING' }
+        });
+
+        res.json({ message: "External marks rejected. Staff can now re-submit." });
+    } catch (error) {
+        handleError(res, error, "Failed to reject external marks");
     }
 };

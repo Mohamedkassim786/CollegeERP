@@ -1,9 +1,10 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const PDFDocument = require('pdfkit');
 const { logger } = require('../utils/logger');
 const { calculateSeatingCIA, calculateSeatingENDSEM } = require('../services/seatingService');
 const { getDeptCriteria } = require('../utils/deptUtils');
+const { handleError } = require('../utils/errorUtils');
+
 
 exports.getSessions = async (req, res) => {
     try {
@@ -1007,8 +1008,8 @@ exports.exportSeatingGrid = async (req, res) => {
 
         doc.end();
     } catch (error) {
-        console.error("Grid Export Error:", error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to export seating grid");
     }
 };
+
 

@@ -1,9 +1,9 @@
 // Finalized Dashboard Controller with correct casing and robust matching logic
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const ExcelJS = require('exceljs');
 const { getDeptCriteria } = require('../utils/deptUtils.js');
 
-const prisma = new PrismaClient();
+
 const { handleError } = require('../utils/errorUtils.js');
 
 const getDashboardStats = async (req, res) => {
@@ -49,39 +49,46 @@ const getDashboardStats = async (req, res) => {
             : 0;
 
         // 3. Performance Trend (Monthly average of internal marks)
+        // 3. Performance Trend (Last 6 months, optimized)
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const d = new Date();
-        const performanceTrendMapp = {};
+        const now = new Date();
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(now.getMonth() - 6);
 
+        // Fetch grouped marks data directly from DB
+        const groupedMarks = await prisma.marks.groupBy({
+            by: ['updatedAt'],
+            where: {
+                internal: { not: null },
+                updatedAt: { gte: sixMonthsAgo }
+            },
+            _avg: { internal: true },
+            _count: { id: true }
+        });
+
+        // Map into monthly buckets
+        const performanceTrendMapp = {};
         for (let i = 5; i >= 0; i--) {
-            let m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+            let m = new Date(now.getFullYear(), now.getMonth() - i, 1);
             let mName = monthNames[m.getMonth()];
             performanceTrendMapp[mName] = { month: mName, total: 0, count: 0, target: 80 };
         }
 
-        const allMarks = await prisma.marks.findMany({
-            select: { internal: true, updatedAt: true },
-            where: { internal: { not: null } }
-        });
-
-        allMarks.forEach(m => {
-            const mName = monthNames[m.updatedAt.getMonth()];
+        groupedMarks.forEach(group => {
+            const mName = monthNames[new Date(group.updatedAt).getMonth()];
             if (performanceTrendMapp[mName]) {
-                performanceTrendMapp[mName].total += m.internal;
-                performanceTrendMapp[mName].count += 1;
+                performanceTrendMapp[mName].total += (group._avg.internal * group._count.id);
+                performanceTrendMapp[mName].count += group._count.id;
             }
         });
 
-        const performanceTrend = Object.values(performanceTrendMapp).map(p => {
-            const avg = p.count > 0 ? (p.total / p.count) * 2 : 0; // Assuming internal marks are mostly out of 50, scale to 100 for percentage
-            return {
-                month: p.month,
-                average: Math.round(avg),
-                target: p.target
-            };
-        });
+        const performanceTrend = Object.values(performanceTrendMapp).map(p => ({
+            month: p.month,
+            average: p.count > 0 ? Math.round((p.total / p.count) * 2) : 0,
+            target: p.target
+        }));
 
-        // 4. Marks Distribution (Real CGPA values)
+        // 4. Marks Distribution (Remains same, usually small result set)
         const results = await prisma.semesterResult.findMany({ select: { cgpa: true } });
         let marksDistribution = [
             { range: '9-10 CGPA', count: 0, color: '#10b981' },
@@ -89,46 +96,50 @@ const getDashboardStats = async (req, res) => {
             { range: '7-8 CGPA', count: 0, color: '#f59e0b' },
             { range: '< 7 CGPA', count: 0, color: '#ef4444' }
         ];
-        if (results.length > 0) {
-            results.forEach(r => {
-                if (r.cgpa >= 9) marksDistribution[0].count++;
-                else if (r.cgpa >= 8) marksDistribution[1].count++;
-                else if (r.cgpa >= 7) marksDistribution[2].count++;
-                else marksDistribution[3].count++;
-            });
-        }
-
-        // 5. Weekly Attendance Rate
-        const recentDates = await prisma.studentAttendance.groupBy({
-            by: ['date'],
-            _count: { id: true },
-            orderBy: { date: 'desc' },
-            take: 5
+        results.forEach(r => {
+            if (r.cgpa >= 9) marksDistribution[0].count++;
+            else if (r.cgpa >= 8) marksDistribution[1].count++;
+            else if (r.cgpa >= 7) marksDistribution[2].count++;
+            else marksDistribution[3].count++;
         });
-        let attendanceData = [];
-        if (recentDates.length > 0) {
-            const chronologicalDates = [...recentDates].reverse();
-            for (const d of chronologicalDates) {
-                const dayStat = await prisma.studentAttendance.count({
-                    where: { date: d.date, status: { in: ['PRESENT', 'OD'] } }
-                });
-                const rate = Math.round((dayStat / d._count.id) * 100);
-                const dayObj = new Date(d.date);
-                const dayName = isNaN(dayObj.getTime()) ? d.date.substring(0, 3) : dayObj.toLocaleDateString('en-US', { weekday: 'short' });
-                attendanceData.push({ day: dayName, rate });
+
+        // 5. Weekly Attendance Rate (Optimized Single GroupBy)
+        const last7Days = new Date();
+        last7Days.setDate(now.getDate() - 7);
+        
+        const attendanceStats = await prisma.studentAttendance.groupBy({
+            by: ['date', 'status'],
+            where: {
+                createdAt: { gte: last7Days }
+            },
+            _count: { id: true }
+        });
+
+        // Process stats into date buckets
+        const dayMap = {};
+        attendanceStats.forEach(stat => {
+            if (!dayMap[stat.date]) dayMap[stat.date] = { total: 0, present: 0 };
+            dayMap[stat.date].total += stat._count.id;
+            if (['PRESENT', 'OD'].includes(stat.status)) {
+                dayMap[stat.date].present += stat._count.id;
             }
-        } else {
-            // Emtpy data points if no attendance historically
-            const last5Days = [];
-            const dt = new Date();
+        });
+
+        const attendanceData = Object.keys(dayMap).sort().slice(-5).map(date => {
+            const dayObj = new Date(date);
+            const rate = Math.round((dayMap[date].present / dayMap[date].total) * 100);
+            return {
+                day: dayObj.toLocaleDateString('en-US', { weekday: 'short' }),
+                rate
+            };
+        });
+
+        if (attendanceData.length === 0) {
+            // Fallback for empty data
             for (let i = 4; i >= 0; i--) {
-                const dDate = new Date(dt.getTime() - (i * 24 * 60 * 60 * 1000));
-                last5Days.push({
-                    day: dDate.toLocaleDateString('en-US', { weekday: 'short' }),
-                    rate: 0
-                });
+                const dDate = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
+                attendanceData.push({ day: dDate.toLocaleDateString('en-US', { weekday: 'short' }), rate: 0 });
             }
-            attendanceData = last5Days;
         }
 
         // 6. Recent Activities

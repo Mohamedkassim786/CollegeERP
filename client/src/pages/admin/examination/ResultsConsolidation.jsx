@@ -236,7 +236,13 @@ const EndSemMarksEntry = () => {
         if (parseInt(s.semester) !== parseInt(filters.semester)) return false;
         if (isYear1) return s.type === 'COMMON' || !s.department;
         if (!filters.department) return true;
-        return s.department === filters.department || s.type === 'COMMON';
+        
+        const selectedDept = departments.find(d => d.code === filters.department || d.name === filters.department);
+        const isMatch = s.department === filters.department || 
+                        (selectedDept && s.department === selectedDept.name) ||
+                        (selectedDept && s.department === selectedDept.code);
+                        
+        return isMatch || s.type === 'COMMON';
     });
 
     const catLabel = selectedSubject?.subjectCategory

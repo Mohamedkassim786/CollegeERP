@@ -1,8 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
 const { logger } = require('../utils/logger');
-
-const prisma = new PrismaClient();
+const { handleError } = require('../utils/errorUtils');
 
 /**
  * Get current user profile (Staff or Student)
@@ -77,8 +76,7 @@ const getProfile = async (req, res) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json(user);
     } catch (error) {
-        logger.error('getProfile error', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get profile");
     }
 };
 
@@ -136,12 +134,9 @@ const updateProfile = async (req, res) => {
 
         res.json(updatedUser);
     } catch (error) {
-        logger.error('updateProfile error', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to update profile");
     }
 };
-
-// --- Admin Only Faculty Management ---
 
 /**
  * List all faculty members
@@ -164,7 +159,7 @@ const getAllFaculty = async (req, res) => {
         });
         res.json(faculty);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get all faculty");
     }
 };
 
@@ -196,7 +191,7 @@ const resetFacultyPassword = async (req, res) => {
 
         res.json({ message: 'Faculty password reset successfully.' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to reset faculty password");
     }
 };
 
@@ -223,7 +218,7 @@ const toggleFacultyStatus = async (req, res) => {
 
         res.json({ message: `Faculty account ${isDisabled ? 'disabled' : 'enabled'} successfully` });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to toggle faculty status");
     }
 };
 
@@ -243,7 +238,7 @@ const getActivityLogs = async (req, res) => {
         });
         res.json(logs);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get activity logs");
     }
 };
 

@@ -1,9 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const pdfService = require('../services/pdf.service.js');
 const { logger } = require('../utils/logger');
 const { getDeptCriteria } = require('../utils/deptUtils');
 const calcService = require('../services/calculation.service.js');
+const { handleError } = require('../utils/errorUtils');
 
 
 // --- End Semester Mark Entry ---
@@ -159,7 +159,7 @@ exports.getEndSemMarks = async (req, res) => {
 
         res.json(consolidated);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get end semester marks");
     }
 };
 
@@ -385,13 +385,19 @@ exports.updateEndSemMarks = async (req, res) => {
                                     data: { isCleared: true, clearedInSem: student.semester }
                                 });
                             }
+                        } else if (finalResultStatus === 'FAIL' || finalResultStatus === 'AB') {
+                             // Re-fail or absenteeism: ensure arrear is active
+                             await tx.arrear.update({
+                                 where: { id: arrear.id },
+                                 data: { isCleared: false }
+                             });
                         }
                     }
-                } else if (finalResultStatus === 'FAIL') {
+                } else if (finalResultStatus === 'FAIL' || finalResultStatus === 'AB') {
                     // First time fail - Auto-generate arrear record for future tracking
                     await tx.arrear.upsert({
                         where: { studentId_subjectId: { studentId: student.id, subjectId: subIdInt } },
-                        update: {},
+                        update: { isCleared: false },
                         create: {
                             studentId: student.id,
                             subjectId: subIdInt,
@@ -414,7 +420,7 @@ exports.updateEndSemMarks = async (req, res) => {
             skipped: resultCount.skipped
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to update end semester marks");
     }
 };
 
@@ -502,7 +508,7 @@ exports.calculateGPA = async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to calculate GPA");
     }
 };
 
@@ -519,26 +525,62 @@ exports.calculateBulkGPA = async (req, res) => {
         const grades = await prisma.gradeSettings.findMany({ where: { regulation } });
         if (grades.length === 0) {
             return res.status(400).json({ 
-                message: `Grade settings not configured for regulation ${regulation}. Please set up grade thresholds in Settings → Grade Settings before calculating GPA.` 
+                message: `Grade settings not configured for regulation ${regulation}` 
             });
         }
 
+        // 🚀 OPTIMIZATION: Batch Fetch All Marks for these students
+        const studentIds = students.map(s => s.id);
+        const allMarks = await prisma.marks.findMany({
+            where: { studentId: { in: studentIds } },
+            include: { subject: true, endSemMarks: true }
+        });
+
+        const allClearedArrears = await prisma.arrear.findMany({
+            where: { studentId: { in: studentIds }, isCleared: true },
+            include: { subject: true }
+        });
+
+        // Batch fetch all attempts to avoid N+1 inside loop
+        const arrearIds = allClearedArrears.map(ar => ar.id);
+        const allAttempts = await prisma.arrearAttempt.findMany({
+            where: { arrearId: { in: arrearIds }, resultStatus: 'PASS' },
+            orderBy: { id: 'desc' }
+        });
+
         let processed = 0;
         for (const student of students) {
-            const result = await _performGPACalculation(student.id, semInt, grades);
-            if (result) {
-                await prisma.semesterResult.upsert({
-                    where: { studentId_semester: { studentId: student.id, semester: semInt } },
-                    update: result,
-                    create: { studentId: student.id, semester: semInt, ...result }
-                });
-                processed++;
+            const studentMarks = allMarks.filter(m => m.studentId === student.id);
+            const currentSemMarks = studentMarks.filter(m => m.subject.semester === semInt);
+            
+            const gpaResult = calcService.calculateGPA(currentSemMarks, grades);
+            const { gpa, totalCredits, earnedCredits, semesterPass } = gpaResult;
+
+            const studentArrears = allClearedArrears.filter(ar => ar.studentId === student.id);
+            for (const ar of studentArrears) {
+                const attempt = allAttempts.find(a => a.arrearId === ar.id);
+                ar.passedGrade = attempt ? attempt.grade : 'RA';
             }
+
+            const pastMarks = studentMarks.filter(m => m.subject.semester <= semInt);
+            const cgpa = calcService.calculateCGPA(pastMarks, studentArrears, grades);
+
+            const result = {
+                gpa, cgpa, totalCredits, earnedCredits,
+                resultStatus: semesterPass ? "PASS" : "FAIL"
+            };
+
+            await prisma.semesterResult.upsert({
+                where: { studentId_semester: { studentId: student.id, semester: semInt } },
+                update: result,
+                create: { studentId: student.id, semester: semInt, ...result }
+            });
+            processed++;
         }
 
         res.json({ message: `Successfully calculated GPAs for ${processed} students.` });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to calculate bulk GPA");
     }
 };
 
@@ -584,7 +626,7 @@ exports.getFacultyResults = async (req, res) => {
 
         res.json(students);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get faculty results");
     }
 };
 
@@ -661,7 +703,7 @@ exports.toggleSemesterControl = async (req, res) => {
 
         res.json(control);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to toggle semester control");
     }
 };
 
@@ -679,14 +721,13 @@ exports.getSemesterControl = async (req, res) => {
             }
         });
 
-        // If no control record exists, return default status
         res.json(control || {
             markEntryOpen: false,
             isPublished: false,
             isLocked: false
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get semester control");
     }
 };
 
@@ -734,7 +775,7 @@ exports.getGradeSheet = async (req, res) => {
 
         pdfService.generateGradeSheet(res, pdfData);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to generate grade sheet");
     }
 };
 
@@ -800,22 +841,25 @@ const getConsolidatedResultsData = async (department, semester, regulation) => {
             let labExt = null;
 
             if (sub.subjectCategory === 'INTEGRATED') {
-                // For Integrated, Theory is usually keyed by dummyNo, Lab by registerNumber
-                const tRec = extMap[sub.id]?.[dummyNo] || extMap[sub.id]?.[student.registerNumber];
-                const lRec = extMap[sub.id]?.[student.registerNumber] || extMap[sub.id]?.[dummyNo];
+                const theoryRec = extMap[sub.id]?.[dummyNo] || extMap[sub.id]?.[student.registerNumber];
+                const labRec = extMap[sub.id]?.[student.registerNumber] || extMap[sub.id]?.[dummyNo];
 
-                if (tRec && tRec.component !== 'LAB') {
-                    theoryExt = tRec.rawExternal100 > 25 ? (tRec.rawExternal100 / 100) * 25 : tRec.rawExternal100;
+                if (theoryRec) {
+                    const raw = theoryRec.rawExternal100;
+                    theoryExt = raw > 25 ? (raw / 100) * 25 : raw;
                 }
-                if (lRec && (lRec.component === 'LAB' || lRec !== tRec)) {
-                    labExt = lRec.rawExternal100 > 25 ? (lRec.rawExternal100 / 100) * 25 : lRec.rawExternal100;
+                if (labRec && (labRec.component === 'LAB' || (theoryRec && labRec.rawExternal100 !== theoryRec.rawExternal100))) {
+                    const raw = labRec.rawExternal100;
+                    labExt = raw > 25 ? (raw / 100) * 25 : raw;
                 }
             } else if (sub.subjectCategory === 'LAB') {
-                const lRec = extMap[sub.id]?.[student.registerNumber] || extMap[sub.id]?.[dummyNo];
-                labExt = lRec ? (lRec.rawExternal100 > 25 ? (lRec.rawExternal100 / 100) * 40 : lRec.rawExternal100) : null;
+                const lookupKey = student.registerNumber;
+                const lRec = extMap[sub.id]?.[lookupKey];
+                labExt = lRec ? (lRec.rawExternal100 > 40 ? (lRec.rawExternal100 / 100) * 40 : lRec.rawExternal100) : null;
             } else {
-                const tRec = extMap[sub.id]?.[dummyNo] || extMap[sub.id]?.[student.registerNumber];
-                theoryExt = tRec ? (tRec.rawExternal100 > 25 ? (tRec.rawExternal100 / 100) * 60 : tRec.rawExternal100) : null;
+                const lookupKey = dummyNo;
+                const tRec = extMap[sub.id]?.[lookupKey] || extMap[sub.id]?.[student.registerNumber];
+                theoryExt = tRec ? (tRec.rawExternal100 > 60 ? (tRec.rawExternal100 / 100) * 60 : tRec.rawExternal100) : null;
             }
 
             studentMarks[sub.code] = {
@@ -824,8 +868,8 @@ const getConsolidatedResultsData = async (department, semester, regulation) => {
                 theoryExt: theoryExt,
                 labExt: labExt,
                 total: markRecord?.endSemMarks?.totalMarks || 0,
-                grade: markRecord?.endSemMarks?.grade || '-',
-                status: markRecord?.endSemMarks?.resultStatus || '-'
+                grade: markRecord?.endSemMarks?.grade || (markRecord?.endSemMarks?.resultStatus === 'AB' ? 'AB' : 'RA'),
+                status: markRecord?.endSemMarks?.resultStatus || 'FAIL'
             };
         });
 
@@ -863,7 +907,7 @@ exports.getConsolidatedResults = async (req, res) => {
         const data = await getConsolidatedResultsData(department, semester, regulation);
         res.json(data);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get consolidated results");
     }
 };
 
@@ -875,7 +919,7 @@ exports.exportResultsPortrait = async (req, res) => {
         res.setHeader('Content-Disposition', `attachment; filename=results_portrait_${department}_sem${semester}.pdf`);
         pdfService.generateProvisionalResultsPortrait(res, data);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to export results portrait");
     }
 };
 
@@ -887,7 +931,7 @@ exports.exportResultsLandscape = async (req, res) => {
         res.setHeader('Content-Disposition', `attachment; filename=results_landscape_A3_${department}_sem${semester}.pdf`);
         pdfService.generateConsolidatedTabulationSheet(res, data);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to export results landscape");
     }
 };
 
@@ -976,7 +1020,7 @@ exports.publishResults = async (req, res) => {
             updatedStudentRecords: updatedCount
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to publish results");
     }
 };
 
@@ -1031,7 +1075,7 @@ exports.unpublishResults = async (req, res) => {
             message: `Results unpublished for ${officialDept} Sem ${semester} Section ${section}.`
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to unpublish results");
     }
 };
 
@@ -1061,7 +1105,7 @@ exports.getPublishStatus = async (req, res) => {
             markEntryOpen: control?.markEntryOpen || false
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get publish status");
     }
 };
 
@@ -1086,41 +1130,22 @@ exports.getStudentResults = async (req, res) => {
 
         if (!student) return res.status(404).json({ message: 'Student not found.' });
 
-        // Check if results are published for this student's current semester/dept/section
-        const control = await prisma.semesterControl.findFirst({
-            where: {
-                department: student.department,
-                year: student.year,
-                semester: student.semester,
-                section: student.section
-            }
-        });
-
-        if (!control?.isPublished) {
-            return res.json({
-                isPublished: false,
-                message: 'Results for your current semester have not been published yet.',
-                results: []
-            });
-        }
-
         // Filter for published marks and format
         const results = student.marks
             .filter(m => m.endSemMarks && (m.endSemMarks.isPublished || req.user.role === 'ADMIN'))
             .map(m => ({
-                subjectCode: m.subject.code,
-                subjectName: m.subject.name,
-                cia: m.ciaTotal,
-                external: m.endSemMarks.externalMark,
-                total: m.endSemMarks.totalMark,
+                code: m.subject.code,
+                name: m.subject.name,
+                internal: m.internal,
+                externalMarks: m.endSemMarks.externalMarks,
+                totalMarks: m.endSemMarks.totalMarks,
                 grade: m.endSemMarks.grade,
-                result: m.endSemMarks.result,
-                attendance: m.endSemMarks.attendanceSnapshot
+                resultStatus: m.endSemMarks.resultStatus,
+                attendanceSnapshot: m.endSemMarks.attendanceSnapshot
             }));
 
         res.json({
-            isPublished: true,
-            publishedAt: control.publishedAt,
+            isPublished: results.length > 0,
             semester: student.semester,
             results,
             gpa: student.gpa,
@@ -1128,7 +1153,33 @@ exports.getStudentResults = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('getStudentResults error', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get student results");
+    }
+};
+
+// ─── One-time Global Grade Recalculation ─────────────────────────────────────
+exports.recalculateAllGrades = async (req, res) => {
+    try {
+        const { semester, department, regulation = '2021' } = req.body;
+        
+        // 1. Fetch subjects
+        const deptFilter = await getDeptCriteria(department);
+        const subjects = await prisma.subject.findMany({
+            where: { semester: parseInt(semester), ...deptFilter }
+        });
+
+        let totalProcessed = 0;
+
+        for (const sub of subjects) {
+             req.body.subjectId = sub.id;
+             // Temporarily redirect response to a dummy
+             const mockRes = { json: () => {}, status: () => ({ json: () => {} }) };
+             await exports.updateEndSemMarks(req, mockRes);
+             totalProcessed++;
+        }
+
+        res.json({ message: `Recalculation complete for ${totalProcessed} subjects.` });
+    } catch (error) {
+        handleError(res, error, "Failed to recalculate all grades");
     }
 };

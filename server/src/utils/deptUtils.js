@@ -1,6 +1,5 @@
 // Utility for department-based filtering with standardized casing
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /**
  * Gets a robust department filter for Prisma queries.

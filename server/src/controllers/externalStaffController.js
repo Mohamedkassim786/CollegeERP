@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
+const { handleError } = require('../utils/errorUtils');
 
 exports.getAssignedAssignments = async (req, res) => {
     try {
@@ -10,7 +10,7 @@ exports.getAssignedAssignments = async (req, res) => {
         });
         res.json(assignments);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get assigned assignments");
     }
 };
 
@@ -26,7 +26,7 @@ exports.getAllAssignmentsForAdmin = async (req, res) => {
         });
         res.json(assignments);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get all assignments");
     }
 };
 
@@ -96,7 +96,7 @@ exports.assignMarkEntry = async (req, res) => {
         });
         res.json(assignment);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to assign mark entry");
     }
 };
 
@@ -157,7 +157,7 @@ exports.getAvailableSubjectsForAssignment = async (req, res) => {
 
         res.json(available);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get available subjects for assignment");
     }
 };
 
@@ -169,7 +169,7 @@ exports.getAllExternalStaff = async (req, res) => {
         });
         res.json(staff);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get all external staff");
     }
 };
 
@@ -191,7 +191,7 @@ exports.createExternalStaff = async (req, res) => {
         if (error.code === 'P2002') {
             return res.status(400).json({ message: 'Username already exists' });
         }
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to create external staff");
     }
 };
 
@@ -219,7 +219,7 @@ exports.deleteExternalStaff = async (req, res) => {
 
         res.json({ message: 'Staff and all related data deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to delete external staff");
     }
 };
 
@@ -235,6 +235,6 @@ exports.deleteAssignment = async (req, res) => {
         });
         res.json({ message: 'Assignment deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to delete assignment");
     }
 };

@@ -1,9 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
-const prisma = new PrismaClient();
-const { logger } = require('../utils/logger');
+const prisma = require('../lib/prisma');
 const { handleError } = require('../utils/errorUtils');
+const bcrypt = require('bcryptjs');
+const { logger } = require('../utils/logger');
 const { checkTimetableClash, checkFacultyAvailability } = require('../utils/clashUtils');
+
 
 // --- Faculty Management ---
 

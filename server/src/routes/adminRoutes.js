@@ -11,7 +11,8 @@ const {
     getFaculties, createFaculty, deleteFaculty, updateFaculty, bulkUploadFaculty, getFacultyProfile
 } = require('../controllers/facultyController');
 const {
-    createStudent, updateStudent, getStudents, deleteStudent, bulkUploadStudents, batchAssignRegisterNumbers, passStudentsOut, getStudentProfile
+    createStudent, updateStudent, getStudents, deleteStudent, bulkUploadStudents, 
+    batchAssignRegisterNumbers, passStudentsOut, getStudentProfile, resetStudentPasswordToDOB
 } = require('../controllers/studentController');
 const { promoteAll, promotePreview } = require('../controllers/promoteController');
 const {
@@ -38,6 +39,7 @@ const {
 const { getAttendanceReport, getDepartmentAttendanceReport } = require('../controllers/attendanceController');
 const { verifyToken, isAdmin, isHod, isPrincipal } = require('../middleware/authMiddleware');
 const { validateStudent, validateFaculty, validateSubject, validateMarks } = require('../middleware/validation');
+const { validateZod, studentSchema, markEntrySchema } = require('../middleware/zodValidation');
 const { uploadArrears, getArrears, deleteArrear, autoGenerateArrears, bulkUploadPassedOutArrears } = require('../controllers/arrearController');
 
 const { getSubjectsForDispatch, getStudentsForDispatch, exportDispatchPDF } = require('../controllers/dispatchController');
@@ -81,9 +83,10 @@ const { upload } = require('../utils/uploadConfig');
 
 router.get('/students', isHod, getStudents);
 router.get('/students/:id', isHod, getStudentProfile);
-router.post('/students', isHod, upload.single('photo'), validateStudent, createStudent);
-router.put('/students/:id', isHod, upload.single('photo'), validateStudent, updateStudent);
+router.post('/students', isHod, upload.single('photo'), validateZod(studentSchema), createStudent);
+router.put('/students/:id', isHod, upload.single('photo'), validateZod(studentSchema), updateStudent);
 router.delete('/students/:id', isAdmin, deleteStudent); // Student deletion is SuperAdmin only
+router.patch('/students/:id/reset-password', isAdmin, resetStudentPasswordToDOB);
 
 router.get('/subjects', isHod, getSubjects);
 router.post('/subjects', isHod, validateSubject, createSubject);
@@ -114,7 +117,7 @@ router.delete('/faculty/:id', isAdmin, deleteFaculty);
 
 // Admin Marks Management
 router.get('/marks/:subjectId', getSubjectMarksForAdmin);
-router.post('/marks', validateMarks, updateMarksForAdmin);
+router.post('/marks', validateZod(markEntrySchema), updateMarksForAdmin);
 
 // Marks Approval System
 router.get('/marks-approval/pending', getPendingMarks);

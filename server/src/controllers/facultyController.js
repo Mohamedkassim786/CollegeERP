@@ -1,12 +1,10 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const ExcelJS = require('exceljs');
 const markService = require('../services/markService');
 const { getDeptCriteria } = require('../utils/deptUtils');
+const { handleError } = require('../utils/errorUtils');
 
-const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
-const path = require('path');
-const fs = require('fs');
 
 // Get subjects assigned to the logged-in faculty
 const getAssignedSubjects = async (req, res) => {
@@ -69,7 +67,7 @@ const getAssignedSubjects = async (req, res) => {
 
         res.json(enhancedAssignments);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get assigned subjects");
     }
 };
 
@@ -129,7 +127,7 @@ const getClassDetails = async (req, res) => {
             totalEstimatedClasses
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get class details");
     }
 };
 
@@ -191,7 +189,7 @@ const getClassStudents = async (req, res) => {
 
         res.json(data);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get class students");
     }
 };
 
@@ -203,11 +201,9 @@ const getClassAttendance = async (req, res) => {
             orderBy: { date: 'desc' }
         });
 
-        // ✅ FIX Bug #3: Group by date+period (not just date).
-        // If same class has 2 periods on the same date, they should be counted separately.
         const grouped = {};
         attendance.forEach(r => {
-            const key = `${r.date}__P${r.period}`; // unique key per date+period slot
+            const key = `${r.date}__P${r.period}`;
             if (!grouped[key]) grouped[key] = { date: r.date, period: r.period, present: 0, absent: 0, total: 0 };
             grouped[key].total++;
             if (r.status === 'PRESENT' || r.status === 'OD') grouped[key].present++;
@@ -221,7 +217,7 @@ const getClassAttendance = async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get class attendance");
     }
 };
 
@@ -268,7 +264,7 @@ const getSubjectMarks = async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get subject marks");
     }
 };
 
@@ -312,7 +308,7 @@ const updateMarks = async (req, res) => {
 
         res.json(updated);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to update marks");
     }
 };
 
@@ -375,8 +371,7 @@ const bulkUpdateMarks = async (req, res) => {
             errors
         });
     } catch (error) {
-        console.error("Bulk update failed:", error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Bulk update failed");
     }
 };
 
@@ -468,7 +463,7 @@ const getFacultyDashboardStats = async (req, res) => {
             attendanceTrend: weeklyTrend
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get faculty dashboard stats");
     }
 };
 
@@ -520,7 +515,7 @@ const getMyTimetable = async (req, res) => {
         }
         res.json(timetable);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get timetable");
     }
 };
 
@@ -622,7 +617,7 @@ const exportClassAttendanceExcel = async (req, res) => {
         await workbook.xlsx.write(res);
         res.end();
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to export attendance");
     }
 };
 
@@ -663,7 +658,7 @@ const getFaculties = async (req, res) => {
 
         res.json(enriched);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get faculties");
     }
 };
 
@@ -679,11 +674,10 @@ const getFacultyProfile = async (req, res) => {
         });
         if (!faculty) return res.status(404).json({ message: 'Faculty not found' });
         
-        // Remove password from response
         const { password, ...safeFaculty } = faculty;
         res.json(safeFaculty);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get faculty profile");
     }
 };
 
@@ -717,7 +711,7 @@ const createFaculty = async (req, res) => {
         const { password, ...safeFaculty } = faculty;
         res.status(201).json(safeFaculty);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to create faculty");
     }
 };
 
@@ -801,7 +795,7 @@ const updateFaculty = async (req, res) => {
         const { password, ...safeFaculty } = faculty;
         res.json(safeFaculty);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to update faculty");
     }
 };
 
@@ -815,7 +809,7 @@ const deleteFaculty = async (req, res) => {
         });
         res.json({ message: 'Faculty deactivated successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to delete faculty");
     }
 };
 
@@ -900,7 +894,7 @@ const bulkUploadFaculty = async (req, res) => {
 
         res.json({ created: createdCount, failed });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Bulk upload failed");
     }
 };
 

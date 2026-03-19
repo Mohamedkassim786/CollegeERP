@@ -1,84 +1,70 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { handleError } = require('../utils/errorUtils');
 
 const getDepartments = async (req, res) => {
-    try {
-        const depts = await prisma.department.findMany();
-        const enriched = await Promise.all(depts.map(async (dept) => {
-            let hodName = 'Unassigned';
-            
-            // Priority 1: Use hodId if available to find faculty record
-            if (dept.id) {
-                const actualHOD = await prisma.faculty.findFirst({
-                    where: { 
-                        departmentId: dept.id,
-                        role: 'HOD' 
-                    },
-                    select: { fullName: true }
-                });
-                if (actualHOD) {
-                    hodName = actualHOD.fullName;
-                } else if (dept.hodId) {
-                    const hodByDirectId = await prisma.faculty.findUnique({
-                        where: { id: dept.hodId },
-                        select: { fullName: true }
-                    });
-                    if (hodByDirectId) hodName = hodByDirectId.fullName;
-                }
-            }
-            
-            // Fallback to legacy string if still unassigned
-            if (hodName === 'Unassigned' && dept.hodName) {
-                hodName = dept.hodName;
-            }
+  try {
+    const depts = await prisma.department.findMany();
 
-            // Calculate stats using relational integrity
-            const [facultyCount, studentCount, subjectCount] = await Promise.all([
-                prisma.faculty.count({
-                    where: {
-                        isActive: true,
-                        OR: [
-                            { departmentId: dept.id },
-                            { department: dept.code },
-                            { department: dept.name }
-                        ]
-                    }
-                }),
-                prisma.student.count({
-                    where: {
-                        status: 'ACTIVE',
-                        OR: [
-                            { departmentId: dept.id },
-                            { department: dept.code },
-                            { department: dept.name }
-                        ]
-                    }
-                }),
-                prisma.subject.count({
-                    where: {
-                        OR: [
-                            { department: dept.code },
-                            { department: dept.name }
-                        ]
-                    }
-                })
-            ]);
+    // Single batch queries for all departments
+    const [facultyCounts, studentCounts, subjectCounts, hodData] =
+      await Promise.all([
+        prisma.faculty.groupBy({
+          by: ['departmentId'],
+          where: { isActive: true },
+          _count: { id: true }
+        }),
+        prisma.student.groupBy({
+          by: ['departmentId'],
+          where: { status: 'ACTIVE' },
+          _count: { id: true }
+        }),
+        prisma.subject.findMany({
+          select: { department: true }
+        }),
+        prisma.faculty.findMany({
+          where: { role: 'HOD', isActive: true },
+          select: { departmentId: true, fullName: true }
+        })
+      ]);
 
-            return {
-                ...dept,
-                hodName,
-                stats: {
-                    faculty: facultyCount,
-                    students: studentCount,
-                    subjects: subjectCount
-                }
-            };
-        }));
-        res.json(enriched);
-    } catch (error) {
-        handleError(res, error, "Error fetching departments");
-    }
+    // Build lookup maps
+    const facultyMap = {};
+    facultyCounts.forEach(f => {
+      if (f.departmentId) facultyMap[f.departmentId] = f._count.id;
+    });
+
+    const studentMap = {};
+    studentCounts.forEach(s => {
+      if (s.departmentId) studentMap[s.departmentId] = s._count.id;
+    });
+
+    // Subject count by dept string map
+    const subjectMap = {};
+    subjectCounts.forEach(sub => {
+      if (sub.department) {
+        subjectMap[sub.department] = (subjectMap[sub.department] || 0) + 1;
+      }
+    });
+
+    const hodMap = {};
+    hodData.forEach(h => {
+      if (h.departmentId) hodMap[h.departmentId] = h.fullName;
+    });
+
+    const enriched = depts.map(dept => ({
+      ...dept,
+      hodName: hodMap[dept.id] || dept.hodName || 'Unassigned',
+      stats: {
+        faculty: facultyMap[dept.id] || 0,
+        students: studentMap[dept.id] || 0,
+        subjects: subjectMap[dept.code] || subjectMap[dept.name] || 0
+      }
+    }));
+
+    res.json(enriched);
+  } catch (error) {
+    handleError(res, error, 'Error fetching departments');
+  }
 };
 
 const getSections = async (req, res) => {
@@ -89,7 +75,6 @@ const getSections = async (req, res) => {
             }
         });
         
-        // Manually count students to include legacy string-based assignments that lack sectionId
         const enriched = await Promise.all(sections.map(async (sec) => {
             const studentCount = await prisma.student.count({
                 where: {
@@ -154,7 +139,6 @@ const deleteSection = async (req, res) => {
             return res.status(404).json({ error: "Section not found." });
         }
         
-        // Check if section has students before deleting (including legacy string records)
         const studentCount = await prisma.student.count({
             where: {
                 OR: [
@@ -194,8 +178,6 @@ const syncSections = async (departmentId, sectionString) => {
         }
         const academicYearId = activeYear.id;
 
-        // For each section in the string, ensure it exists in the Section table
-        // We now populate for all 8 semesters to ensure visibility in Student Manager
         for (const name of sectionNames) {
             for (let sem = 1; sem <= 8; sem++) {
                 const existing = await prisma.section.findFirst({

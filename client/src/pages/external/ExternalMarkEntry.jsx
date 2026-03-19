@@ -218,6 +218,18 @@ const ExternalMarkEntry = () => {
                 </div>
                 <div className="bg-white/10 p-4 rounded-2xl border border-white/20 backdrop-blur-md text-center min-w-[140px]">
                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-1">
+                    Status
+                  </p>
+                  <p className={`text-sm font-black uppercase tracking-wider ${
+                    data.status === 'APPROVED' ? 'text-emerald-400' :
+                    data.status === 'REJECTED' ? 'text-orange-400' :
+                    data.status === 'PENDING' ? 'text-yellow-400' : 'text-blue-200'
+                  }`}>
+                    {data.status?.replace('_', ' ') || 'NOT SUBMITTED'}
+                  </p>
+                </div>
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/20 backdrop-blur-md text-center min-w-[140px]">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-1">
                     Deadline
                   </p>
                   <p className="text-xl font-black">
@@ -241,6 +253,16 @@ const ExternalMarkEntry = () => {
                       ? "Enter lab external marks out of 100."
                       : "Dummy numbers are shown. Enter theory external marks out of 100."}
                   </p>
+                  {data.status === 'REJECTED' && (
+                    <p className="mt-2 text-red-600 font-black text-xs animate-pulse">
+                      YOUR PREVIOUS SUBMISSION WAS REJECTED. PLEASE REVIEW AND RESUBMIT.
+                    </p>
+                  )}
+                  {data.status === 'APPROVED' && (
+                    <p className="mt-2 text-emerald-600 font-black text-xs">
+                      THIS ENTRY HAS BEEN APPROVED AND LOCKED.
+                    </p>
+                  )}
                 </div>
               </div>
 

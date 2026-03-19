@@ -6,7 +6,6 @@ import FacultyManager from "./academics/FacultyManager";
 import SubjectManager from "./academics/SubjectManager";
 import StudentManager from "./academics/StudentManager";
 import AutoPromote from "./academics/AutoPromote";
-import AdminMarksManager from "./examination/AdminMarksManager";
 import AdminMarksApproval from "./examination/AdminMarksApproval";
 import TimetableManager from "./schedule/TimetableManager";
 import DepartmentManager from "./academics/DepartmentManager";
@@ -61,8 +60,7 @@ const AdminPortal = () => {
             <Route path="timetable" element={<TimetableManager />} />
             <Route path="attendance" element={<AttendanceReports />} />
 
-            {/* Admin Marks Management */}
-            <Route path="marks/:subjectId" element={<AdminMarksManager />} />
+
 
             {/* Examination Control */}
             <Route path="marks-approval" element={<AdminMarksApproval />} />

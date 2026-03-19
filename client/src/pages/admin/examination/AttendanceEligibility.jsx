@@ -43,6 +43,7 @@ const AttendanceEligibility = () => {
 
     const isAdmin = auth?.role === 'ADMIN';
     const canCalculate = auth?.role === 'ADMIN' || auth?.role === 'HOD';
+    const isFirstYear = filters.semester === '1' || filters.semester === '2';
 
     const fetchEligibility = async () => {
         if (!filters.department || !filters.semester) return;
@@ -122,10 +123,11 @@ const AttendanceEligibility = () => {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-end">
-                {isAdmin && (
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Department</label>
+            <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 mb-8 pointer-events-auto">
+                <div className="flex flex-col md:flex-row gap-6 w-full items-end">
+                    {isAdmin && !isFirstYear && (
+                        <div className="flex-1 w-full space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Department</label>
                         <CustomSelect value={filters.department} onChange={e => setFilters(f => ({ ...f, department: e.target.value }))}>
                             <option value="">Select Dept</option>
                             {departments.map(d => (
@@ -136,40 +138,41 @@ const AttendanceEligibility = () => {
                         </CustomSelect>
                     </div>
                 )}
-                <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Semester</label>
-                    <CustomSelect value={filters.semester} onChange={e => setFilters(f => ({ ...f, semester: e.target.value }))}>
-                        <option value="">Select</option>
-                        {(() => {
-                            const dept = departments.find(d => (d.code || d.name) === filters.department);
-                            const degree = dept?.degree || 'B.E.';
-                            return (SEMESTER_OPTIONS[degree] || [1, 2, 3, 4, 5, 6, 7, 8]).map(s => (
-                                <option key={s} value={s}>Sem {s}</option>
-                            ));
-                        })()}
-                    </CustomSelect>
+                    <div className="flex-1 w-full space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Semester</label>
+                        <CustomSelect value={filters.semester} onChange={e => setFilters(f => ({ ...f, semester: e.target.value }))}>
+                            <option value="">Select...</option>
+                            {(() => {
+                                const dept = departments.find(d => (d.code || d.name) === filters.department);
+                                const degree = dept?.degree || 'B.E.';
+                                return (SEMESTER_OPTIONS[degree] || [1, 2, 3, 4, 5, 6, 7, 8]).map(s => (
+                                    <option key={s} value={s}>Sem {s}</option>
+                                ));
+                            })()}
+                        </CustomSelect>
+                    </div>
+                    <div className="flex-1 w-full space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Section</label>
+                        <CustomSelect value={filters.section} onChange={e => setFilters(f => ({ ...f, section: e.target.value }))}>
+                            <option value="">All...</option>
+                            {(() => {
+                                const dept = departments.find(d => (d.code || d.name) === filters.department);
+                                const filtered = dbSections.filter(s => {
+                                    if (dept && !isFirstYear && s.departmentId !== dept.id) return false;
+                                    if (filters.semester && s.semester !== parseInt(filters.semester)) return false;
+                                    return true;
+                                });
+                                const names = [...new Set(filtered.map(s => s.name))];
+                                if (names.length === 0) return ['A', 'B', 'C'].map(s => <option key={s} value={s}>{s}</option>);
+                                return names.map(s => <option key={s} value={s}>{s}</option>);
+                            })()}
+                        </CustomSelect>
+                    </div>
+                    <button onClick={fetchEligibility}
+                        className="bg-[#003B73] mt-4 md:mt-0 text-white px-10 h-[56px] rounded-[16px] font-black text-xs uppercase tracking-widest hover:bg-[#002850] transition-all flex items-center justify-center w-full md:w-auto gap-3 shadow-lg shadow-blue-900/10 active:scale-95">
+                        <Search size={18} /> LOAD
+                    </button>
                 </div>
-                <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Section</label>
-                    <CustomSelect value={filters.section} onChange={e => setFilters(f => ({ ...f, section: e.target.value }))}>
-                        <option value="">All</option>
-                        {(() => {
-                            const dept = departments.find(d => (d.code || d.name) === filters.department);
-                            const filtered = dbSections.filter(s => {
-                                if (dept && s.departmentId !== dept.id) return false;
-                                if (filters.semester && s.semester !== parseInt(filters.semester)) return false;
-                                return true;
-                            });
-                            const names = [...new Set(filtered.map(s => s.name))];
-                            if (names.length === 0) return ['A', 'B', 'C'].map(s => <option key={s} value={s}>{s}</option>);
-                            return names.map(s => <option key={s} value={s}>{s}</option>);
-                        })()}
-                    </CustomSelect>
-                </div>
-                <button onClick={fetchEligibility}
-                    className="bg-[#003B73] text-white px-8 h-[52px] rounded-[14px] font-black text-sm hover:bg-[#002850] transition-all flex items-center gap-2 shadow-lg shadow-blue-900/10">
-                    <Search size={16} /> LOAD
-                </button>
             </div>
 
             {error && (

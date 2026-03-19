@@ -2,10 +2,10 @@
  * examSheetController.js
  * Exam Attendance Sheet generation per hall + session.
  */
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const pdfService = require('../services/pdf.service.js');
 const { logger } = require('../utils/logger');
+const { handleError } = require('../utils/errorUtils');
 
 /**
  * GET /api/exam-sheet/generate?examSessionId=1&hallId=2&subjectId=3
@@ -117,8 +117,7 @@ exports.generateSheet = async (req, res) => {
 
         logger.info(`Exam attendance sheet generated for Hall ${hallId}, Subject ${subjectId}`);
     } catch (error) {
-        logger.error('generateSheet failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to generate exam attendance sheet");
     }
 };
 
@@ -137,6 +136,6 @@ exports.getSessions = async (req, res) => {
         });
         res.json(sessions);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get exam sessions");
     }
 };

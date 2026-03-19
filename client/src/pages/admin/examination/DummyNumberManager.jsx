@@ -9,8 +9,9 @@ import {
   FileText,
   Download,
   CheckCircle,
+  XCircle,
 } from "lucide-react";
-import { getAvailableSubjects, getDummyMappings, generateDummyNumbers, lockDummyMapping, unlockDummyMapping, approveExternalMarks } from "../../../services/dummy.service";
+import { getAvailableSubjects, getDummyMappings, generateDummyNumbers, lockDummyMapping, unlockDummyMapping, approveExternalMarks, rejectExternalMarks } from "../../../services/dummy.service";
 import { getDepartments } from "../../../services/department.service";
 import toast from "react-hot-toast";
 import * as ExcelJS from "exceljs";
@@ -212,6 +213,24 @@ const DummyNumberManager = () => {
     }
   };
 
+  const rejectMarks = async () => {
+    const reason = window.prompt("Enter rejection reason (sent to staff):");
+    if (reason === null) return;
+
+    if (!window.confirm("Are you sure you want to REJECT these marks? Staff will need to re-submit.")) return;
+
+    try {
+      await rejectExternalMarks({
+        subjectId: filters.subjectId,
+        reason
+      });
+      toast.success("External Marks Rejected Successfully");
+      fetchMappings();
+    } catch (err) {
+      toast.error("Failed to reject external marks");
+    }
+  };
+
   const toggleAbsent = (studentId) => {
     // Only allow toggling if mapping is not locked
     if (mappings.length > 0 && mappings[0].mappingLocked) return;
@@ -351,9 +370,16 @@ const DummyNumberManager = () => {
           <button
             onClick={approveMarks}
             disabled={loading || mappings.length === 0 || !isLocked}
-            className="bg-indigo-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black tracking-wider shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-50"
+            className="bg-emerald-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black tracking-wider shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-50"
           >
             <CheckCircle size={20} /> APPROVE
+          </button>
+          <button
+            onClick={rejectMarks}
+            disabled={loading || mappings.length === 0 || !isLocked}
+            className="bg-orange-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black tracking-wider shadow-lg hover:bg-orange-700 transition-all disabled:opacity-50"
+          >
+            <XCircle size={20} /> REJECT
           </button>
           <button
             onClick={exportToExcel}

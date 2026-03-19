@@ -4,12 +4,13 @@
  * Student login: username = rollNo, default password = DOB in DDMMYYYY format.
  */
 
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { logger } = require('../utils/logger');
+const { handleError } = require('../utils/errorUtils');
 
-const prisma = new PrismaClient();
+
 
 const login = async (req, res) => {
     const { username, password } = req.body;
@@ -19,167 +20,62 @@ const login = async (req, res) => {
     }
 
     try {
-        // ── 1. Try User table first (System Admin/Principal) ─────────────────
-        const user = await prisma.user.findUnique({ where: { username } });
+        // Perform lookups in parallel for better performance and collision check
+        const [user, faculty, student] = await Promise.all([
+            prisma.user.findUnique({ where: { username } }),
+            prisma.faculty.findUnique({ where: { staffId: username } }),
+            prisma.student.findUnique({ where: { rollNo: username } })
+        ]);
 
-        if (user) {
-            if (user.isDisabled) {
-                return res.status(403).json({ message: 'Account disabled. Contact administrator.' });
-            }
-
+        // ── 1. Check User (Admin/Staff) ──────────────────────────────────────
+        if (user && !user.isDisabled) {
             const valid = await bcrypt.compare(password, user.password);
-            if (!valid) {
-                return res.status(401).json({ message: 'Invalid credentials.' });
+            if (valid) {
+                await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
+                const token = jwt.sign({ id: user.id, username: user.username, role: user.role, department: user.department }, process.env.JWT_SECRET, { expiresIn: '8h' });
+                logger.info(`Login: ${user.username} (${user.role})`);
+                return res.status(200).json({ id: user.id, username: user.username, role: user.role, fullName: user.fullName, department: user.department, forcePasswordChange: user.forcePasswordChange, accessToken: token });
             }
-
-            await prisma.user.update({
-                where: { id: user.id },
-                data: { lastLogin: new Date() }
-            });
-
-            const token = jwt.sign(
-                {
-                    id: user.id,
-                    username: user.username,
-                    role: user.role,
-                    department: user.department
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '8h' }
-            );
-
-            logger.info(`Login: ${user.username} (${user.role})`);
-
-            return res.status(200).json({
-                id: user.id,
-                username: user.username,
-                role: user.role,
-                fullName: user.fullName,
-                department: user.department,
-                forcePasswordChange: user.forcePasswordChange,
-                accessToken: token
-            });
         }
 
-        // ── 2. Try Faculty table (staffId = username) ────────────────────────
-        const faculty = await prisma.faculty.findUnique({
-            where: { staffId: username }
-        });
-
-        if (faculty) {
-            if (!faculty.isActive) {
-                return res.status(403).json({ message: 'Account inactive. Contact administrator.' });
-            }
-
+        // ── 2. Check Faculty ─────────────────────────────────────────────────
+        if (faculty && faculty.isActive) {
             const valid = await bcrypt.compare(password, faculty.password);
+            if (valid) {
+                const computedRoles = ['FACULTY'];
+                if (faculty.role === 'HOD') computedRoles.push('HOD');
+                const fycSetting = await prisma.systemSetting.findUnique({ where: { key: 'FIRST_YEAR_COORDINATOR_ID' } });
+                if (fycSetting && parseInt(fycSetting.value) === faculty.id) computedRoles.push('FIRST_YEAR_COORDINATOR');
 
-            if (!valid) {
-                return res.status(401).json({ message: 'Invalid credentials.' });
+                const token = jwt.sign({ id: faculty.id, username: faculty.staffId, role: faculty.role, computedRoles, department: faculty.department, departmentId: faculty.departmentId, isFirstLogin: faculty.isFirstLogin }, process.env.JWT_SECRET, { expiresIn: '8h' });
+                logger.info(`Faculty Login: ${faculty.staffId} (Roles: ${computedRoles.join(', ')})`);
+                return res.status(200).json({ id: faculty.id, username: faculty.staffId, role: faculty.role, computedRoles, fullName: faculty.fullName, department: faculty.department, departmentId: faculty.departmentId, photo: faculty.photo, isFirstLogin: faculty.isFirstLogin, accessToken: token });
             }
-
-            // Dynamically compute roles for the token
-            const computedRoles = ['FACULTY'];
-            if (faculty.role === 'HOD') computedRoles.push('HOD');
-
-            const fycSetting = await prisma.systemSetting.findUnique({
-                where: { key: 'FIRST_YEAR_COORDINATOR_ID' }
-            });
-            if (fycSetting && parseInt(fycSetting.value) === faculty.id) {
-                computedRoles.push('FIRST_YEAR_COORDINATOR');
-            }
-
-            const token = jwt.sign(
-                {
-                    id: faculty.id,
-                    username: faculty.staffId,
-                    role: faculty.role,
-                    computedRoles: computedRoles,
-                    department: faculty.department,
-                    departmentId: faculty.departmentId,
-                    isFirstLogin: faculty.isFirstLogin
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '8h' }
-            );
-
-            logger.info(`Faculty Login: ${faculty.staffId} (Roles: ${computedRoles.join(', ')})`);
-
-            return res.status(200).json({
-                id: faculty.id,
-                username: faculty.staffId,
-                role: faculty.role,
-                computedRoles: computedRoles,
-                fullName: faculty.fullName,
-                department: faculty.department,
-                departmentId: faculty.departmentId,
-                photo: faculty.photo,
-                isFirstLogin: faculty.isFirstLogin,
-                accessToken: token
-            });
         }
 
-        // ── 2. Try Student table (rollNo = username) ──────────────────────────
-        const student = await prisma.student.findUnique({
-            where: { rollNo: username }
-        });
-
+        // ── 3. Check Student ─────────────────────────────────────────────────
         if (student) {
-            // Default password: DOB in DDMMYYYY format or 'student' if DOB not set
-            const defaultPassword = student.dateOfBirth
-                ? formatDobPassword(student.dateOfBirth)
-                : 'student';
-
-            // If student has a custom password hash, compare with bcrypt
-            // Otherwise compare with default plain password
+            const defaultPassword = student.dateOfBirth ? formatDobPassword(student.dateOfBirth) : 'student';
             let valid = false;
             if (student.password) {
-                // Hashed password set — use bcrypt
                 valid = await bcrypt.compare(password, student.password);
             } else {
-                // Default password: plain text compare
                 valid = (password === defaultPassword);
             }
 
-            if (!valid) {
-                return res.status(401).json({ message: 'Invalid credentials.' });
+            if (valid) {
+                const token = jwt.sign({ id: student.id, username: student.rollNo, role: 'STUDENT', department: student.department }, process.env.JWT_SECRET, { expiresIn: '8h' });
+                logger.info(`Student Login: ${student.rollNo} (${student.department})`);
+                return res.status(200).json({ id: student.id, username: student.rollNo, role: 'STUDENT', fullName: student.name, department: student.department, registerNumber: student.registerNumber, semester: student.semester, section: student.section, year: student.year, photo: student.photo || null, forcePasswordChange: false, accessToken: token });
             }
-
-            const token = jwt.sign(
-                {
-                    id: student.id,
-                    username: student.rollNo,
-                    role: 'STUDENT',
-                    department: student.department
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '8h' }
-            );
-
-            logger.info(`Student Login: ${student.rollNo} (${student.department})`);
-
-            return res.status(200).json({
-                id: student.id,
-                username: student.rollNo,
-                role: 'STUDENT',
-                fullName: student.name,
-                department: student.department,
-                registerNumber: student.registerNumber,
-                semester: student.semester,
-                section: student.section,
-                year: student.year,
-                photo: student.photo || null,
-                forcePasswordChange: !student.password, // Force change if still on default
-                accessToken: token
-            });
         }
 
-        // Neither found
-        logger.warn(`Failed login attempt: ${username} (User not found)`);
+        // If we reach here, either user not found or password incorrect for all matches
+        logger.warn(`Failed login attempt: ${username}`);
         return res.status(401).json({ message: 'Invalid credentials.' });
 
     } catch (error) {
-        logger.error('Login error', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+        handleError(res, error, "Login failed");
     }
 };
 
@@ -262,8 +158,7 @@ const changePassword = async (req, res) => {
         logger.info(`Password changed for ${role} id=${id}`);
         return res.json({ message: 'Password changed successfully.' });
     } catch (error) {
-        logger.error('changePassword error', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+        handleError(res, error, "Failed to change password");
     }
 };
 

@@ -5,9 +5,9 @@
  * Only runs if semester is locked (semester control isLocked = true).
  * Use with extreme caution — admin only.
  */
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { logger } = require('../utils/logger');
+const { handleError } = require('../utils/errorUtils');
 
 /**
  * POST /api/admin/promote-all
@@ -75,13 +75,42 @@ exports.promoteAll = async (req, res) => {
                 });
                 graduated++;
             } else {
+                // Find corresponding section in the new semester
+                const nextYear = Math.ceil(nextSemester / 2);
+                let targetSecId = student.sectionId;
+
+                const newSection = await prisma.section.findFirst({
+                    where: {
+                        name: student.section,
+                        semester: nextSemester,
+                        departmentId: student.departmentId,
+                        academicYearId: student.academicYearId // Keep same academic year for now
+                    }
+                });
+
+                if (newSection) {
+                    targetSecId = newSection.id;
+                } else {
+                    // Create section if missing (safety)
+                    const createdSec = await prisma.section.create({
+                        data: {
+                            name: student.section,
+                            semester: nextSemester,
+                            type: nextSemester <= 2 ? "COMMON" : "DEPARTMENT",
+                            departmentId: nextSemester <= 2 ? null : student.departmentId,
+                            academicYearId: student.academicYearId || 1
+                        }
+                    });
+                    targetSecId = createdSec.id;
+                }
+
                 await prisma.student.update({
                     where: { id: student.id },
                     data: {
                         semester: nextSemester,
                         currentSemester: nextSemester,
-                        // Year advances every 2 semesters
-                        year: Math.ceil(nextSemester / 2)
+                        year: nextYear,
+                        sectionId: targetSecId
                     }
                 });
                 promoted++;
@@ -95,8 +124,7 @@ exports.promoteAll = async (req, res) => {
             graduated
         });
     } catch (error) {
-        logger.error('promoteAll failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to promote students");
     }
 };
 
@@ -140,6 +168,6 @@ exports.promotePreview = async (req, res) => {
             students
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to preview student promotion");
     }
 };

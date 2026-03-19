@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { handleError } = require('../utils/errorUtils');
 
 const createStudent = async (req, res) => {
@@ -35,7 +34,11 @@ const createStudent = async (req, res) => {
             academicYearId = parseInt(academicYearId);
         }
 
-        if (!targetDeptId && department) {
+        // Keep legacy department/section strings in sync with IDs
+        if (targetDeptId) {
+            const deptObj = await prisma.department.findUnique({ where: { id: targetDeptId } });
+            if (deptObj) department = deptObj.code || deptObj.name;
+        } else if (department) {
             const allDepts = await prisma.department.findMany();
             const deptText = department.trim().toUpperCase();
             const deptObj = allDepts.find(d =>
@@ -44,11 +47,14 @@ const createStudent = async (req, res) => {
             );
             if (deptObj) {
                 targetDeptId = deptObj.id;
-                department = deptObj.code || deptObj.name; // Standardize string to code if possible
+                department = deptObj.code || deptObj.name;
             }
         }
 
-        if (!targetSecId && section && parsedSemester) {
+        if (targetSecId) {
+            const secObj = await prisma.section.findUnique({ where: { id: targetSecId } });
+            if (secObj) section = secObj.name;
+        } else if (section && parsedSemester) {
             const isFirstYear = parsedSemester <= 2;
             let secObj = await prisma.section.findFirst({
                 where: { name: section, semester: parsedSemester, departmentId: isFirstYear ? null : targetDeptId, academicYearId }
@@ -144,7 +150,11 @@ const updateStudent = async (req, res) => {
             academicYearId = parseInt(academicYearId);
         }
 
-        if (!targetDeptId && department) {
+        // Keep legacy department/section strings in sync with IDs
+        if (targetDeptId) {
+            const deptObj = await prisma.department.findUnique({ where: { id: targetDeptId } });
+            if (deptObj) department = deptObj.code || deptObj.name;
+        } else if (department) {
             const allDepts = await prisma.department.findMany();
             const deptText = department.trim().toUpperCase();
             const deptObj = allDepts.find(d =>
@@ -153,11 +163,14 @@ const updateStudent = async (req, res) => {
             );
             if (deptObj) {
                 targetDeptId = deptObj.id;
-                department = deptObj.code || deptObj.name; // Standardize string to code if possible
+                department = deptObj.code || deptObj.name;
             }
         }
 
-        if (!targetSecId && section && parsedSemester) {
+        if (targetSecId) {
+            const secObj = await prisma.section.findUnique({ where: { id: targetSecId } });
+            if (secObj) section = secObj.name;
+        } else if (section && parsedSemester) {
             const isFirstYear = parsedSemester <= 2;
             let secObj = await prisma.section.findFirst({
                 where: { name: section, semester: parsedSemester, departmentId: isFirstYear ? null : targetDeptId, academicYearId }
@@ -278,7 +291,7 @@ const deleteStudent = async (req, res) => {
 
 const getStudents = async (req, res) => {
     try {
-        const { semester, departmentId, sectionId, status, batch } = req.query;
+        const { semester, departmentId, sectionId, status, batch, page, limit } = req.query;
         let whereClause = {};
 
         if (status) {
@@ -294,7 +307,7 @@ const getStudents = async (req, res) => {
 
         // Apply high-performance filtering if parameters are passed
         if (semester) {
-            whereClause.currentSemester = parseInt(semester);
+            whereClause.semester = parseInt(semester);
         }
         
         if (departmentId) {
@@ -308,6 +321,38 @@ const getStudents = async (req, res) => {
         // Default to ACTIVE if no status filter and looking for specific academic groups
         if (!status && (semester || departmentId || sectionId)) {
             whereClause.status = 'ACTIVE';
+        }
+
+        // Handle Hybrid Pagination
+        if (page && limit) {
+            const pageNum = parseInt(page) || 1;
+            const limitNum = parseInt(limit) || 50;
+            const skip = (pageNum - 1) * limitNum;
+
+            const [students, total] = await Promise.all([
+                prisma.student.findMany({
+                    where: whereClause,
+                    include: {
+                        departmentRef: true,
+                        sectionRef: true,
+                        academicYear: true
+                    },
+                    orderBy: { registerNumber: 'asc' },
+                    skip,
+                    take: limitNum
+                }),
+                prisma.student.count({ where: whereClause })
+            ]);
+
+            return res.json({
+                students,
+                pagination: {
+                    total,
+                    page: pageNum,
+                    limit: limitNum,
+                    totalPages: Math.ceil(total / limitNum)
+                }
+            });
         }
 
         const students = await prisma.student.findMany({
@@ -370,12 +415,28 @@ const promoteStudents = async (req, res) => {
 
             let updatedCount = 0;
             await prisma.$transaction(async (tx) => {
+                // Fetch target section/department names for legacy sync
+                const targetSection = await tx.section.findUnique({
+                    where: { id: parseInt(targetSectionId || targetSectionId) }, // Initial check, might be overridden in loop
+                    include: { departmentRef: true }
+                });
+
                 for (const student of students) {
                     let assignedSectionId = targetSectionId;
+                    let assignedSectionName = targetSection?.name;
+                    let assignedDeptName = targetSection?.departmentRef?.code || targetSection?.departmentRef?.name;
 
                     if (parseInt(nextSemester) === 3 && departmentSectionMap) {
                         assignedSectionId = departmentSectionMap[student.departmentId];
                         if (!assignedSectionId) throw new Error(`Missing target section mapping for department ID ${student.departmentId}`);
+                        
+                        // Re-fetch for specific dept-based section if needed
+                        const specificSec = await tx.section.findUnique({
+                            where: { id: parseInt(assignedSectionId) },
+                            include: { departmentRef: true }
+                        });
+                        assignedSectionName = specificSec?.name;
+                        assignedDeptName = specificSec?.departmentRef?.code || specificSec?.departmentRef?.name;
                     }
 
                     if (!assignedSectionId) throw new Error("Target section ID is required.");
@@ -388,7 +449,9 @@ const promoteStudents = async (req, res) => {
                             academicYearId: resolvedAYId,
                             // Legacy sync
                             semester: parseInt(nextSemester),
-                            year: Math.ceil(parseInt(nextSemester) / 2)
+                            year: Math.ceil(parseInt(nextSemester) / 2),
+                            section: assignedSectionName || student.section,
+                            department: assignedDeptName || student.department
                         }
                     });
 
@@ -515,6 +578,8 @@ const bulkUploadStudents = async (req, res) => {
         }
 
         const allDepts = await prisma.department.findMany();
+        const activeYear = await prisma.academicYear.findFirst({ where: { isActive: true } });
+        const academicYearId = activeYear ? activeYear.id : 1; // Fallback to 1 if none active
 
         for (const s of students) {
             let { 
@@ -539,7 +604,6 @@ const bulkUploadStudents = async (req, res) => {
             try {
                 let targetDeptId = null;
                 let targetSecId = null;
-                const academicYearId = 1;
 
                 const parsedYear = parseInt(year) || 1;
                 const parsedSemester = parseInt(semester) || 1;
@@ -814,6 +878,21 @@ const getStudentProfile = async (req, res) => {
     }
 };
 
+const resetStudentPasswordToDOB = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.student.update({
+            where: { id: parseInt(id) },
+            data: { password: null }
+        });
+        
+        logger.info(`Admin reset password for student ID ${id} to DOB default.`);
+        res.json({ message: 'Student password reset to DOB (default) successfully.' });
+    } catch (error) {
+        handleError(res, error, "Error resetting student password");
+    }
+};
+
 module.exports = {
     createStudent,
     updateStudent,
@@ -823,5 +902,6 @@ module.exports = {
     bulkUploadStudents,
     batchAssignRegisterNumbers,
     passStudentsOut,
-    getStudentProfile
+    getStudentProfile,
+    resetStudentPasswordToDOB
 };

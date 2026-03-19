@@ -1,14 +1,7 @@
-/**
- * eligibilityController.js
- * Attendance Eligibility (SA Check) system.
- * Calculates per-student, per-subject eligibility based on attendance %.
- * Tiers: ELIGIBLE (≥75%), CONDONATION (65-74%), DETAINED / SA (<65%)
- */
-
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { logger } = require('../utils/logger');
 const { ELIGIBILITY_STATUS, ATTENDANCE_THRESHOLDS } = require('../utils/constants');
+const { handleError } = require('../utils/errorUtils');
 
 /**
  * GET /api/eligibility
@@ -18,16 +11,29 @@ const { ELIGIBILITY_STATUS, ATTENDANCE_THRESHOLDS } = require('../utils/constant
 exports.getEligibility = async (req, res) => {
     try {
         const { department, semester, section, year } = req.query;
-        if (!department || !semester) {
-            return res.status(400).json({ message: 'department and semester are required' });
+        if (!semester) {
+            return res.status(400).json({ message: 'semester is required' });
         }
 
         const semInt = parseInt(semester);
+        const isYear1 = semInt <= 2;
 
-        // Fetch students
+        if (!isYear1 && !department && department !== 'FIRST_YEAR') {
+            return res.status(400).json({ message: 'department is required' });
+        }
+
+        const deptFilter = (isYear1 || department === 'FIRST_YEAR') ? {} : {
+            OR: [
+                { department: department },
+                { departmentRef: { code: department } },
+                { departmentRef: { name: department } }
+            ]
+        };
+
+        // Fetch students - improved filtering to handle both department code and name
         const students = await prisma.student.findMany({
             where: {
-                department,
+                ...deptFilter,
                 semester: semInt,
                 ...(section ? { section } : {}),
                 ...(year ? { year: parseInt(year) } : {}),
@@ -45,13 +51,21 @@ exports.getEligibility = async (req, res) => {
         });
 
         // Get subjects for this semester/dept
+        const subjectDeptFilter = (isYear1 || department === 'FIRST_YEAR') ? {
+            OR: [ {type: 'COMMON'}, { semester: semInt } ]
+        } : {
+            OR: [
+                { department: department },
+                { type: 'COMMON' }
+            ]
+        };
+
         const subjects = await prisma.subject.findMany({
             where: {
-                semester: semInt,
-                OR: [{ department }, { type: 'COMMON' }]
+                ...subjectDeptFilter,
+                semester: semInt
             }
         });
-
         const result = students.map(student => {
             const subjectEligibility = subjects.map(subject => {
                 const subAttendance = student.attendance.filter(a => a.subjectId === subject.id);
@@ -107,8 +121,7 @@ exports.getEligibility = async (req, res) => {
 
         res.json({ data: result, totalStudents: students.length });
     } catch (error) {
-        logger.error('getEligibility failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get eligibility status");
     }
 };
 
@@ -119,11 +132,28 @@ exports.getEligibility = async (req, res) => {
 exports.calculateAndSave = async (req, res) => {
     try {
         const { department, semester, section, year } = req.body;
+        if (!semester) {
+            return res.status(400).json({ message: 'semester is required' });
+        }
+
         const semInt = parseInt(semester);
+        const isYear1 = semInt <= 2;
+
+        if (!isYear1 && !department && department !== 'FIRST_YEAR') {
+            return res.status(400).json({ message: 'department is required' });
+        }
+
+        const deptFilter = (isYear1 || department === 'FIRST_YEAR') ? {} : {
+            OR: [
+                { department: department },
+                { departmentRef: { code: department } },
+                { departmentRef: { name: department } }
+            ]
+        };
 
         const students = await prisma.student.findMany({
             where: {
-                department,
+                ...deptFilter,
                 semester: semInt,
                 ...(section ? { section } : {}),
                 ...(year ? { year: parseInt(year) } : {}),
@@ -132,10 +162,19 @@ exports.calculateAndSave = async (req, res) => {
             include: { attendance: true }
         });
 
+        const subjectDeptFilter = (isYear1 || department === 'FIRST_YEAR') ? {
+            OR: [ {type: 'COMMON'}, { semester: semInt } ]
+        } : {
+            OR: [
+                { department: department },
+                { type: 'COMMON' }
+            ]
+        };
+
         const subjects = await prisma.subject.findMany({
             where: {
-                semester: semInt,
-                OR: [{ department }, { type: 'COMMON' }]
+                ...subjectDeptFilter,
+                semester: semInt
             }
         });
 
@@ -176,8 +215,7 @@ exports.calculateAndSave = async (req, res) => {
 
         res.json({ message: `Eligibility calculated for ${students.length} students.`, upsertCount });
     } catch (error) {
-        logger.error('calculateAndSave eligibility failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to calculate and save eligibility");
     }
 };
 
@@ -210,8 +248,7 @@ exports.grantException = async (req, res) => {
 
         res.json({ message: grant ? 'Exception granted.' : 'Exception rejected.', record });
     } catch (error) {
-        logger.error('grantException failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to grant eligibility exception");
     }
 };
 
@@ -237,7 +274,6 @@ exports.lockEligibility = async (req, res) => {
 
         res.json({ message: `Eligibility list locked. ${count} records locked.` });
     } catch (error) {
-        logger.error('lockEligibility failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to lock eligibility list");
     }
 };

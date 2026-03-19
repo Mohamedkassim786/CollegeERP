@@ -590,7 +590,7 @@ const StaffModal = ({ departments, facultyList, onClose, onSave, editingStaff })
                 await createFaculty(data);
             }
             toast.success(`${formData.fullName} ${editingStaff ? 'updated' : 'registered'} successfully`);
-            onSuccess();
+            onSave();
         } catch (error) {
             console.error(error);
             toast.error(error.response?.data?.message || "Operation failed");

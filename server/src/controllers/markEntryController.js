@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { handleError } = require('../utils/errorUtils');
 const markService = require('../services/markService');
 
@@ -21,10 +20,22 @@ const updateMarksForAdmin = async (req, res) => {
     try {
         const { subjectId, marksData } = req.body;
         const subId = parseInt(subjectId);
+        const studentIds = marksData.map(m => parseInt(m.studentId));
 
         await prisma.$transaction(async (tx) => {
             const subject = await tx.subject.findUnique({ where: { id: subId } });
             const subjectCategory = subject?.subjectCategory || 'THEORY';
+
+            // Pre-fetch all existing marks for these students/subject in one go
+            const existingMarks = await tx.marks.findMany({
+                where: {
+                    subjectId: subId,
+                    studentId: { in: studentIds }
+                }
+            });
+
+            // Create a map for O(1) lookup
+            const marksMap = new Map(existingMarks.map(m => [m.studentId, m]));
 
             const ALLOWED_MARK_FIELDS = [
                 'cia1_test', 'cia1_assignment', 'cia1_attendance',
@@ -32,11 +43,10 @@ const updateMarksForAdmin = async (req, res) => {
                 'cia3_test', 'cia3_assignment', 'cia3_attendance',
                 'lab_assessment', 'lab_attendance', 'lab_observation', 'lab_record', 'lab_model'
             ];
+
             for (const m of marksData) {
                 const sId = parseInt(m.studentId);
-                const currentMark = await tx.marks.findUnique({
-                    where: { studentId_subjectId: { studentId: sId, subjectId: subId } }
-                });
+                const currentMark = marksMap.get(sId);
 
                 // Only allow whitelisted fields to prevent injection
                 const safeData = {};

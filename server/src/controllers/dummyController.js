@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { getDeptCriteria } = require('../utils/deptUtils');
+const { handleError } = require('../utils/errorUtils');
 
 exports.generateMapping = async (req, res) => {
     try {
@@ -141,7 +141,7 @@ exports.generateMapping = async (req, res) => {
 
         res.json({ message: "Dummy numbers processed successfully" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to generate mapping");
     }
 };
 
@@ -185,7 +185,7 @@ exports.getAvailableSubjectsForDummy = async (req, res) => {
 
         res.json(results);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get available subjects for dummy mapping");
     }
 };
 
@@ -272,7 +272,7 @@ exports.getMapping = async (req, res) => {
 
         res.json(results);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get dummy mapping");
     }
 };
 
@@ -288,7 +288,7 @@ exports.lockMapping = async (req, res) => {
         });
         res.json({ message: "Mapping locked successfully" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to lock mapping");
     }
 };
 
@@ -304,7 +304,7 @@ exports.unlockMapping = async (req, res) => {
         });
         res.json({ message: "Mapping unlocked successfully" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to unlock mapping");
     }
 };
 
@@ -320,7 +320,7 @@ exports.saveMarks = async (req, res) => {
         );
         res.json({ message: "Marks saved successfully" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to save marks");
     }
 };
 
@@ -345,7 +345,6 @@ exports.approveMarks = async (req, res) => {
 
         res.json({ message: "External marks approved successfully for result generation." });
     } catch (error) {
-        console.error("Approval Error:", error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to approve marks");
     }
 };

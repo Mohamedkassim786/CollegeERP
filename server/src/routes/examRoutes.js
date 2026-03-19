@@ -34,4 +34,7 @@ router.get('/grade-sheet', verifyToken, examController.getGradeSheet);
 
 router.get('/student-results', verifyToken, examController.getStudentResults);
 
+// Global Recalculation (Admin)
+router.post('/recalculate-all-grades', verifyToken, isAdmin, examController.recalculateAllGrades);
+
 module.exports = router;

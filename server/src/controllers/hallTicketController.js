@@ -4,10 +4,10 @@
  * Queries student exam allocations (HallAllocation) and produces PDF.
  */
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const pdfService = require('../services/pdf.service.js');
 const { logger } = require('../utils/logger');
+const { handleError } = require('../utils/errorUtils');
 
 /**
  * GET /api/hall-ticket/generate?department=CSE&semester=4&section=A&examSessionId=1
@@ -132,8 +132,7 @@ exports.generateHallTickets = async (req, res) => {
 
         logger.info(`Hall tickets generated for ${students.length} students — Session ${examSessionId}`);
     } catch (error) {
-        logger.error('generateHallTickets failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to generate hall tickets");
     }
 };
 
@@ -165,7 +164,7 @@ exports.getHallTicketStatus = async (req, res) => {
             isReady: allocCount > 0
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to get hall ticket status");
     }
 };
 
@@ -270,7 +269,6 @@ exports.generateHallApplication = async (req, res) => {
         pdfService.generateHallApplication(res, { students: studentData, sessionName });
 
     } catch (error) {
-        logger.error('generateHallApplication failed', error);
-        res.status(500).json({ message: error.message });
+        handleError(res, error, "Failed to generate hall application");
     }
 };
