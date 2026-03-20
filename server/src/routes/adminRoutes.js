@@ -11,8 +11,9 @@ const {
     getFaculties, createFaculty, deleteFaculty, updateFaculty, bulkUploadFaculty, getFacultyProfile
 } = require('../controllers/facultyController');
 const {
-    createStudent, updateStudent, getStudents, deleteStudent, bulkUploadStudents, 
-    batchAssignRegisterNumbers, passStudentsOut, getStudentProfile, resetStudentPasswordToDOB
+    createStudent, updateStudent, getStudents, deleteStudent, bulkUploadStudents,
+    batchAssignRegisterNumbers, passStudentsOut, getStudentProfile, resetStudentPasswordToDOB,
+    getGradeSheet, getIDCard
 } = require('../controllers/studentController');
 const { promoteAll, promotePreview } = require('../controllers/promoteController');
 const {
@@ -87,6 +88,8 @@ router.post('/students', isHod, upload.single('photo'), validateZod(studentSchem
 router.put('/students/:id', isHod, upload.single('photo'), validateZod(studentSchema), updateStudent);
 router.delete('/students/:id', isAdmin, deleteStudent); // Student deletion is SuperAdmin only
 router.patch('/students/:id/reset-password', isAdmin, resetStudentPasswordToDOB);
+router.get('/students/:id/gradesheet', isHod, getGradeSheet);
+router.get('/students/:id/idcard', isHod, getIDCard);
 
 router.get('/subjects', isHod, getSubjects);
 router.post('/subjects', isHod, validateSubject, createSubject);

@@ -11,7 +11,7 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import { getAvailableSubjects, getDummyMappings, generateDummyNumbers, lockDummyMapping, unlockDummyMapping, approveExternalMarks, rejectExternalMarks } from "../../../services/dummy.service";
+import { getAvailableSubjects, getDummyMappings, generateDummyNumbers, lockDummyMapping, unlockDummyMapping } from "../../../services/dummy.service";
 import { getDepartments } from "../../../services/department.service";
 import toast from "react-hot-toast";
 import * as ExcelJS from "exceljs";
@@ -194,42 +194,7 @@ const DummyNumberManager = () => {
     }
   };
 
-  const approveMarks = async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to approve these external marks? Once approved, they will be sent to the End Sem Results consolidation.",
-      )
-    )
-      return;
-    try {
-      await approveExternalMarks({
-        semester: filters.semester,
-        subjectId: filters.subjectId,
-      });
-      toast.success("External Marks Approved Successfully");
-      fetchMappings();
-    } catch (err) {
-      toast.error("Failed to approve external marks");
-    }
-  };
 
-  const rejectMarks = async () => {
-    const reason = window.prompt("Enter rejection reason (sent to staff):");
-    if (reason === null) return;
-
-    if (!window.confirm("Are you sure you want to REJECT these marks? Staff will need to re-submit.")) return;
-
-    try {
-      await rejectExternalMarks({
-        subjectId: filters.subjectId,
-        reason
-      });
-      toast.success("External Marks Rejected Successfully");
-      fetchMappings();
-    } catch (err) {
-      toast.error("Failed to reject external marks");
-    }
-  };
 
   const toggleAbsent = (studentId) => {
     // Only allow toggling if mapping is not locked
@@ -367,20 +332,7 @@ const DummyNumberManager = () => {
               <Shield size={20} /> UNLOCK MAPPING
             </button>
           )}
-          <button
-            onClick={approveMarks}
-            disabled={loading || mappings.length === 0 || !isLocked}
-            className="bg-emerald-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black tracking-wider shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-50"
-          >
-            <CheckCircle size={20} /> APPROVE
-          </button>
-          <button
-            onClick={rejectMarks}
-            disabled={loading || mappings.length === 0 || !isLocked}
-            className="bg-orange-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black tracking-wider shadow-lg hover:bg-orange-700 transition-all disabled:opacity-50"
-          >
-            <XCircle size={20} /> REJECT
-          </button>
+
           <button
             onClick={exportToExcel}
             disabled={loading || mappings.length === 0}

@@ -2,13 +2,16 @@ import CustomSelect from "../../../components/CustomSelect";
 import React, { useState, useEffect } from "react";
 import {
     Award,
-    Save,
     RefreshCw,
     Filter,
     Download,
+    CheckCircle,
+    XCircle,
+    Ban,
+    AlertTriangle,
 } from "lucide-react";
 import { getEndSemConsolidatedMarks, calculateConsolidatedGrades } from "../../../services/results.service";
-import { submitAdminExternalMarks } from "../../../services/marks.service";
+import { approveExternalMarks, rejectExternalMarks } from "../../../services/dummy.service";
 import { getDepartments } from "../../../services/department.service";
 import { getSubjects } from "../../../services/subject.service";
 import toast from "react-hot-toast";
@@ -26,9 +29,9 @@ const EndSemMarksEntry = () => {
 
     const [subjects, setSubjects] = useState([]);
     const [students, setStudents] = useState([]);
-    const [externalEdits, setExternalEdits] = useState({}); // { [studentId]: externalMark }
+    const [batchStatus, setBatchStatus] = useState(null); // 'PENDING', 'APPROVED', 'REJECTED', 'NOT_SUBMITTED'
     const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
     const [consolidating, setConsolidating] = useState(false);
     const [departments, setDepartments] = useState([]);
     const [selectedSubject, setSelectedSubject] = useState(null);
@@ -88,15 +91,8 @@ const EndSemMarksEntry = () => {
         setLoading(true);
         try {
             const res = await getEndSemConsolidatedMarks(searchParams);
-            setStudents(res.data);
-            // Pre-fill external edits with existing values
-            const edits = {};
-            res.data.forEach(s => {
-                if (s.external60 !== 'AB' && s.external60 !== null && s.external60 !== 0) {
-                    edits[s.id] = s.external60;
-                }
-            });
-            setExternalEdits(edits);
+            setStudents(res.data.students || []);
+            setBatchStatus(res.data.batchStatus || 'NOT_SUBMITTED');
         } catch (error) {
             toast.error("Failed to load results");
         } finally {
@@ -125,58 +121,39 @@ const EndSemMarksEntry = () => {
         return 'External (/60)';
     };
 
-    const handleExternalChange = (studentId, value) => {
-        if (value === '') {
-            setExternalEdits(prev => ({ ...prev, [studentId]: '' }));
-            return;
-        }
-        const intVal = parseInt(value, 10);
-        const max = getMaxExternal();
-        if (!isNaN(intVal) && intVal >= 0 && intVal <= max) {
-            setExternalEdits(prev => ({ ...prev, [studentId]: intVal }));
+    // Workflow: Approve External Marks
+    const handleApproveMarks = async () => {
+        if (!window.confirm("Are you sure you want to APPROVE these marks? This will lock them for grade generation.")) return;
+        setActionLoading(true);
+        try {
+            await approveExternalMarks({
+                subjectId: filters.subjectId,
+            });
+            toast.success("External marks approved successfully");
+            handleSearch(); // Refresh status
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to approve external marks");
+        } finally {
+            setActionLoading(false);
         }
     };
 
-    // Save external marks directly via externalMark API using register number as dummyNumber key
-    const handleSaveExternalMarks = async () => {
-        if (!filters.subjectId || students.length === 0) {
-            toast.error("Load students first");
-            return;
-        }
-
-        const cat = selectedSubject?.subjectCategory || 'THEORY';
-        const marksArray = [];
-
-        students.forEach(s => {
-            const val = externalEdits[s.id];
-            if (val !== undefined && val !== '') {
-                marksArray.push({
-                    dummyNumber: s.dummyNumber || s.registerNumber,
-                    rawMark: parseInt(val, 10),
-                });
-            }
-        });
-
-        if (marksArray.length === 0) {
-            toast.error("No external marks entered");
-            return;
-        }
-
-        setSaving(true);
+    // Workflow: Reject External Marks
+    const handleRejectMarks = async () => {
+        const reason = window.prompt("Enter rejection reason for the staff:");
+        if (reason === null) return;
+        setActionLoading(true);
         try {
-            const payload = {
+            await rejectExternalMarks({
                 subjectId: filters.subjectId,
-                marks: marksArray,
-            };
-            // For INTEGRATED admin override: we assume theory component (lab entered via external staff)
-            if (cat === 'INTEGRATED') payload.component = 'THEORY';
-
-            await submitAdminExternalMarks(payload);
-            toast.success(`External marks saved for ${marksArray.length} students`);
+                reason
+            });
+            toast.success("External marks rejected. Staff can now resubmit.");
+            handleSearch();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to save external marks");
+            toast.error(error.response?.data?.message || "Failed to reject external marks");
         } finally {
-            setSaving(false);
+            setActionLoading(false);
         }
     };
 
@@ -265,26 +242,46 @@ const EndSemMarksEntry = () => {
                 <div className="flex flex-wrap gap-3 items-center justify-end">
                     <button
                         onClick={exportResults}
-                        className="flex items-center gap-2 px-6 py-4 bg-white text-gray-700 border-2 border-gray-100 rounded-[20px] hover:border-blue-200 hover:bg-blue-50/30 transition-all font-bold shadow-sm"
+                        className="flex items-center gap-2 px-6 py-4 bg-white text-gray-700 border-2 border-gray-100 rounded-[24px] hover:border-blue-200 hover:bg-blue-50/30 transition-all font-bold shadow-sm"
                     >
                         <Download size={20} /> Export Excel
                     </button>
-                    <button
-                        onClick={handleSaveExternalMarks}
-                        disabled={saving || students.length === 0}
-                        className={`flex items-center gap-2 px-8 py-4 rounded-[20px] shadow-xl transition-all font-black ${saving || students.length === 0 ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" : "bg-emerald-600 text-white hover:bg-emerald-700 hover:-translate-y-1 shadow-emerald-900/20"}`}
-                    >
-                        <Save size={20} className={saving ? "animate-pulse" : ""} />
-                        {saving ? "SAVING..." : "COMMIT MARKS"}
-                    </button>
-                    <button
-                        onClick={handleCalculateGrades}
-                        disabled={consolidating || students.length === 0}
-                        className={`flex items-center gap-2 px-8 py-4 rounded-[20px] shadow-xl transition-all font-black ${consolidating || students.length === 0 ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" : "bg-indigo-600 text-white hover:bg-indigo-700 hover:-translate-y-1 shadow-indigo-900/20"}`}
-                    >
-                        <RefreshCw size={20} className={consolidating ? "animate-spin" : ""} />
-                        {consolidating ? "CALCULATING..." : "GENERATE GRADES"}
-                    </button>
+
+                    {batchStatus === 'PENDING' && (
+                        <>
+                            <button
+                                onClick={handleRejectMarks}
+                                disabled={actionLoading}
+                                className="flex items-center gap-2 px-8 py-4 bg-orange-50 text-orange-700 border-2 border-orange-100 rounded-[24px] hover:bg-orange-100 transition-all font-black"
+                            >
+                                <XCircle size={20} /> REJECT
+                            </button>
+                            <button
+                                onClick={handleApproveMarks}
+                                disabled={actionLoading}
+                                className="flex items-center gap-2 px-8 py-4 bg-emerald-600 text-white rounded-[24px] hover:bg-emerald-700 shadow-lg shadow-emerald-900/20 transition-all font-black"
+                            >
+                                <CheckCircle size={20} /> APPROVE MARKS
+                            </button>
+                        </>
+                    )}
+
+                    {batchStatus === 'APPROVED' && (
+                        <button
+                            onClick={handleCalculateGrades}
+                            disabled={consolidating}
+                            className={`flex items-center gap-2 px-8 py-4 rounded-[24px] shadow-xl shadow-indigo-900/20 transition-all font-black bg-indigo-600 text-white hover:bg-indigo-700 hover:-translate-y-1`}
+                        >
+                            <RefreshCw size={20} className={consolidating ? "animate-spin" : ""} />
+                            {consolidating ? "CALCULATING..." : "GENERATE GRADES"}
+                        </button>
+                    )}
+
+                    {batchStatus === 'NOT_SUBMITTED' && filters.subjectId && (
+                        <div className="flex items-center gap-2 px-8 py-4 bg-gray-50 text-gray-400 border-2 border-gray-100 rounded-[24px] font-black cursor-not-allowed">
+                            <Ban size={20} /> AWAITING SUBMISSION
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -415,17 +412,28 @@ const EndSemMarksEntry = () => {
                 )}
             </div>
 
-            {/* Workflow hint */}
             {students.length > 0 && (
-                <div className="bg-[#003B73] rounded-[24px] p-6 mb-8 text-white relative overflow-hidden group shadow-xl">
+                <div className={`rounded-[24px] p-6 mb-8 text-white relative overflow-hidden group shadow-xl ${
+                    batchStatus === 'APPROVED' ? 'bg-emerald-600' : 
+                    batchStatus === 'PENDING' ? 'bg-blue-600' :
+                    batchStatus === 'REJECTED' ? 'bg-orange-600' : 'bg-gray-600'
+                }`}>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
                     <div className="flex items-center gap-4 relative z-10">
                         <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-                            <Award size={24} className="text-white" />
+                            {batchStatus === 'APPROVED' ? <CheckCircle size={24}/> : <Award size={24} />}
                         </div>
                         <div>
-                            <p className="font-bold text-sm">Action Pipeline</p>
-                            <p className="text-xs text-blue-200 mt-0.5">Enter override external marks if needed → Save Changes → Trigger Grade Calculation Engine.</p>
+                            <p className="font-bold text-sm">
+                                {batchStatus === 'APPROVED' ? 'Workflow Blocked: Approved' :
+                                 batchStatus === 'PENDING' ? 'Action Required: Approval Hub' :
+                                 batchStatus === 'REJECTED' ? 'Status: Marks Rejected' : 'Status: Data Entry Phase'}
+                            </p>
+                            <p className="text-xs text-blue-50 mt-0.5">
+                                {batchStatus === 'APPROVED' ? 'Grades can now be securely generated. Marks are locked from external modification.' :
+                                 batchStatus === 'PENDING' ? 'External staff have submitted their evaluative batches. Verify the scaled figures below to Approve or Reject.' :
+                                 batchStatus === 'REJECTED' ? 'Awaiting resubmission from external staff after administrative rejection.' : 'The Subject is still under the data-entry phase by external staff.'}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -441,12 +449,17 @@ const EndSemMarksEntry = () => {
                                 <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">{getInternalLabel()}</th>
                                 {selectedSubject?.subjectCategory === 'INTEGRATED' ? (
                                     <>
-                                        <th className="px-8 py-6 text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] text-center">Theory (/25) ✏️</th>
+                                        <th className="px-8 py-6 text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] text-center italic opacity-60">Th (/100)</th>
+                                        <th className="px-8 py-6 text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] text-center">Theory (/25)</th>
+                                        <th className="px-8 py-6 text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] text-center italic opacity-60">Lab (/100)</th>
                                         <th className="px-8 py-6 text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] text-center">Lab (/25)</th>
                                         <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Ext. Total (/50)</th>
                                     </>
                                 ) : (
-                                    <th className="px-8 py-6 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] text-center">{getExternalLabel()} ✏️</th>
+                                    <>
+                                        <th className="px-8 py-6 text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] text-center italic opacity-60">Ext (/100)</th>
+                                        <th className="px-8 py-6 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] text-center">{getExternalLabel()}</th>
+                                    </>
                                 )}
                                 <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Consolidated</th>
                                 <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center whitespace-nowrap">Grade Record</th>
@@ -455,14 +468,14 @@ const EndSemMarksEntry = () => {
                         <tbody className="divide-y divide-gray-50">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="8" className="px-8 py-32 text-center text-gray-400">
+                                    <td colSpan="11" className="px-8 py-32 text-center text-gray-400">
                                         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
                                         <p className="font-black uppercase tracking-widest text-sm">Polling Results...</p>
                                     </td>
                                 </tr>
                             ) : students.length === 0 ? (
                                 <tr>
-                                    <td className="px-8 py-32 text-center text-gray-300" colSpan="8">
+                                    <td className="px-8 py-32 text-center text-gray-300" colSpan="11">
                                         <div className="flex flex-col items-center gap-6">
                                             <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center opacity-40">
                                                 <Award size={48} className="text-gray-300" />
@@ -473,17 +486,10 @@ const EndSemMarksEntry = () => {
                                 </tr>
                             ) : (
                                 students.map((s) => {
-                                    const editVal = externalEdits[s.id];
-
-                                    // 🧮 Calculate preview total (no scaling needed as input is already in final scale)
-                                    const rawVal = parseInt(editVal) || 0;
-                                    const cat = (selectedSubject?.subjectCategory || '').toUpperCase();
-                                    const previewTotal = s.internal40 + rawVal + (cat === 'INTEGRATED' ? (s.labExt25 || 0) : 0);
-
                                     return (
                                         <tr
                                             key={s.id}
-                                            className="hover:bg-blue-50/20 transition-all group"
+                                            className="hover:bg-blue-50/20 transition-all group border-b border-gray-50"
                                         >
                                             <td className="px-8 py-6">
                                                 <div className="flex flex-col">
@@ -502,64 +508,60 @@ const EndSemMarksEntry = () => {
                                             {selectedSubject?.subjectCategory === 'INTEGRATED' ? (
                                                 <>
                                                     <td className="px-8 py-6 text-center">
-                                                        {s.external60 === 'AB' ? (
-                                                            <span className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">ABSENT</span>
-                                                        ) : (
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max="25"
-                                                                    value={externalEdits[s.id] !== undefined ? externalEdits[s.id] : (s.theoryExt25 != null ? Math.round(s.theoryExt25 * 100) / 100 : '')}
-                                                                    onChange={(e) => handleExternalChange(s.id, e.target.value)}
-                                                                    className="w-16 h-10 bg-indigo-50 border-2 border-transparent focus:border-indigo-400 rounded-xl outline-none font-black text-center text-indigo-700 transition-all font-mono"
-                                                                    placeholder="25"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-8 py-6 text-center">
-                                                        <span className="font-black text-emerald-600 text-lg font-mono">
-                                                            {s.labExt25 != null ? (Math.round(s.labExt25 * 100) / 100) : <span className="text-gray-200">--</span>}
+                                                        <span className="font-bold text-blue-400 text-sm font-mono italic opacity-60">
+                                                            {s.theoryRaw100 != null ? s.theoryRaw100 : '--'}
                                                         </span>
                                                     </td>
                                                     <td className="px-8 py-6 text-center">
-                                                        <span className="inline-flex items-center justify-center px-4 py-2 bg-gray-50 text-[#003B73] rounded-xl font-black text-sm border border-gray-100">
-                                                            {(s.theoryExt25 != null && s.labExt25 != null) ? (Math.round((s.theoryExt25 + s.labExt25) * 100) / 100) : '--'}
+                                                        {s.external60 === 'AB' ? (
+                                                            <span className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">ABSENT</span>
+                                                        ) : (
+                                                            <span className="font-black text-indigo-600 text-lg font-mono">
+                                                                {s.theoryExt25 != null ? s.theoryExt25 : '--'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center">
+                                                        <span className="font-bold text-emerald-400 text-sm font-mono italic opacity-60">
+                                                            {s.labRaw100 != null ? s.labRaw100 : '--'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center">
+                                                        <span className="font-black text-emerald-600 text-lg font-mono">
+                                                            {s.labExt25 != null ? s.labExt25 : '--'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center">
+                                                        <span className="inline-flex items-center justify-center px-4 py-2 bg-gray-50 text-[#003B73] rounded-xl font-black text-sm border border-gray-100 font-mono">
+                                                            {(s.theoryExt25 != null && s.labExt25 != null) ? (s.theoryExt25 + s.labExt25) : '--'}
                                                         </span>
                                                     </td>
                                                 </>
                                             ) : (
-                                                <td className="px-8 py-6 text-center">
-                                                    {s.external60 === 'AB' ? (
-                                                        <span className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">ABSENT</span>
-                                                    ) : (
-                                                        <div className="flex items-center justify-center gap-3">
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                max={getMaxExternal()}
-                                                                value={externalEdits[s.id] !== undefined ? externalEdits[s.id] : (s.external60 || '')}
-                                                                onChange={(e) => handleExternalChange(s.id, e.target.value)}
-                                                                className="w-20 h-10 bg-blue-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none font-black text-center text-[#003B73] transition-all font-mono"
-                                                                placeholder={getMaxExternal().toString()}
-                                                            />
-                                                            <div className="flex flex-col items-start">
-                                                                <span className="text-gray-300 font-bold text-[9px] uppercase tracking-tighter leading-none">MAX</span>
-                                                                <span className="text-gray-400 font-black text-[11px] font-mono leading-none">{getMaxExternal()}</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </td>
+                                                <>
+                                                    <td className="px-8 py-6 text-center font-mono font-bold text-blue-400 italic opacity-60">
+                                                        {s.external60 === 'AB' ? '--' : (s.rawExternal100 != null ? s.rawExternal100 : '--')}
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center font-mono font-black text-blue-600 text-lg">
+                                                        {s.external60 === 'AB' ? (
+                                                            <span className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase font-sans">ABSENT</span>
+                                                        ) : (
+                                                            s.external60 != null ? s.external60 : '--'
+                                                        )}
+                                                    </td>
+                                                </>
                                             )}
 
-                                            <td className="px-8 py-6 text-center">
+                                            <td className="px-8 py-6 text-center relative">
                                                 <span className={`inline-flex items-center justify-center px-6 py-2 rounded-2xl font-black text-lg shadow-sm border ${s.total100 === 'AB' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-[#003B73] text-white border-transparent'
                                                     }`}>
-                                                    {s.total100 !== 'AB' && s.total100 !== 0
-                                                        ? s.total100
-                                                        : (editVal !== undefined && editVal !== '' ? previewTotal : '--')}
+                                                    {s.total100 !== 'AB' ? s.total100 : 'AB'}
                                                 </span>
+                                                {s.total100 > 100 && (
+                                                    <div className="absolute top-2 right-2 text-red-500 animate-pulse">
+                                                        <AlertTriangle size={14} />
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-8 py-6 text-center">
                                                 <div className={`inline-block px-4 py-2 rounded-2xl font-black text-xs shadow-inner tracking-widest ${s.grade === "RA" || s.grade === "N/A" || s.grade === 'AB'

@@ -91,7 +91,7 @@ const FacultyProfile = () => {
     ];
 
     return (
-        <div className="max-w-[1400px] mx-auto space-y-12 animate-fadeIn pb-32 pt-4">
+        <div className="w-full px-4 md:px-8 lg:px-12 space-y-12 animate-fadeIn pb-32 pt-4">
             {/* HERO SECTION */}
             <div className="relative group p-1 bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#334155] rounded-[60px] shadow-[0_50px_100px_rgba(0,0,0,0.1)] overflow-hidden">
                 {/* Background Decor */}
@@ -329,7 +329,8 @@ const FacultyProfile = () => {
                                                     <tr key={dayId}>
                                                         <td className="p-4 bg-gray-50 border border-gray-100 font-black text-[10px] text-[#003B73] text-center">{dayName}</td>
                                                         {[1, 2, 3, 4, 5, 6].map(period => {
-                                                            const entry = timetable.find(t => t.day === dayId && t.period === period);
+                                                            const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+                                                            const entry = timetable.find(t => t.day?.toUpperCase() === days[dayId - 1] && t.period === period);
                                                             return (
                                                                 <td key={period} className="p-4 border border-gray-100 text-center group hover:bg-blue-50/50 transition-colors">
                                                                     {entry ? (

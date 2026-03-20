@@ -14,7 +14,7 @@ const prisma = require('../lib/prisma');
 const { logger } = require('../utils/logger.js');
 
 /** Map JS getDay() → timetable day string */
-const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 /**
  * Main routine: check attendance submission status for all faculties.

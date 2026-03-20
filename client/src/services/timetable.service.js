@@ -1,6 +1,7 @@
 import api from './api.js'
 
 export const getTimetable = (params) => api.get('/admin/timetable', { params })
+export const getAdminTimetable = getTimetable;
 export const saveTimetable = (data) => api.post('/admin/timetable', data)
 
 export const getFacultyAbsences = (date) => api.get('/admin/faculty-absences', { params: { date } })

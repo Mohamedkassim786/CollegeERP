@@ -14,8 +14,10 @@ router.get('/attendance', async (req, res) => {
     const student = await prisma.student.findUnique({ where: { id: studentId } });
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
+    const fetchDept = student.year === 1 ? 'FIRST_YEAR' : student.department;
+
     const assignments = await prisma.facultyAssignment.findMany({
-      where: { section: student.section, department: student.department },
+      where: { section: student.section, department: fetchDept },
       include: { subject: true, faculty: true }
     });
 
@@ -56,7 +58,19 @@ router.get('/marks', async (req, res) => {
       where: { studentId },
       include: { subject: true, endSemMarks: true }
     });
-    res.json(marks);
+    const processedMarks = marks.map(m => {
+      const cia1_total = (m.cia1_test || 0) + (m.cia1_assignment || 0) + (m.cia1_attendance || 0);
+      const cia2_total = (m.cia2_test || 0) + (m.cia2_assignment || 0) + (m.cia2_attendance || 0);
+      const cia3_total = (m.cia3_test || 0) + (m.cia3_assignment || 0) + (m.cia3_attendance || 0);
+      return {
+        ...m,
+        cia1_total,
+        cia2_total,
+        cia3_total,
+        endSemMarks: m.endSemMarks?.isPublished ? m.endSemMarks : null
+      };
+    });
+    res.json(processedMarks);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -66,9 +80,12 @@ router.get('/timetable', async (req, res) => {
     const studentId = req.user.id;
     const student = await prisma.student.findUnique({ where: { id: studentId } });
     if (!student) return res.status(404).json({ message: 'Student not found' });
+    
+    const fetchDept = student.year === 1 ? 'FIRST_YEAR' : student.department;
+
     const timetable = await prisma.timetable.findMany({
       where: { 
-        department: student.department, 
+        department: fetchDept, 
         semester: student.semester, 
         section: student.section,
         year: student.year 

@@ -114,8 +114,52 @@ const submitAttendance = async (req, res) => {
 // --- Admin/Report Actions ---
 
 const getAttendanceReport = async (req, res) => {
-    const { department, year, section, fromDate, toDate, subjectId, studentId } = req.query;
+    const { department, year, section, fromDate, toDate, subjectId, studentId, facultyId, role } = req.query;
     try {
+        // --- Mode: Faculty Tracking (Track Record) ---
+        if (role === 'faculty' && facultyId) {
+            const fId = parseInt(facultyId);
+            
+            // 1. Get unique conduction slots (subject, date, period)
+            // Join with student to get the section context
+            const conductions = await prisma.studentAttendance.findMany({
+                where: { facultyId: fId },
+                select: { 
+                    subjectId: true, 
+                    date: true, 
+                    period: true, 
+                    subject: { select: { name: true, code: true } },
+                    student: { select: { section: true } } 
+                },
+                distinct: ['subjectId', 'date', 'period']
+            });
+
+            // 2. Group by subject + section
+            const summaryMap = {};
+            conductions.forEach(c => {
+                const key = `${c.subjectId}_${c.student?.section}`;
+                if (!summaryMap[key]) {
+                    summaryMap[key] = { 
+                        subject: c.subject, 
+                        section: c.student?.section, 
+                        submitted: 0 
+                    };
+                }
+                summaryMap[key].submitted++;
+            });
+
+            // 3. Map to UI format
+            const facultyReport = Object.values(summaryMap).map(item => ({
+                subject: item.subject,
+                section: item.section,
+                total: item.submitted, // For now, we use submitted as total to show 100% if no scheduled data
+                present: item.submitted,
+                absent: 0
+            }));
+
+            return res.json(facultyReport);
+        }
+
         const where = {};
         if (studentId) {
             where.id = parseInt(studentId);
@@ -162,6 +206,12 @@ const getAttendanceReport = async (req, res) => {
         if (fromDate) dateFilter.gte = fromDate;
         if (toDate) dateFilter.lte = toDate;
 
+        // ✅ FIX Bug #10: Force semester filter if subjectId is provided but frontend forgot year/semester
+        if (subjectId && !where.semester) {
+            const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
+            if (subject) where.semester = subject.semester;
+        }
+
         const students = await prisma.student.findMany({
             where: { ...where },
             include: {
@@ -169,11 +219,61 @@ const getAttendanceReport = async (req, res) => {
                     where: {
                         ...(Object.keys(dateFilter).length > 0 && { date: dateFilter }),
                         ...(subjectId && { subjectId: parseInt(subjectId) })
-                    }
-                }
+                    },
+                    include: { subject: true }
+                },
+                departmentRef: true
             },
             orderBy: { rollNo: 'asc' }
         });
+
+        if (studentId && students.length > 0) {
+            const student = students[0];
+            // Group attendance by subject for this specific student
+            const subjectsMap = {};
+            
+            // We need to know all relevant subjects for this student's semester
+            const academicSubjects = await prisma.subject.findMany({
+                where: {
+                    semester: student.semester,
+                    OR: [
+                        { department: student.department },
+                        { department: student.departmentRef?.name },
+                        { type: 'COMMON' }
+                    ]
+                }
+            });
+
+            academicSubjects.forEach(sub => {
+                subjectsMap[sub.id] = {
+                    subject: sub,
+                    total: 0,
+                    present: 0,
+                    percentage: '0.00',
+                    status: 'NO_DATA'
+                };
+            });
+
+            student.attendance.forEach(record => {
+                if (subjectsMap[record.subjectId]) {
+                    subjectsMap[record.subjectId].total++;
+                    if (record.status === 'PRESENT' || record.status === 'OD') {
+                        subjectsMap[record.subjectId].present++;
+                    }
+                }
+            });
+
+            const subjectData = Object.values(subjectsMap).map(data => {
+                const ratio = data.total > 0 ? data.present / data.total : 0;
+                return {
+                    ...data,
+                    percentage: (ratio * 100).toFixed(1),
+                    status: data.total === 0 ? 'NO_DATA' : ratio >= 0.75 ? 'ELIGIBLE' : ratio >= 0.65 ? 'CONDONATION' : 'DETAINED'
+                };
+            });
+
+            return res.json(subjectData);
+        }
 
         const report = students.map(s => {
             const total = s.attendance.length;

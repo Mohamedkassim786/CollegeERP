@@ -1067,3 +1067,136 @@ exports.generateExamAttendanceSheet = (res, data) => {
 
     doc.end();
 };
+
+// ─── STUDENT GRADE SHEET (Individual) ─────────────────────────────────────────
+exports.generateStudentGradeSheet = (res, data) => {
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    doc.pipe(res);
+
+    const M = 40;
+    const CW = doc.page.width - 2 * M;
+    let y = 40;
+
+    y = drawMIETHeader(doc, y);
+    doc.moveDown(1);
+    y = doc.y;
+
+    doc.font('Helvetica-Bold').fontSize(14).text('PROVISIONAL GRADE SHEET', M, y, { width: CW, align: 'center', underline: true });
+    y += 30;
+
+    // Student Info Grid
+    const col1 = M, col2 = M + 140, col3 = M + 280, col4 = M + 400;
+    doc.font('Helvetica-Bold').fontSize(10);
+    
+    doc.text('Name of Student', col1, y);
+    doc.font('Helvetica').text(`: ${data.student.name}`, col2, y);
+    doc.font('Helvetica-Bold').text('Register No', col3, y);
+    doc.font('Helvetica').text(`: ${data.student.registerNumber || data.student.rollNo}`, col4, y);
+    y += 20;
+
+    doc.text('Degree & Branch', col1, y);
+    doc.font('Helvetica').text(`: ${data.student.departmentRef?.name || data.student.department}`, col2, y, { width: 130 });
+    doc.font('Helvetica-Bold').text('Semester', col3, y);
+    doc.font('Helvetica').text(`: ${data.semester}`, col4, y);
+    y += 25;
+
+    // Results Table
+    const rowH = 25;
+    const cW = [40, 70, 240, 50, 50, 25]; // sno, code, name, internal, external, total, grade
+    const cols = [40, 80, 240, 50, 50, 55];
+    const totalW = cols.reduce((a, b) => a + b, 0);
+
+    // Table Header
+    doc.rect(M, y, totalW, rowH).fillAndStroke('#f3f4f6', '#000000');
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(9);
+    let tx = M;
+    const headers = ['S.No', 'Subject Code', 'Subject Title', 'CIA', 'ESE', 'Grade'];
+    headers.forEach((h, i) => {
+        doc.text(h, tx, y + 8, { width: cols[i], align: 'center' });
+        tx += cols[i];
+    });
+    y += rowH;
+
+    // Table Rows
+    doc.font('Helvetica').fontSize(9);
+    data.results.forEach((res, i) => {
+        doc.rect(M, y, totalW, rowH).stroke();
+        let rx = M;
+        const vals = [String(i + 1), res.subjectCode, res.subjectName, String(res.cia), String(res.external), res.grade];
+        vals.forEach((v, idx) => {
+            doc.text(v || '-', rx + 2, y + 8, { width: cols[idx] - 4, align: idx === 2 ? 'left' : 'center' });
+            rx += cols[idx];
+        });
+        y += rowH;
+    });
+
+    y += 30;
+    doc.font('Helvetica-Bold').fontSize(12);
+    doc.text(`GPA: ${data.gpa}`, M, y);
+    doc.text(`CGPA: ${data.cgpa}`, M + 150, y);
+    y += 40;
+
+    const sigY = doc.page.height - 100;
+    doc.fontSize(10);
+    doc.text('Signature of Candidate', M, sigY);
+    doc.text('Controller of Examinations', M, sigY, { width: CW, align: 'right' });
+
+    doc.end();
+};
+
+// ─── STUDENT ID CARD ──────────────────────────────────────────────────────────
+exports.generateStudentIDCard = (res, data) => {
+    // Standard credit card size is roughly 3.375 x 2.125 inches
+    // We'll use 243 x 153 points
+    const doc = new PDFDocument({ size: [243, 153], margin: 10 });
+    doc.pipe(res);
+
+    const W = 243;
+    const H = 153;
+    const M = 10;
+
+    // Background
+    doc.rect(0, 0, W, H).fill('#ffffff');
+    doc.rect(0, 0, W, 35).fill('#003B73');
+
+    // Header
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
+    doc.text('M.I.E.T. ENGINEERING COLLEGE', 0, 8, { width: W, align: 'center' });
+    doc.fontSize(6).font('Helvetica').text('(Autonomous) Trichy - 620 007', 0, 18, { width: W, align: 'center' });
+
+    // Photo
+    const photoSize = 45;
+    const photoX = M;
+    const photoY = 45;
+    doc.rect(photoX, photoY, photoSize, photoSize + 10).stroke('#cccccc');
+    
+    const photoPath = data.student.photo ? path.join(__dirname, '../../uploads/students', data.student.photo) : null;
+    if (photoPath && fs.existsSync(photoPath)) {
+        doc.image(photoPath, photoX + 2, photoY + 2, { fit: [photoSize - 4, photoSize + 6] });
+    } else {
+        doc.fillColor('#999999').fontSize(6).text('PHOTO', photoX, photoY + 25, { width: photoSize, align: 'center' });
+    }
+
+    // Student Details
+    const dx = photoX + photoSize + 10;
+    let dy = 45;
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(10);
+    doc.text(data.student.name.toUpperCase(), dx, dy, { width: W - dx - M });
+    dy += 14;
+
+    doc.fontSize(8).font('Helvetica');
+    doc.text(`Reg No: ${data.student.registerNumber || data.student.rollNo}`, dx, dy);
+    dy += 12;
+    doc.text(`Dept: ${data.student.department}`, dx, dy);
+    dy += 12;
+    doc.text(`Batch: ${data.student.batch || '-'}`, dx, dy);
+    dy += 12;
+    doc.text(`Blood: ${data.student.bloodGroup || '-'}`, dx, dy);
+
+    // Footer
+    doc.rect(0, H - 20, W, 20).fill('#003B73');
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8);
+    doc.text('STUDENT IDENTITY CARD', 0, H - 14, { width: W, align: 'center' });
+
+    doc.end();
+};

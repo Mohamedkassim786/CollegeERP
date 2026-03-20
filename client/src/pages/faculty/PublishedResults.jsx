@@ -116,28 +116,21 @@ const PublishedResults = () => {
                   Student Name
                 </th>
                 <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
-                  CIA Marks
+                  Internal Marks
                 </th>
                 <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
-                  End Sem
-                </th>
-                <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
-                  Total
+                  Final External
                 </th>
                 <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
                   Grade
-                </th>
-                <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
-                  GPA
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {students.map((s) => {
-                const internal = s.marks[0]?.internal || 0;
-                const external = s.marks[0]?.endSemMarks?.externalMarks || 0;
-                const total = internal + external;
-                const result = s.results[0] || {};
+                const internal = s.internalScaled || 0;
+                const external = s.externalScaled || 0;
+                const grade = s.grade || "N/A";
 
                 return (
                   <tr key={s.id} className="hover:bg-gray-50 transition-colors">
@@ -147,24 +140,18 @@ const PublishedResults = () => {
                     <td className="px-6 py-4 font-medium text-gray-800">
                       {s.name}
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-600">
+                    <td className="px-6 py-4 text-center text-gray-600 font-bold">
                       {internal}
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-600">
+                    <td className="px-6 py-4 text-center text-gray-600 font-bold">
                       {external}
-                    </td>
-                    <td className="px-6 py-4 text-center font-bold text-gray-800">
-                      {total}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-bold ${s.marks[0]?.endSemMarks?.resultStatus === "PASS" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                       >
-                        {s.marks[0]?.endSemMarks?.grade || "N/A"}
+                        {grade}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-center font-mono font-bold text-blue-600">
-                      {result.gpa || "0.00"}
                     </td>
                   </tr>
                 );

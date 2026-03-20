@@ -330,21 +330,53 @@ exports.approveMarks = async (req, res) => {
         const subIdInt = parseInt(subjectId);
 
         await prisma.$transaction(async (tx) => {
-            // Mark the actual dummy records as approved
-            const updated = await tx.externalMark.updateMany({
+            // 1. Mark the actual dummy records as approved
+            await tx.externalMark.updateMany({
                 where: { subjectId: subIdInt },
-                data: { isApproved: true }
+                data: { 
+                    isApproved: true,
+                    status: 'APPROVED'
+                }
             });
 
-            // We also want to stamp the mappings so the front-end knows they were approved
+            // 2. Lock the dummy mappings if not already
             await tx.subjectDummyMapping.updateMany({
-                where: { subjectId: subIdInt, semester: parseInt(semester) },
-                data: { mappingLocked: true } // Ensure it's locked too
+                where: { subjectId: subIdInt },
+                data: { mappingLocked: true }
             });
         });
 
-        res.json({ message: "External marks approved successfully for result generation." });
+        res.json({ message: "External marks approved successfully." });
     } catch (error) {
         handleError(res, error, "Failed to approve marks");
+    }
+};
+
+exports.rejectMarks = async (req, res) => {
+    try {
+        const { subjectId, reason } = req.body;
+        const subIdInt = parseInt(subjectId);
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Mark external marks as rejected
+            await tx.externalMark.updateMany({
+                where: { subjectId: subIdInt },
+                data: { 
+                    isApproved: false,
+                    status: 'REJECTED',
+                    rejectionReason: reason || "Administrative rejection"
+                }
+            });
+
+            // 2. Re-open the assignment for external staff
+            await tx.externalMarkAssignment.updateMany({
+                where: { subjectId: subIdInt },
+                data: { status: 'OPEN' }
+            });
+        });
+
+        res.json({ message: "External marks rejected. Assignment re-opened for staff." });
+    } catch (error) {
+        handleError(res, error, "Failed to reject marks");
     }
 };

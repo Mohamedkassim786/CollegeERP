@@ -190,7 +190,21 @@ const ProvisionalResults = () => {
 
       {/* Filter Toolbar */}
       <div className="bg-white/70 backdrop-blur-xl p-8 rounded-[32px] shadow-sm border border-white/40 mb-8 flex flex-wrap items-end gap-6">
-        <div className="flex-1 min-w-[200px]">
+        <div className="w-32">
+          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+            Regulation
+          </label>
+          <CustomSelect
+            className="w-full"
+            value={filters.regulation}
+            onChange={(e) => setFilters({ ...filters, regulation: e.target.value })}
+          >
+            <option value="2021">2021</option>
+            <option value="2023">2023</option>
+          </CustomSelect>
+        </div>
+
+        <div className="flex-1 min-w-[280px]">
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
             Department
           </label>
@@ -225,20 +239,6 @@ const ProvisionalResults = () => {
                 Sem {s}
               </option>
             ))}
-          </CustomSelect>
-        </div>
-
-        <div className="w-32">
-          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
-            Regulation
-          </label>
-          <CustomSelect
-            className="w-full"
-            value={filters.regulation}
-            onChange={(e) => setFilters({ ...filters, regulation: e.target.value })}
-          >
-            <option value="2021">2021</option>
-            <option value="2023">2023</option>
           </CustomSelect>
         </div>
 

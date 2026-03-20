@@ -1,5 +1,7 @@
 const prisma = require('../lib/prisma');
 const { handleError } = require('../utils/errorUtils');
+const pdfService = require('../services/pdf.service.js');
+const { logger } = require('../utils/logger');
 
 const createStudent = async (req, res) => {
     let { 
@@ -837,14 +839,18 @@ const getStudentProfile = async (req, res) => {
                 departmentRef: true,
                 sectionRef: true,
                 academicYear: true,
+                attendance: true,
                 marks: {
                     include: {
                         subject: true,
                         endSemMarks: true
                     }
                 },
-                results: true,
+                results: {
+                    orderBy: { semester: 'desc' }
+                },
                 arrears: {
+                    where: { isCleared: false },
                     include: {
                         subject: true,
                         attempts: true
@@ -855,26 +861,110 @@ const getStudentProfile = async (req, res) => {
 
         if (!student) return res.status(404).json({ message: "Student not found" });
 
+        // Calculate CIA totals for frontend display
+        const processedMarks = student.marks.map(m => {
+            const cia1 = (m.cia1_test || 0) + (m.cia1_assignment || 0) + (m.cia1_attendance || 0);
+            const cia2 = (m.cia2_test || 0) + (m.cia2_assignment || 0) + (m.cia2_attendance || 0);
+            const cia3 = (m.cia3_test || 0) + (m.cia3_assignment || 0) + (m.cia3_attendance || 0);
+            return {
+                ...m,
+                cia1_total: cia1,
+                cia2_total: cia2,
+                cia3_total: cia3,
+                internal_total: cia1 + cia2 + cia3
+            };
+        });
+
+        student.marks = processedMarks;
+
         // Calculate statistics
-        const totalSubjects = student.marks.length;
-        const clearedSubjects = student.marks.filter(m => m.endSemMarks?.resultStatus === 'PASS' || m.endSemMarks?.resultStatus === 'P').length;
-        const arrearSubjects = student.arrears.filter(a => !a.isCleared).length;
+        const attendance = student.attendance || [];
+        const totalClasses = attendance.length;
+        const presentClasses = attendance.filter(a => a.status === 'PRESENT').length;
+        const attendancePercentage = totalClasses > 0 
+            ? ((presentClasses / totalClasses) * 100).toFixed(1) + '%' 
+            : '0.0%';
+        
+        const totalCredits = student.marks.reduce((acc, m) => acc + (m.subject?.credits || 0), 0);
+        const arrearCount = student.arrears.length;
         
         // Use latest semester result for GPA/CGPA
-        const latestResult = student.results.sort((a,b) => b.semester - a.semester)[0];
+        const latestResult = student.results[0];
 
         res.json({
             ...student,
             stats: {
-                totalSubjects,
-                clearedSubjects,
-                arrearSubjects,
-                currentGPA: latestResult?.gpa || 0,
-                cgpa: latestResult?.cgpa || 0
+                attendance: attendancePercentage,
+                totalCredits,
+                arrearCount,
+                cgpa: latestResult?.cgpa || '0.00'
             }
         });
     } catch (error) {
         handleError(res, error, "Error fetching student profile");
+    }
+};
+
+const getGradeSheet = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const student = await prisma.student.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+                departmentRef: true,
+                marks: {
+                    include: {
+                        subject: true,
+                        endSemMarks: true
+                    }
+                }
+            }
+        });
+
+        if (!student) return res.status(404).json({ message: 'Student not found.' });
+
+        const results = student.marks
+            .filter(m => m.endSemMarks && m.endSemMarks.isPublished)
+            .map(m => ({
+                subjectCode: m.subject.code,
+                subjectName: m.subject.name,
+                cia: Math.round(m.internal || 0),
+                external: Math.round(m.endSemMarks.externalMarks || 0),
+                grade: m.endSemMarks.grade
+            }));
+
+        const data = {
+            student,
+            results,
+            semester: student.semester,
+            gpa: student.gpa?.toFixed(2) || '0.00',
+            cgpa: student.cgpa?.toFixed(2) || '0.00'
+        };
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=GradeSheet_Sem${student.semester}_${student.registerNumber || student.rollNo}.pdf`);
+        
+        pdfService.generateStudentGradeSheet(res, data);
+    } catch (error) {
+        handleError(res, error, "Error generating Grade Sheet");
+    }
+};
+
+const getIDCard = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const student = await prisma.student.findUnique({
+            where: { id: parseInt(id) },
+            include: { departmentRef: true }
+        });
+        if (!student) return res.status(404).json({ message: 'Student not found.' });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=ID_Card_${student.registerNumber || student.rollNo}.pdf`);
+        
+        pdfService.generateStudentIDCard(res, { student });
+    } catch (error) {
+        handleError(res, error, "Error generating ID Card");
     }
 };
 
@@ -903,5 +993,7 @@ module.exports = {
     batchAssignRegisterNumbers,
     passStudentsOut,
     getStudentProfile,
-    resetStudentPasswordToDOB
+    resetStudentPasswordToDOB,
+    getGradeSheet,
+    getIDCard
 };

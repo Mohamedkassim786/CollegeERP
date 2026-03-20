@@ -45,10 +45,19 @@ exports.getEndSemMarks = async (req, res) => {
             }
         });
 
-        // 2. Fetch external marks for this subject
+        // 2. Fetch external marks for this subject (allow pending for admin review)
         const externalMarks = await prisma.externalMark.findMany({
-            where: { subjectId: subIdInt, isApproved: true }
+            where: { subjectId: subIdInt }
         });
+        
+        let batchStatus = 'NOT_SUBMITTED';
+        if (externalMarks.length > 0) {
+             const hasPending = externalMarks.some(em => em.status === 'PENDING');
+             const hasRejected = externalMarks.some(em => em.status === 'REJECTED');
+             if (hasPending) batchStatus = 'PENDING';
+             else if (hasRejected) batchStatus = 'REJECTED';
+             else batchStatus = 'APPROVED';
+        }
 
         const extMarksMap = {};
         externalMarks.forEach(em => {
@@ -98,39 +107,45 @@ exports.getEndSemMarks = async (req, res) => {
                 if (category === 'LAB') {
                     // LAB external: 40 is max
                     const extRecord = extMarksMap[lookupKey] || {};
-                    externalProcessed = extRecord.rawExternal100 || 0;
+                    const raw = extRecord.rawExternal100 || 0;
+                    externalProcessed = Math.round((raw / 100) * 40);
                 } else if (category === 'INTEGRATED') {
-                    // Two components: THEORY (by dummyNumber) + LAB (by registerNumber)
+                    // Two components: THEORY (by dummyNumber) + LAB (by registerNumber) each scaled to 25
                     const theoryExt = extTheoryMap[lookupKey] || {};
                     const labExt = extLabMap[student.registerNumber] || {};
-                    const theoryConverted25 = theoryExt.rawExternal100 || 0;
-                    const labConverted25 = labExt.rawExternal100 || 0;
-                    externalProcessed = theoryConverted25 + labConverted25;
+                    const tRaw = theoryExt.rawExternal100 || 0;
+                    const lRaw = labExt.rawExternal100 || 0;
+                    externalProcessed = Math.round((tRaw / 100) * 25) + Math.round((lRaw / 100) * 25);
                 } else {
                     // THEORY: 60 is max
                     const extRecord = extMarksMap[lookupKey] || {};
-                    externalProcessed = extRecord.rawExternal100 || 0;
+                    const raw = extRecord.rawExternal100 || 0;
+                    externalProcessed = Math.round((raw / 100) * 60);
                 }
             }
 
             const total100 = isAbsent ? 'AB' : Math.round(internalProcessed + externalProcessed);
 
-            // Add CIA totals to help frontend show breakdown for integrated subjects
-            const calculateSum = (t, a, att) => {
-                const parseVal = (v) => (v === -1 || v === null || v === undefined ? 0 : parseFloat(v) || 0);
-                return parseVal(t) + parseVal(a) + parseVal(att);
-            };
-
-            // For INTEGRATED, expose both external components separately and SCALED
+            // For INTEGRATED, expose both external components separately and SCALED/RAW
+            let theoryRaw100 = null;
             let theoryExt25 = null;
+            let labRaw100 = null;
             let labExt25 = null;
 
             if (category === 'INTEGRATED') {
                 const tRaw = (extTheoryMap[lookupKey] || extTheoryMap[student.registerNumber])?.rawExternal100 || 0;
-                theoryExt25 = tRaw > 25 ? (tRaw / 100) * 25 : tRaw;
+                theoryRaw100 = tRaw;
+                theoryExt25 = Math.round((tRaw / 100) * 25);
 
                 const lRaw = (extLabMap[student.registerNumber] || extLabMap[lookupKey])?.rawExternal100 || 0;
-                labExt25 = lRaw > 25 ? (lRaw / 100) * 25 : lRaw;
+                labRaw100 = lRaw;
+                labExt25 = Math.round((lRaw / 100) * 25);
+            }
+
+            // For THEORY/LAB: raw external for display
+            let rawExternal100 = null;
+            if (category !== 'INTEGRATED') {
+                rawExternal100 = (extMarksMap[lookupKey] || extTheoryMap[lookupKey])?.rawExternal100 || 0;
             }
 
             return {
@@ -138,26 +153,23 @@ exports.getEndSemMarks = async (req, res) => {
                 name: student.name,
                 registerNumber: student.registerNumber,
                 rollNo: student.rollNo,
-                internal40: internalProcessed,
-                external60: isAbsent ? 'AB' : externalProcessed,
-                theoryExt25,   // INTEGRATED only (scaled /25)
-                labExt25,      // INTEGRATED only (scaled /25)
+                internal40: Math.round(internalProcessed),
+                external60: isAbsent ? 'AB' : Math.round(externalProcessed),
+                rawExternal100: isAbsent ? 'AB' : rawExternal100,
+                theoryRaw100,
+                theoryExt25,
+                labRaw100,
+                labExt25,
                 total100,
                 dummyNumber: dummyMapping.dummyNumber || student.registerNumber,
                 isLocked: ciaRecord.endSemMarks?.isLocked || false,
                 isPublished: ciaRecord.endSemMarks?.isPublished || false,
                 grade: ciaRecord.endSemMarks?.grade || 'N/A',
                 resultStatus: ciaRecord.endSemMarks?.resultStatus || 'N/A',
-                // Breakdown fields for Integrated internal
-                cia1: calculateSum(ciaRecord.cia1_test, ciaRecord.cia1_assignment, ciaRecord.cia1_attendance),
-                cia2: calculateSum(ciaRecord.cia2_test, ciaRecord.cia2_assignment, ciaRecord.cia2_attendance),
-                cia3: calculateSum(ciaRecord.cia3_test, ciaRecord.cia3_assignment, ciaRecord.cia3_attendance),
-                lab: (parseFloat(ciaRecord.lab_attendance) || 0) + (parseFloat(ciaRecord.lab_observation) || 0) + (parseFloat(ciaRecord.lab_record) || 0) + (parseFloat(ciaRecord.lab_model) || 0)
             };
         });
 
-
-        res.json(consolidated);
+        res.json({ students: consolidated, batchStatus });
     } catch (error) {
         handleError(res, error, "Failed to get end semester marks");
     }
@@ -173,6 +185,18 @@ exports.updateEndSemMarks = async (req, res) => {
             const subject = await tx.subject.findUnique({ where: { id: subIdInt } });
             const subjectCategory = subject?.subjectCategory || 'THEORY';
             const isLabOnly = subjectCategory === 'LAB';
+
+            // 1b. Check if external marks are approved (for non-LAB subjects or if enforced)
+            const marksOverview = await tx.externalMark.findMany({
+                where: { subjectId: subIdInt }
+            });
+
+            if (marksOverview.length === 0) {
+                 throw new Error("No external marks found. Cannot generate grades.");
+            }
+            if (marksOverview.some(m => m.status !== 'APPROVED')) {
+                 throw new Error("External marks are not yet approved by Admin. Please approve them in Results Consolidation first.");
+            }
 
             // 2. Fetch students based on category:
             //    THEORY/INTEGRATED → must have dummyMapping (needed for absent flag & extRecord key)
@@ -257,7 +281,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     // Check both maps in case component was labeled differently
                     const labRec = extLabMap[extLookupKey] || extTheoryMap[extLookupKey];
                     rawExternal = labRec?.rawExternal100 || 0;
-                    externalVal = rawExternal;
+                    externalVal = Math.round((rawExternal / 100) * 40);
 
                     const totalMarks = Math.round(internalVal + externalVal);
                     const { passed: isExternalPass } = calcService.checkPassFail(internalVal, externalVal, 'LAB', regulation);
@@ -279,18 +303,17 @@ exports.updateEndSemMarks = async (req, res) => {
                     const theoryRec = extTheoryMap[extLookupKey] || extTheoryMap[student.registerNumber];
                     const labRec = extLabMap[student.registerNumber] || extLabMap[extLookupKey] || extTheoryMap[student.registerNumber];
 
-                    // Scaling logic: If raw > 25, it's likely out of 100, so scale it.
-                    let theoryRaw = theoryRec?.rawExternal100 || 0;
-                    if (theoryRaw > 25) theoryRaw = (theoryRaw / 100) * 25;
+                    // Scaling logic: Always scale from rawExternal100 (which is % of 100)
+                    const theoryRawRaw = theoryRec?.rawExternal100 || 0;
+                    const theoryRaw = Math.round((theoryRawRaw / 100) * 25);
 
-                    let labRaw = labRec?.rawExternal100 || 0;
-                    if (labRaw > 25 && labRec?.component === 'LAB') labRaw = (labRaw / 100) * 25;
-                    else if (labRaw > 25) labRaw = (labRaw / 100) * 25;
+                    const labRawRaw = labRec?.rawExternal100 || 0;
+                    const labRaw = Math.round((labRawRaw / 100) * 25);
 
                     const theoryExt25 = theoryRaw;
                     const labExt25 = labRaw;
 
-                    externalVal = theoryExt25 + labExt25;
+                    externalVal = Math.round(theoryExt25 + labExt25);
                     rawExternal = theoryExt25; // Base theory for legacy field
 
                     const totalMarks = Math.round(internalVal + externalVal); // max 100
@@ -307,9 +330,9 @@ exports.updateEndSemMarks = async (req, res) => {
 
                 } else {
                     // THEORY: internal 40, external 60
-                    internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? ciaRecord.internal * 0.4 : 0;
+                    internalVal = (ciaRecord.internal && ciaRecord.isApproved) ? Math.round(ciaRecord.internal * 0.4) : 0;
                     rawExternal = extTheoryMap[extLookupKey]?.rawExternal100 || 0;
-                    externalVal = rawExternal;
+                    externalVal = Math.round((rawExternal / 100) * 60);
 
                     const totalMarks = Math.round(internalVal + externalVal);
                     const { passed: isExternalPass } = calcService.checkPassFail(internalVal, externalVal, 'THEORY', regulation);
@@ -595,21 +618,25 @@ exports.getFacultyResults = async (req, res) => {
         const control = await prisma.semesterControl.findFirst({
             where: {
                 ...deptFilter,
-                year: parseInt(year),
                 semester: parseInt(semester),
-                section
-            }
+                section,
+                isPublished: true
+            },
+            orderBy: { publishedAt: 'desc' }
         });
 
         if (!control || !control.isPublished) {
             return res.status(403).json({ message: "Results for this semester have not been published yet." });
         }
 
-        // 2. Fetch marks (Read-only)
+        // 2. Fetch subject info for scaling logic
+        const subject = await prisma.subject.findUnique({ where: { id: parseInt(subjectId) } });
+        const category = subject?.subjectCategory || 'THEORY';
+
+        // 3. Fetch marks (Read-only)
         const students = await prisma.student.findMany({
             where: {
                 ...deptFilter,
-                year: parseInt(year),
                 semester: parseInt(semester),
                 section
             },
@@ -624,7 +651,39 @@ exports.getFacultyResults = async (req, res) => {
             }
         });
 
-        res.json(students);
+        const processed = students.map(s => {
+            const mark = s.marks[0];
+            const esm = mark?.endSemMarks;
+            
+            let internalScaled = 0;
+            let externalScaled = 0;
+            
+            if (mark && mark.isApproved) {
+                if (category === 'LAB') {
+                    internalScaled = mark.internal || 0;
+                    externalScaled = Math.round(((esm?.externalMarks || 0) / 100) * 40);
+                } else if (category === 'INTEGRATED') {
+                    // Integrated stores total (internal50+ext50) and externalMarks (raw theory25)
+                    // We can derive correctly scaled components from totalMarks
+                    internalScaled = mark.internal || 0;
+                    externalScaled = (esm?.totalMarks || internalScaled) - internalScaled;
+                } else {
+                    // THEORY: internal is /100 raw, converted to 40
+                    internalScaled = Math.round((mark.internal || 0) * 0.4);
+                    // externalMarks is /100 raw, converted to 60
+                    externalScaled = Math.round(((esm?.externalMarks || 0) / 100) * 60);
+                }
+            }
+
+            return {
+                ...s,
+                internalScaled,
+                externalScaled,
+                grade: esm?.grade || (esm?.resultStatus === 'AB' ? 'AB' : 'N/A')
+            };
+        });
+
+        res.json(processed);
     } catch (error) {
         handleError(res, error, "Failed to get faculty results");
     }
@@ -977,7 +1036,7 @@ exports.publishResults = async (req, res) => {
                 section,
                 isPublished: true,
                 publishedAt: new Date(),
-                publishedBy
+                publishedBy: parseInt(publishedBy)
             }
         });
 
@@ -985,12 +1044,16 @@ exports.publishResults = async (req, res) => {
         const students = await prisma.student.findMany({
             where: {
                 ...deptFilter,
-                year: parseInt(year),
                 semester: parseInt(semester),
                 section
             },
             include: {
-                marks: { include: { endSemMarks: true } },
+                marks: { 
+                    include: { 
+                        endSemMarks: true,
+                        subject: true 
+                    } 
+                },
                 attendance: true
             }
         });
@@ -1010,6 +1073,45 @@ exports.publishResults = async (req, res) => {
                     });
                     updatedCount++;
                 }
+            }
+
+            // --- GPA/CGPA Calculation on the fly during publication ---
+            try {
+                const regulation = student.regulation || '2021';
+                const grades = await prisma.gradeSettings.findMany({ where: { regulation } });
+                
+                const studentMarks = student.marks;
+                const currentSemMarks = studentMarks.filter(m => m.subject.semester === parseInt(semester));
+                
+                const gpaResult = calcService.calculateGPA(currentSemMarks, grades);
+                const { gpa, totalCredits, earnedCredits, semesterPass } = gpaResult;
+
+                // For CGPA, we need all past marks too
+                const pastMarks = studentMarks.filter(m => m.subject.semester <= parseInt(semester));
+                // For simplified CGPA in this context, we'll just use the past marks we have
+                const cgpaResult = calcService.calculateCGPA(pastMarks, [], grades); // Ignoring arrears for quick calc
+
+                await prisma.semesterResult.upsert({
+                    where: { studentId_semester: { studentId: student.id, semester: parseInt(semester) } },
+                    update: {
+                        gpa,
+                        cgpa: cgpaResult,
+                        totalCredits,
+                        earnedCredits,
+                        resultStatus: semesterPass ? "PASS" : "FAIL"
+                    },
+                    create: {
+                        studentId: student.id,
+                        semester: parseInt(semester),
+                        gpa,
+                        cgpa: cgpaResult,
+                        totalCredits,
+                        earnedCredits,
+                        resultStatus: semesterPass ? "PASS" : "FAIL"
+                    }
+                });
+            } catch (calcError) {
+                logger.error(`GPA Calculation failed for student ${student.id}: ${calcError.message}`);
             }
         }
 
@@ -1052,7 +1154,6 @@ exports.unpublishResults = async (req, res) => {
         const students = await prisma.student.findMany({
             where: {
                 ...deptFilter,
-                year: parseInt(year),
                 semester: parseInt(semester),
                 section
             },
@@ -1115,10 +1216,14 @@ exports.getPublishStatus = async (req, res) => {
  */
 exports.getStudentResults = async (req, res) => {
     try {
-        const studentId = req.user.id;
+        const studentId = parseInt(req.user.id);
         const student = await prisma.student.findUnique({
             where: { id: studentId },
             include: {
+                departmentRef: true,
+                results: {
+                    where: { semester: req.query.semester ? parseInt(req.query.semester) : undefined }
+                },
                 marks: {
                     include: {
                         subject: true,
@@ -1130,26 +1235,45 @@ exports.getStudentResults = async (req, res) => {
 
         if (!student) return res.status(404).json({ message: 'Student not found.' });
 
+        // Fetch publication date from SemesterControl
+        const control = await prisma.semesterControl.findFirst({
+            where: {
+                OR: [
+                    { department: student.department },
+                    { department: student.departmentRef?.name },
+                    { department: student.departmentRef?.code }
+                ].filter(i => i.department),
+                semester: student.semester,
+                section: student.section,
+                isPublished: true
+            },
+            orderBy: { publishedAt: 'desc' }
+        });
+
         // Filter for published marks and format
         const results = student.marks
             .filter(m => m.endSemMarks && (m.endSemMarks.isPublished || req.user.role === 'ADMIN'))
             .map(m => ({
-                code: m.subject.code,
-                name: m.subject.name,
-                internal: m.internal,
-                externalMarks: m.endSemMarks.externalMarks,
-                totalMarks: m.endSemMarks.totalMarks,
+                subjectCode: m.subject.code,
+                subjectName: m.subject.name,
+                cia: Math.round(m.internal || 0),
+                external: Math.round(m.endSemMarks.externalMarks || 0),
+                total: Math.round(m.endSemMarks.totalMarks || 0),
                 grade: m.endSemMarks.grade,
-                resultStatus: m.endSemMarks.resultStatus,
+                result: m.endSemMarks.resultStatus,
                 attendanceSnapshot: m.endSemMarks.attendanceSnapshot
             }));
+
+        // Latest result for CGPA, specific for GPA
+        const gpaRecord = student.results.find(r => r.semester === student.semester) || student.results[0];
 
         res.json({
             isPublished: results.length > 0,
             semester: student.semester,
+            publishedAt: control?.publishedAt || null,
             results,
-            gpa: student.gpa,
-            cgpa: student.cgpa
+            gpa: gpaRecord?.gpa?.toFixed(2) || '0.00',
+            cgpa: gpaRecord?.cgpa?.toFixed(2) || '0.00'
         });
 
     } catch (error) {

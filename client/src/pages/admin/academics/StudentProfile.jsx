@@ -3,9 +3,9 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
     User, Mail, Phone, MapPin, Calendar, GraduationCap, 
     BookOpen, Award, AlertCircle, ArrowLeft, Download, Edit,
-    Heart, Home, Upload, X, Fingerprint, ExternalLink, Search
+    Heart, Home, Upload, X, Fingerprint, ExternalLink, Search, FileText
 } from 'lucide-react';
-import { getStudent, updateStudent, getGradeSheet } from '../../../services/student.service';
+import { getStudent, updateStudent, getGradeSheet, getIDCard } from '../../../services/student.service';
 import { getDepartments } from '../../../services/department.service';
 import { handleApiError } from '../../../utils/errorHandler';
 import { getPhotoUrl } from '../../../utils/helpers';
@@ -115,17 +115,30 @@ const StudentProfile = () => {
         }
     };
 
-    const handleDownload = async () => {
+    const handleDownloadGradeSheet = async () => {
         try {
-            toast.loading("Generating...");
+            toast.loading("Generating Grade Sheet...");
             const res = await getGradeSheet(id, student.semester);
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const a = document.createElement('a'); a.href = url;
+            a.setAttribute('download', `GradeSheet_Sem${student.semester}_${student.rollNo}.pdf`);
+            document.body.appendChild(a); a.click(); a.remove();
+            window.URL.revokeObjectURL(url);
+            toast.dismiss(); toast.success("Grade Sheet Downloaded");
+        } catch (err) { toast.dismiss(); handleApiError(err, "Grade Sheet download failed"); }
+    };
+
+    const handleDownloadIDCard = async () => {
+        try {
+            toast.loading("Generating ID Card...");
+            const res = await getIDCard(id);
             const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
             const a = document.createElement('a'); a.href = url;
             a.setAttribute('download', `ID_Card_${student.rollNo}.pdf`);
             document.body.appendChild(a); a.click(); a.remove();
             window.URL.revokeObjectURL(url);
-            toast.dismiss(); toast.success("Downloaded");
-        } catch (err) { toast.dismiss(); handleApiError(err, "Download failed"); }
+            toast.dismiss(); toast.success("ID Card Downloaded");
+        } catch (err) { toast.dismiss(); handleApiError(err, "ID Card download failed"); }
     };
 
 
@@ -219,7 +232,7 @@ const StudentProfile = () => {
                                 </button>
                             )}
                             <button
-                                onClick={handleDownload}
+                                onClick={handleDownloadIDCard}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#003B73] rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
                             >
                                 <Download size={13} /> Download ID Card
@@ -419,7 +432,9 @@ const StudentProfile = () => {
                                                     <td className="px-4 py-4 text-center">{m.cia1_total?.toFixed(1) || '—'}</td>
                                                     <td className="px-4 py-4 text-center">{m.cia2_total?.toFixed(1) || '—'}</td>
                                                     <td className="px-4 py-4 text-center">{m.cia3_total?.toFixed(1) || '—'}</td>
-                                                    <td className="px-4 py-4 text-center font-black text-[#003B73] bg-blue-50/20">{(m.cia1_total || 0 + m.cia2_total || 0 + m.cia3_total || 0).toFixed(1)}</td>
+                                                    <td className="px-4 py-4 text-center font-black text-[#003B73] bg-blue-50/20">
+                                                        {(m.internal_total || 0).toFixed(1)}
+                                                    </td>
                                                     <td className="px-4 py-4 text-center font-black text-blue-700 bg-blue-50/20">{m.endSemMarks?.externalMarks || '—'}</td>
                                                     <td className="px-4 py-4 text-center text-amber-600 font-black">{m.endSemMarks?.grade || 'NA'}</td>
                                                     <td className="px-8 py-4 text-right">
@@ -491,7 +506,7 @@ const StudentProfile = () => {
                                             <p className="font-black text-[#003B73] truncate">Grade Sheet — Sem {student.semester}</p>
                                         </div>
                                     </div>
-                                    <button onClick={handleDownload} className="btn-secondary px-6 shrink-0"><Download size={14} className="mr-2"/> PDF</button>
+                                    <button onClick={handleDownloadGradeSheet} className="btn-secondary px-6 shrink-0"><Download size={14} className="mr-2"/> PDF</button>
                                 </div>
 
                                 <div className="p-6 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex justify-between items-center opacity-60">

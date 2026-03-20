@@ -28,7 +28,7 @@ const ExternalMarkEntry = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // PDF metadata inputs
-  const [pdfMeta, setPdfMeta] = useState({ dateSession: "", qpCode: "", packetNo: "1" });
+  const [pdfMeta, setPdfMeta] = useState({ date: "", session: "FN", qpCode: "", packetNo: "1" });
   const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => {
@@ -117,7 +117,7 @@ const ExternalMarkEntry = () => {
       toast.success(`${activeComponent === "LAB" ? "Lab" : "Theory"} marks submitted successfully`);
       setShowPdfModal(true); // Prompt PDF download
     } catch (err) {
-      toast.error("Failed to submit marks");
+      toast.error(err.response?.data?.message || err.message || "Failed to submit marks");
     } finally {
       setSubmitting(false);
     }
@@ -127,9 +127,17 @@ const ExternalMarkEntry = () => {
     const data = dataByComponent[activeComponent];
     if (!data) return;
     try {
+      let combinedDS = "";
+      if (pdfMeta.date) {
+        const d = new Date(pdfMeta.date);
+        const dStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        // Format to dd/mm/yyyy
+        combinedDS = `${dStr.replace(/\//g, '/')} & ${pdfMeta.session}`;
+      }
+
       const params = {
         subjectId: data.subjectId,
-        dateSession: pdfMeta.dateSession,
+        dateSession: combinedDS || undefined,
         qpCode: pdfMeta.qpCode,
         packetNo: pdfMeta.packetNo,
       };
@@ -376,17 +384,31 @@ const ExternalMarkEntry = () => {
             </div>
 
             <div className="space-y-4 mb-8">
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                  Date &amp; Session (e.g. 09/01/2026 &amp; FN)
-                </label>
-                <input
-                  type="text"
-                  placeholder="09/01/2026 & FN"
-                  className="w-full border-2 border-gray-200 rounded-xl p-3 font-bold focus:border-blue-600 outline-none"
-                  value={pdfMeta.dateSession}
-                  onChange={e => setPdfMeta(p => ({ ...p, dateSession: e.target.value }))}
-                />
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+                    Exam Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full border-2 border-gray-200 rounded-xl p-3 font-bold focus:border-blue-600 outline-none text-gray-700"
+                    value={pdfMeta.date}
+                    onChange={e => setPdfMeta(p => ({ ...p, date: e.target.value }))}
+                  />
+                </div>
+                <div className="w-1/3">
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+                    Session
+                  </label>
+                  <select
+                    className="w-full border-2 border-gray-200 rounded-xl p-3 font-bold focus:border-blue-600 outline-none text-gray-700 bg-white"
+                    value={pdfMeta.session}
+                    onChange={e => setPdfMeta(p => ({ ...p, session: e.target.value }))}
+                  >
+                    <option value="FN">FN</option>
+                    <option value="AN">AN</option>
+                  </select>
+                </div>
               </div>
               {!isLABView && (
                 <>

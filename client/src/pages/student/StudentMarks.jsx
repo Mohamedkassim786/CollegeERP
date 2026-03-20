@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
-import { Award, ChevronDown, ChevronUp, Lock, Unlock, AlertCircle, FileText } from 'lucide-react';
+import { Award, ChevronDown, ChevronUp, Lock, Unlock, AlertCircle, FileText, CheckCircle } from 'lucide-react';
 
 const StudentMarks = () => {
     const [marks, setMarks] = useState([]);
@@ -78,7 +78,7 @@ const StudentMarks = () => {
                                     <div className="text-left">
                                         <h3 className="text-lg font-black text-[#003B73] uppercase tracking-tight">{record.subject.name}</h3>
                                         <div className="flex items-center gap-2 mt-0.5">
-                                            <span className="text-[10px] font-black text-gray-400 font-mono tracking-widest uppercase">{record.subject.code}</span>
+                                            <span className="text-sm font-black text-gray-500 font-mono tracking-tight uppercase">{record.subject.code}</span>
                                             <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                             <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Sem {record.subject.semester}</span>
                                         </div>
@@ -151,10 +151,6 @@ const StudentMarks = () => {
                                                 </div>
                                             </div>
                                             <div className="flex gap-10">
-                                                <div className="text-center">
-                                                    <p className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-1">External Marks</p>
-                                                    <p className="text-2xl font-black">{record.endSemMarks.externalMarks || '—'}</p>
-                                                </div>
                                                 <div className="text-center">
                                                     <p className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-1">Grade</p>
                                                     <p className="text-2xl font-black text-amber-400">{record.endSemMarks.grade || 'NA'}</p>

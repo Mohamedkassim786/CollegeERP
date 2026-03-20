@@ -14,3 +14,4 @@ export const promoteAllStudents = (data) => api.post('/admin/promote-all', data)
 export const getPromotionPreview = (params) => api.get('/admin/promote-preview', { params });
 
 export const getGradeSheet = (studentId, semester) => api.get(`/admin/students/${studentId}/gradesheet`, { params: { semester }, responseType: 'blob' });
+export const getIDCard = (studentId) => api.get(`/admin/students/${studentId}/idcard`, { responseType: 'blob' });

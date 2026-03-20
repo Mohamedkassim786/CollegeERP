@@ -284,6 +284,7 @@ exports.submitMarks = async (req, res) => {
         });
 
     } catch (error) {
+        console.error("SUBMIT MARKS ERROR:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -406,6 +407,8 @@ exports.generateStatementPDF = async (req, res) => {
         // Fetch Exam Session month/year from Hall Allocation / ExamSession
         let autoDateSession = '';
         let examMonthYear = '';
+        
+        // 1. Try to find via Hall Allocation
         const allocation = await prisma.hallAllocation.findFirst({
             where: { subjectId: subIdInt },
             select: { 
@@ -426,6 +429,21 @@ exports.generateStatementPDF = async (req, res) => {
                 if (month || year) examMonthYear = `${month} ${year}`.trim();
             }
         }
+
+        // 2. Fallback to ExamSessionSubjects if Hall Allocation wasn't found or missing session details
+        if (!examMonthYear) {
+            const sessionSubject = await prisma.examSessionSubjects.findFirst({
+                where: { subjectId: subIdInt },
+                include: { examSession: true },
+                orderBy: { id: 'desc' }
+            });
+            if (sessionSubject?.examSession) {
+                const month = sessionSubject.examSession.month || '';
+                const year = sessionSubject.examSession.year || '';
+                if (month || year) examMonthYear = `${month} ${year}`.trim();
+            }
+        }
+
         const finalDateSession = dateSession || autoDateSession;
 
         const category = subject.subjectCategory || 'THEORY';

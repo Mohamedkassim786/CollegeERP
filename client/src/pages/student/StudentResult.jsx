@@ -29,13 +29,15 @@ const StudentResult = () => {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn">
+        <div className="w-full px-4 md:px-8 space-y-6 animate-fadeIn">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-[#003B73] flex items-center gap-3">
                         <Award size={32} /> Semester {data.semester} Results
                     </h1>
-                    <p className="text-gray-500 font-medium">Published on: {new Date(data.publishedAt).toLocaleDateString()}</p>
+                    <p className="text-gray-500 font-medium">
+                        {data.publishedAt ? `Published on: ${new Date(data.publishedAt).toLocaleDateString()}` : 'Results Published'}
+                    </p>
                 </div>
                 <div className="flex gap-4">
                     <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
@@ -50,49 +52,46 @@ const StudentResult = () => {
             </div>
 
             <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                        <tr>
-                            <th className="px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-wider">Subject</th>
-                            <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">CIA</th>
-                            <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">ESE</th>
-                            <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Total</th>
-                            <th className="px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Grade</th>
-                            <th className="px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Result</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {data.results.map((res, i) => (
-                            <tr key={i} className="hover:bg-gray-50 transition-colors group">
-                                <td className="px-6 py-5">
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-gray-900 group-hover:text-[#003B73] transition-colors">{res.subjectName}</span>
-                                        <span className="text-xs font-mono text-gray-400">{res.subjectCode}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-5 text-center font-semibold text-gray-600">{res.cia}</td>
-                                <td className="px-6 py-5 text-center font-semibold text-gray-600">{res.external}</td>
-                                <td className="px-6 py-5 text-center font-black text-gray-800">{res.total}</td>
-                                <td className="px-6 py-5 text-center">
-                                    <span className={`inline-block px-3 py-1 rounded-lg text-sm font-black ${
-                                        res.grade === 'O' ? 'bg-purple-50 text-purple-700' :
-                                        res.grade === 'A+' ? 'bg-blue-50 text-blue-700' :
-                                        res.grade === 'A' ? 'bg-emerald-50 text-emerald-700' :
-                                        res.grade === 'U' || res.grade === 'W' || res.grade === 'RA' ? 'bg-red-50 text-red-700' :
-                                        'bg-gray-50 text-gray-700'
-                                    }`}>
-                                        {res.grade}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-5 text-center">
-                                    <span className={`text-xs font-black uppercase tracking-widest ${res.result === 'PASS' ? 'text-emerald-600' : 'text-red-600'}`}>
-                                        {res.result}
-                                    </span>
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
+                        <thead className="bg-gray-50 border-b border-gray-100">
+                            <tr>
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-wider">Code</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-wider">Subject Name</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Grade</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-wider text-center">Result</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {data.results.map((res, i) => (
+                                <tr key={i} className="hover:bg-gray-50 transition-colors group">
+                                    <td className="px-6 py-5 font-mono text-sm font-black text-[#003B73] tracking-tight uppercase">
+                                        {res.subjectCode}
+                                    </td>
+                                    <td className="px-6 py-5">
+                                        <span className="font-bold text-gray-900 group-hover:text-[#003B73] transition-colors">{res.subjectName}</span>
+                                    </td>
+                                    <td className="px-6 py-5 text-center">
+                                        <span className={`inline-block px-3 py-1 rounded-lg text-sm font-black ${
+                                            res.grade === 'O' ? 'bg-purple-50 text-purple-700' :
+                                            res.grade === 'A+' ? 'bg-blue-50 text-blue-700' :
+                                            res.grade === 'A' ? 'bg-emerald-50 text-emerald-700' :
+                                            res.grade === 'U' || res.grade === 'W' || res.grade === 'RA' ? 'bg-red-50 text-red-700' :
+                                            'bg-gray-50 text-gray-700'
+                                        }`}>
+                                            {res.grade}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-5 text-center">
+                                        <span className={`text-xs font-black uppercase tracking-widest ${res.result === 'PASS' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                            {res.result}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-start gap-4">

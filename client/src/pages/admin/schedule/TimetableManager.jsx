@@ -94,7 +94,7 @@ const TimetableManager = () => {
       const res = await getDepartments();
       setDepartments(res.data);
       if (res.data.length > 0 && !department) {
-        setDepartment(res.data[0].name);
+        setDepartment(res.data[0].code || res.data[0].name);
       }
     } catch (err) {
       console.error("Failed to fetch departments");
@@ -111,7 +111,9 @@ const TimetableManager = () => {
       }
 
       // Update Year
-      const availableYears = deptObj.years?.split(",") || ["2", "3", "4"];
+      let availableYears = deptObj.years?.split(",") || ["2", "3", "4"];
+      if (!availableYears.includes("1")) availableYears = ["1", ...availableYears];
+      
       if (!availableYears.includes(year.toString())) {
         setYear(availableYears[0]);
       }
@@ -210,11 +212,12 @@ const TimetableManager = () => {
     setLoading(true);
     setTimetable({}); // Clear state immediately
     try {
-      const res = await getTimetable({ department, year, semester, section });
+      const payloadDept = year.toString() === "1" ? "FIRST_YEAR" : department;
+      const res = await getTimetable({ department: payloadDept, year, semester, section });
       const map = {};
       if (Array.isArray(res.data)) {
         res.data.forEach((t) => {
-          map[`${t.day} -${t.period} `] = t;
+          map[`${t.day}-${t.period}`] = t;
         });
       }
       setTimetable(map);
@@ -226,7 +229,7 @@ const TimetableManager = () => {
   };
 
   const handleCellClick = (day, period) => {
-    const key = `${day} -${period} `;
+    const key = `${day}-${period}`;
     const existing = timetable[key];
 
     setSelectedCell({ day, period });
@@ -589,9 +592,10 @@ const TimetableManager = () => {
         facultyId: e.facultyId,
       }));
 
+      const payloadDept = year.toString() === "1" ? "FIRST_YEAR" : department;
       await saveTimetable({
         entries,
-        department,
+        department: payloadDept,
         year,
         semester,
         section,
@@ -737,10 +741,10 @@ const TimetableManager = () => {
                     onChange={(e) => setDepartment(e.target.value)}
                   >
                     {departments.map((d) => (
-                      <option key={d.id} value={d.code || d.name}>
-                        {d.code || d.name}
-                      </option>
-                    ))}
+                    <option key={d.id} value={d.code || d.name}>
+                      {d.code || d.name}
+                    </option>
+                  ))}
                   </CustomSelect>
                 </div>
               </div>
@@ -756,11 +760,13 @@ const TimetableManager = () => {
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
                 >
-                  {(
-                    departments
-                      .find((d) => (d.code || d.name) === department)
-                      ?.years?.split(",") || ["1", "2", "3", "4"]
-                  ).map((y) => (
+                  {(() => {
+                      let availableYears = departments
+                        .find((d) => (d.code || d.name) === department)
+                        ?.years?.split(",") || ["1", "2", "3", "4"];
+                      if (!availableYears.includes("1")) availableYears = ["1", ...availableYears];
+                      return availableYears;
+                    })().map((y) => (
                     <option key={y} value={y}>
                       {y}
                       {y === "1"
@@ -777,7 +783,7 @@ const TimetableManager = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="hidden space-y-3">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
                 Semester
               </label>
@@ -815,7 +821,7 @@ const TimetableManager = () => {
                 >
                   {(
                     departments
-                      .find((d) => (d.code || d.name) === department)
+                      .find((d) => d.name === department)
                       ?.sections?.split(",") || ["A", "B", "C"]
                   ).map((s) => (
                     <option key={s} value={s}>
@@ -886,7 +892,7 @@ const TimetableManager = () => {
             </div>
             <div>
               <h2 className="text-2xl font-black text-[#003B73] tracking-tight uppercase">
-                {department} <span className="text-gray-300 mx-2">/</span> Y
+                {year.toString() === "1" ? "FIRST YEAR (COMMON)" : department} <span className="text-gray-300 mx-2">/</span> Y
                 {year} {section}
               </h2>
               <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">
@@ -931,7 +937,7 @@ const TimetableManager = () => {
                 {days.map((day, dayIdx) => {
                   const occupiedPeriods = new Set();
                   periods.forEach((p) => {
-                    const key = `${day} -${p.id} `;
+                    const key = `${day}-${p.id}`;
                     const entry = timetable[key];
                     if (entry && entry.duration > 1) {
                       for (let i = 1; i < entry.duration; i++) {
@@ -951,7 +957,7 @@ const TimetableManager = () => {
                       {periods.map((p) => {
                         if (occupiedPeriods.has(p.id)) return null;
 
-                        const key = `${day} -${p.id} `;
+                        const key = `${day}-${p.id}`;
                         const entry = timetable[key];
                         const colspan = entry?.duration || 1;
                         const isToday =
@@ -1204,7 +1210,7 @@ const TimetableManager = () => {
 
                 <div className="flex gap-4 pt-4 pb-8">
                   {timetable[
-                    `${selectedCell?.day} -${selectedCell?.period} `
+                    `${selectedCell?.day}-${selectedCell?.period}`
                   ] && (
                       <button
                         type="button"
@@ -1228,7 +1234,7 @@ const TimetableManager = () => {
                     disabled={!selectedSubject}
                     className="flex-[2] py-5 bg-[#003B73] text-white rounded-[24px] font-black hover:bg-[#002850] shadow-xl shadow-blue-900/10 transition-all transform active:scale-95 disabled:opacity-50"
                   >
-                    {timetable[`${selectedCell?.day} -${selectedCell?.period} `]
+                    {timetable[`${selectedCell?.day}-${selectedCell?.period}`]
                       ? "Commit Updates"
                       : "Confirm Assignment"}
                   </button>

@@ -6,9 +6,10 @@ const validateZod = (schema) => (req, res, next) => {
     next();
   } catch (err) {
     if (err instanceof z.ZodError) {
+      const issues = err.issues || err.errors || [];
       return res.status(400).json({ 
         message: 'Validation failed', 
-        errors: err.errors.map(e => ({ path: e.path, message: e.message })) 
+        errors: issues.map(e => ({ path: e.path, message: e.message })) 
       });
     }
     next(err);
@@ -19,8 +20,8 @@ const studentSchema = z.object({
   rollNo: z.string().min(1).max(20),
   name: z.string().min(1).max(100),
   department: z.string().optional(),
-  year: z.number().int().min(1).max(4).optional(),
-  semester: z.number().int().min(1).max(8).optional(),
+  year: z.coerce.number().int().min(1).max(4).optional(),
+  semester: z.coerce.number().int().min(1).max(8).optional(),
   section: z.string().optional(),
 });
 
