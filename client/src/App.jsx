@@ -27,7 +27,7 @@ function App() {
             </Route>
 
             {/* HOD — full sidebar with nested routes */}
-            <Route element={<ProtectedRoute allowedRoles={['HOD']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['HOD', 'FIRST_YEAR_COORDINATOR']} />}>
                 <Route path="/hod/*" element={<HODDashboard />} />
             </Route>
 

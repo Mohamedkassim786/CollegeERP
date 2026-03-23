@@ -38,7 +38,7 @@ const {
     getDepartments, getSections, createSection, deleteSection, createDepartment, updateDepartment, deleteDepartment
 } = require('../controllers/departmentController');
 const { getAttendanceReport, getDepartmentAttendanceReport } = require('../controllers/attendanceController');
-const { verifyToken, isAdmin, isHod, isPrincipal } = require('../middleware/authMiddleware');
+const { verifyToken, isAdmin, isHod, isPrincipal, canReadAdminData } = require('../middleware/authMiddleware');
 const { validateStudent, validateFaculty, validateSubject, validateMarks } = require('../middleware/validation');
 const { validateZod, studentSchema, markEntrySchema } = require('../middleware/zodValidation');
 const { uploadArrears, getArrears, deleteArrear, autoGenerateArrears, bulkUploadPassedOutArrears } = require('../controllers/arrearController');
@@ -65,15 +65,15 @@ router.patch('/users/:id/status', isAdmin, toggleUserStatus);
 router.delete('/users/:id', isAdmin, deleteUser);
 
 // Academic Year & System Settings
-router.get('/academic-years', isAdmin, getAcademicYears);
+router.get('/academic-years', canReadAdminData, getAcademicYears);
 router.post('/academic-years', isAdmin, createAcademicYear);
 router.patch('/academic-years/:id/activate', isAdmin, toggleAcademicYearStatus);
 
 router.get('/settings', isAdmin, getSettings);
 router.post('/settings/update', isAdmin, updateSetting);
 
-router.get('/departments', isHod, getDepartments);
-router.get('/sections', isHod, getSections);
+router.get('/departments', canReadAdminData, getDepartments);
+router.get('/sections', canReadAdminData, getSections);
 router.post('/sections', isAdmin, createSection);
 router.delete('/sections/:id', isHod, deleteSection);
 router.post('/departments', isAdmin, createDepartment);
@@ -82,16 +82,16 @@ router.delete('/departments/:id', isAdmin, deleteDepartment);
 
 const { upload } = require('../utils/uploadConfig');
 
-router.get('/students', isHod, getStudents);
-router.get('/students/:id', isHod, getStudentProfile);
+router.get('/students', canReadAdminData, getStudents);
+router.get('/students/:id', canReadAdminData, getStudentProfile);
 router.post('/students', isHod, upload.single('photo'), validateZod(studentSchema), createStudent);
 router.put('/students/:id', isHod, upload.single('photo'), validateZod(studentSchema), updateStudent);
 router.delete('/students/:id', isAdmin, deleteStudent); // Student deletion is SuperAdmin only
 router.patch('/students/:id/reset-password', isAdmin, resetStudentPasswordToDOB);
-router.get('/students/:id/gradesheet', isHod, getGradeSheet);
-router.get('/students/:id/idcard', isHod, getIDCard);
+router.get('/students/:id/gradesheet', canReadAdminData, getGradeSheet);
+router.get('/students/:id/idcard', canReadAdminData, getIDCard);
 
-router.get('/subjects', isHod, getSubjects);
+router.get('/subjects', canReadAdminData, getSubjects);
 router.post('/subjects', isHod, validateSubject, createSubject);
 router.delete('/subjects/:id', isAdmin, deleteSubject); // Subject deletion is SuperAdmin only
 
@@ -111,9 +111,9 @@ router.post('/substitutions', assignSubstitute);
 router.delete('/substitutions/:id', deleteSubstitution);
 
 // Admin Faculty Management
-router.get('/faculty', isHod, getFaculties);
+router.get('/faculty', canReadAdminData, getFaculties);
 router.post('/faculty/bulk-upload', isAdmin, upload.single('file'), bulkUploadFaculty);
-router.get('/faculty/:id', isHod, getFacultyProfile);
+router.get('/faculty/:id', canReadAdminData, getFacultyProfile);
 router.post('/faculty', isAdmin, upload.single('photo'), createFaculty);
 router.patch('/faculty/:id', isAdmin, upload.single('photo'), updateFaculty);
 router.delete('/faculty/:id', isAdmin, deleteFaculty);
@@ -133,7 +133,7 @@ router.post('/marks-approval/unapprove', unapproveMarks);
 
 // Attendance Reports
 router.get('/attendance/report', getAttendanceReport);
-router.get('/attendance-report', isHod, getDepartmentAttendanceReport);
+router.get('/attendance-report', canReadAdminData, getDepartmentAttendanceReport);
 router.get('/attendance/export-excel', exportAttendanceExcel);
 
 

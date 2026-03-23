@@ -43,7 +43,7 @@ import StudentCreateModal from "./student-manager/StudentCreateModal";
 import StudentEditModal from "./student-manager/StudentEditModal";
 import StudentBulkModal from "./student-manager/StudentBulkModal";
 
-const StudentManager = () => {
+const StudentManager = ({ readOnly = false }) => {
   const [selectedCategory, setSelectedCategory] = useState(() => sessionStorage.getItem('std_category') || null);
   const [selectedDept, setSelectedDept] = useState(() => sessionStorage.getItem('std_dept') || null);
   const [selectedYear, setSelectedYear] = useState(() => sessionStorage.getItem('std_year') || null);
@@ -832,7 +832,7 @@ const StudentManager = () => {
           </p>
         </div>
 
-        {selectedCategory && selectedCategory !== 'PASSED_OUT' && (
+        {!readOnly && selectedCategory && selectedCategory !== 'PASSED_OUT' && (
           <div className="flex gap-4">
             <button
               onClick={() => {
@@ -1394,6 +1394,7 @@ const StudentManager = () => {
             ) : null}
 
             {/* Add Section Button for Department/Year */}
+            {!readOnly && (
             <div
               onClick={() => setShowAddSectionModal(true)}
               className="group p-10 bg-emerald-50/30 hover:bg-emerald-100 border-2 border-dashed border-emerald-200 hover:border-emerald-400 rounded-[32px] cursor-pointer transition-all duration-500 flex flex-col items-center justify-center text-center"
@@ -1408,6 +1409,7 @@ const StudentManager = () => {
                 Yearly Setup
               </p>
             </div>
+            )}
           </div>
         )}
 
@@ -1431,6 +1433,7 @@ const StudentManager = () => {
                 statusFilter={statusFilter}
                 batchFilter={batchFilter}
                 loading={loading}
+                readOnly={readOnly}
                 onViewProfile={(id) => {
                   const basePath = location.pathname.split('/')[1];
                   navigate(`/${basePath}/students/profile/${id}`);

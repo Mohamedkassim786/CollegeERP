@@ -29,7 +29,7 @@ import { saveAs } from "file-saver";
 import CustomSelect from "../../../components/CustomSelect";
 import SkeletonLoader from '../../../components/SkeletonLoader';
 
-const FacultyManager = () => {
+const FacultyManager = ({ readOnly = false }) => {
     const navigate = useNavigate();
     const [view, setView] = useState('depts'); // 'depts' | 'stafflist'
     const [selectedDept, setSelectedDept] = useState(null);
@@ -144,6 +144,7 @@ const FacultyManager = () => {
                     onAddFaculty={() => { setModalRole('FACULTY'); setEditingStaff(null); setShowStaffModal(true); }}
                     onAddHOD={() => { setModalRole('HOD'); setEditingStaff(null); setShowStaffModal(true); }}
                     onBulkUpload={() => setShowBulkModal(true)}
+                    readOnly={readOnly}
                 />
             ) : (
                 <StaffListView 
@@ -168,6 +169,7 @@ const FacultyManager = () => {
                         fetchDailySchedule(staff.id, viewDate);
                         setShowAbsenceModal(true);
                     }}
+                    readOnly={readOnly}
                 />
             )}
 
@@ -212,13 +214,14 @@ const FacultyManager = () => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // VIEW 1: DEPARTMENT CARDS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const DepartmentView = ({ departments, staffCountMap, onViewStaff, onAddFaculty, onAddHOD, onBulkUpload }) => (
+const DepartmentView = ({ departments, staffCountMap, onViewStaff, onAddFaculty, onAddHOD, onBulkUpload, readOnly }) => (
     <div className="space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
                 <h1 className="text-4xl font-black text-[#003B73] tracking-tighter">Personnel Hub</h1>
                 <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.3em] mt-1">MIET Administrative Control</p>
             </div>
+            {!readOnly && (
             <div className="flex flex-wrap gap-3">
                 <button onClick={onBulkUpload} className="px-6 py-3.5 bg-gray-50 text-[#003B73] rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-gray-100 transition-all border border-gray-100 shadow-sm">
                     <Upload size={18} /> Bulk Load
@@ -229,6 +232,7 @@ const DepartmentView = ({ departments, staffCountMap, onViewStaff, onAddFaculty,
                     </button>
                 </div>
             </div>
+            )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
@@ -281,7 +285,7 @@ const DepartmentCard = ({ dept, onViewStaff, staffCount }) => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SPOTLIGHT BANNER COMPONENT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const SpotlightBanner = ({ staff, type, absent, onViewProfile, onManageAbsence, onEdit }) => {
+const SpotlightBanner = ({ staff, type, absent, onViewProfile, onManageAbsence, onEdit, readOnly }) => {
     const isFYC = type === 'FYC';
     const accentColor = isFYC ? 'from-violet-400 to-indigo-600' : 'from-amber-500 to-orange-600';
     const bgGradient = absent ? 'from-red-400 to-red-600' : (isFYC ? 'from-[#1E1B4B] via-[#312E81] to-[#4338CA]' : 'from-[#0F172A] via-[#1E293B] to-[#334155]');
@@ -347,6 +351,7 @@ const SpotlightBanner = ({ staff, type, absent, onViewProfile, onManageAbsence, 
                     >
                         Profile
                     </button>
+                    {!readOnly && (
                     <div className="flex gap-4">
                         <button 
                             onClick={() => onManageAbsence(staff)}
@@ -361,6 +366,7 @@ const SpotlightBanner = ({ staff, type, absent, onViewProfile, onManageAbsence, 
                             <Edit3 size={20} className="mx-auto" />
                         </button>
                     </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -370,7 +376,7 @@ const SpotlightBanner = ({ staff, type, absent, onViewProfile, onManageAbsence, 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // VIEW 2: STAFF LIST
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, facultyList, onAddFaculty, onAddHOD, onEdit, onDelete, onViewProfile, onManageAbsence }) => {
+const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, facultyList, onAddFaculty, onAddHOD, onEdit, onDelete, onViewProfile, onManageAbsence, readOnly }) => {
     const hod = facultyList.find(f => f.computedRoles && f.computedRoles.includes('HOD'));
     const fyc = facultyList.find(f => f.computedRoles && f.computedRoles.includes('FIRST_YEAR_COORDINATOR'));
     const faculty = facultyList.filter(f => 
@@ -401,11 +407,13 @@ const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, 
                     </div>
                 </div>
 
+                {!readOnly && (
                 <div className="flex gap-3">
                     <button onClick={onAddFaculty} className="px-5 py-3 bg-[#003B73] text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2">
                         <UserPlus size={18} /> Add Faculty
                     </button>
                 </div>
+                )}
             </div>
 
             {/* SPOTLIGHT SECTION */}
@@ -506,11 +514,13 @@ const StaffListView = ({ dept, viewDate, setViewDate, absentFacultyIds, onBack, 
                                         >
                                             View Full Profile
                                         </button>
+                                        {!readOnly && (
                                         <div className="flex items-center bg-gray-50/50 p-1 rounded-2xl border border-gray-100">
                                             <button onClick={() => onEdit(f)} className="p-3 text-gray-400 hover:text-[#003B73] hover:bg-white rounded-xl transition-all"><Edit3 size={18} /></button>
                                             <button onClick={() => onManageAbsence(f)} className="p-3 text-gray-400 hover:text-amber-600 hover:bg-white rounded-xl transition-all"><CalendarX size={18} /></button>
                                             <button onClick={() => onDelete(f.id)} className="p-3 text-gray-400 hover:text-red-500 hover:bg-white rounded-xl transition-all"><Trash2 size={18} /></button>
                                         </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

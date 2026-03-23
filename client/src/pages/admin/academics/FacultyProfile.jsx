@@ -317,7 +317,7 @@ const FacultyProfile = () => {
                                         <thead>
                                             <tr>
                                                 <th className="p-4 bg-gray-50 border border-gray-100 font-black text-[10px] text-gray-400 uppercase tracking-widest">Day / Period</th>
-                                                {[1, 2, 3, 4, 5, 6].map(p => (
+                                                {[1, 2, 3, 4, 5, 6, 7, 8].map(p => (
                                                     <th key={p} className="p-4 bg-gray-50 border border-gray-100 font-black text-[10px] text-gray-400 uppercase tracking-widest">P{p}</th>
                                                 ))}
                                             </tr>
@@ -328,8 +328,8 @@ const FacultyProfile = () => {
                                                 return (
                                                     <tr key={dayId}>
                                                         <td className="p-4 bg-gray-50 border border-gray-100 font-black text-[10px] text-[#003B73] text-center">{dayName}</td>
-                                                        {[1, 2, 3, 4, 5, 6].map(period => {
-                                                            const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+                                                        {[1, 2, 3, 4, 5, 6, 7, 8].map(period => {
+                                                            const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
                                                             const entry = timetable.find(t => t.day?.toUpperCase() === days[dayId - 1] && t.period === period);
                                                             return (
                                                                 <td key={period} className="p-4 border border-gray-100 text-center group hover:bg-blue-50/50 transition-colors">

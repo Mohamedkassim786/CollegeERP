@@ -42,7 +42,8 @@ const runAttendanceCheck = async () => {
             include: {
                 faculty: {
                     select: { id: true, fullName: true, department: true }
-                }
+                },
+                subject: true
             }
         });
 
@@ -116,6 +117,38 @@ const runAttendanceCheck = async () => {
 
             notificationsCreated++;
             logger.warn(`Alert: ${faculty.fullName} (${faculty.department}) missed attendance on ${dayName}`);
+
+            // NEW: Notify First Year Coordinator if any missed subject is 1st year
+            const entriesForFac = timetableEntries.filter(e => e.facultyId === facultyId);
+            const hasFYSubject = entriesForFac.some(e => e.subject?.semester === 1 || e.subject?.semester === 2);
+
+            if (hasFYSubject) {
+                const fycSetting = await prisma.systemSetting.findUnique({ where: { key: 'FIRST_YEAR_COORDINATOR_ID' } });
+                if (fycSetting && fycSetting.value) {
+                    const fycId = parseInt(fycSetting.value);
+                    if (fycId !== hod.id) { // Don't notify twice if HOD is also Coordinator
+                        const existingFYCAlert = await prisma.notification.findFirst({
+                            where: {
+                                hodId: fycId,
+                                facultyId,
+                                createdAt: { gte: startOfDay, lte: endOfDay },
+                                type: 'ATTENDANCE_MISSING'
+                            }
+                        });
+
+                        if (!existingFYCAlert) {
+                            await prisma.notification.create({
+                                data: {
+                                    hodId: fycId,
+                                    facultyId,
+                                    message: `${faculty.fullName || 'A faculty'} has not submitted attendance for ${dayName} (1st Year).`,
+                                    type: 'ATTENDANCE_MISSING'
+                                }
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         logger.info(`Attendance check complete. ${notificationsCreated} alerts created.`);

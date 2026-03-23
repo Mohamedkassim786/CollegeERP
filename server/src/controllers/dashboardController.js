@@ -30,12 +30,16 @@ const getPrincipalDashboard = async (req, res) => {
 
         const totalStudents = await prisma.student.count({ where: { status: 'ACTIVE' } });
         const totalArrears = await prisma.arrear.count({ where: { isCleared: false } });
+        const totalFaculty = await prisma.faculty.count();
+        const totalDepartments = departments.length;
 
         res.json({
             deptStats,
             overallStats: {
                 totalStudents,
-                totalArrears
+                totalArrears,
+                totalFaculty,
+                totalDepartments
             }
         });
     } catch (error) {
@@ -49,8 +53,11 @@ const getHODDashboard = async (req, res) => {
         let department = req.user.department;
         let departmentId = req.user.departmentId;
 
+        const computedRoles = req.user.computedRoles || [];
+        const isFYC = computedRoles.includes('FIRST_YEAR_COORDINATOR');
+
         // Fallback for identification if not in JWT
-        if (!department || !departmentId) {
+        if (!isFYC && (!department || !departmentId)) {
             const hod = await prisma.faculty.findUnique({
                 where: { id: userId },
                 select: { department: true, departmentId: true }
@@ -59,13 +66,25 @@ const getHODDashboard = async (req, res) => {
             departmentId = departmentId || hod?.departmentId;
         }
 
-        if (!department && !departmentId) {
+        if (!isFYC && !department && !departmentId) {
             return res.status(403).json({ message: "HOD department not identified" });
         }
 
         // Use ID-based filtering if available, fallback to string-based for legacy
-        const studentWhere = departmentId ? { departmentId } : { department };
-        const facultyWhere = departmentId ? { departmentId } : { department };
+        let studentWhere = departmentId ? { departmentId } : { department };
+        let facultyWhere = departmentId ? { departmentId } : { department };
+
+        if (isFYC) {
+            department = "1st Year Control";
+            studentWhere = { year: 1 };
+            // For faculty, we find those who are teaching first-year subjects (sem 1 or 2)
+            const fyAssignments = await prisma.facultyAssignment.findMany({
+                where: { subject: { semester: { in: [1, 2] } } },
+                select: { facultyId: true }
+            });
+            const fyFacultyIds = [...new Set(fyAssignments.map(a => a.facultyId))];
+            facultyWhere = { id: { in: fyFacultyIds } };
+        }
 
         const facultyMembers = await prisma.faculty.findMany({
             where: { ...facultyWhere, isActive: true },
@@ -84,7 +103,7 @@ const getHODDashboard = async (req, res) => {
         })).sort((a,b) => b.count - a.count).slice(0, 5);
 
         // Attendance by Year
-        const years = [1, 2, 3, 4];
+        const years = isFYC ? [1] : [1, 2, 3, 4];
         const attendanceByYear = await Promise.all(years.map(async (year) => {
             const records = await prisma.studentAttendance.findMany({
                 where: { 

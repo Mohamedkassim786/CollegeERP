@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AuthContext from '../../context/AuthProvider';
 import { 
     Users, BookOpen, Clock, Activity, FileCheck, 
     ArrowRight, UserCheck, ShieldCheck
@@ -15,6 +16,7 @@ const AnimatedValue = ({ value }) => {
 
 const HODDashboard = () => {
     const navigate = useNavigate();
+    const { auth } = useContext(AuthContext);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -35,12 +37,14 @@ const HODDashboard = () => {
 
     if (loading) return <SkeletonLoader type="dashboard" />;
 
+    const isFYC = auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR');
+
     return (
         <div className="space-y-8 animate-fadeIn">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-3xl font-black text-[#003B73] tracking-tight">Department Portal</h2>
-                    <p className="text-gray-500 font-bold text-sm mt-1 uppercase tracking-widest">Head of Department Panel</p>
+                    <h2 className="text-3xl font-black text-[#003B73] tracking-tight">{isFYC ? '1st Year Portal' : 'Department Portal'}</h2>
+                    <p className="text-gray-500 font-bold text-sm mt-1 uppercase tracking-widest">{isFYC ? 'First Year Coordinator Panel' : 'Head of Department Panel'}</p>
                 </div>
                 <div className="flex gap-4">
                     <button className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-100">Dept Reports</button>

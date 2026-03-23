@@ -180,8 +180,24 @@ export const externalStaffMenu = [
 
 // ─── FIRST YEAR COORDINATOR MENU ─────────────────────────────────────────────
 export const firstYearCoordinatorMenu = [
-    { key: 'first-year-dashboard', label: '1st Year Overview', path: '/faculty', icon: LayoutDashboard }, // Fallbacks to faculty dashboard for now
-    { key: 'first-year-students', label: '1st Year Students', path: '/faculty/classes', icon: Users },
+    { key: 'hod-db',   label: 'Dashboard',     path: '/hod',                 icon: LayoutDashboard },
+    { key: 'hod-dept', label: 'My Department',  icon: Building2, isGroup: true, children: [
+        { key: 'hod-fac',   label: 'Faculty Overview', path: '/hod/faculty',         icon: GraduationCap },
+        { key: 'hod-stu',   label: 'Student Overview', path: '/hod/students',        icon: Users },
+        { key: 'hod-att',   label: 'Dept Attendance',  path: '/hod/dept-attendance', icon: Activity },
+        { key: 'hod-notif', label: 'Notifications',    path: '/hod/notifications',   icon: Bell },
+        { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
+    ]},
+    { key: 'hod-teach', label: 'My Teaching', icon: BookOpen, isGroup: true, children: [
+        { key: 'hod-tt',  label: 'My Timetable',   path: '/hod/timetable',   icon: Calendar },
+        { key: 'hod-at',  label: 'Attendance',      path: '/hod/attendance',  icon: UserCheck },
+        { key: 'hod-mk',  label: 'Enter CIA Marks', path: '/hod/marks',       icon: Award },
+        { key: 'hod-rs',  label: 'View Results',    path: '/hod/results',     icon: CheckCircle },
+        { key: 'hod-cl',  label: 'My Classes',      path: '/hod/classes',     icon: Users },
+        { key: 'hod-mt',  label: 'Materials',       path: '/hod/materials',   icon: Book },
+    ]},
+    { key: 'hod-ann',  label: 'Announcements', path: '/hod/announcements',   icon: Bell },
+    { key: 'hod-set',  label: 'Settings',       path: '/hod/settings',        icon: SettingsIcon },
 ];
 
 // ─── MENU SELECTOR MAP ────────────────────────────────────────────────────────

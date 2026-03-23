@@ -20,15 +20,22 @@ const HODStudentOverview = () => {
                 const res = await api.get('/admin/students');
                 const myDept = auth?.department;
                 const myDeptId = auth?.departmentId;
+                const isFYC = auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR');
 
-                const deptStudents = (res.data || []).filter(s => {
-                    if (myDeptId && s.departmentId) {
-                        return s.departmentId == myDeptId; // Loose equality
-                    }
-                    const studentDept = s.department?.trim().toLowerCase();
-                    const userDept = myDept?.trim().toLowerCase();
-                    return studentDept === userDept;
-                });
+                let deptStudents = res.data || [];
+                
+                if (!isFYC) {
+                    deptStudents = deptStudents.filter(s => {
+                        if (myDeptId && s.departmentId) {
+                            return s.departmentId == myDeptId; // Loose equality
+                        }
+                        const studentDept = s.department?.trim().toLowerCase();
+                        const userDept = myDept?.trim().toLowerCase();
+                        return studentDept === userDept;
+                    });
+                } else {
+                    deptStudents = deptStudents.filter(s => s.year === 1);
+                }
                 setStudents(deptStudents);
                 setFiltered(deptStudents);
             } catch (err) {
@@ -38,7 +45,7 @@ const HODStudentOverview = () => {
             }
         };
         fetchStudents();
-    }, [auth?.department, auth?.departmentId]);
+    }, [auth?.department, auth?.departmentId, auth?.computedRoles]);
 
     useEffect(() => {
         let result = students;
@@ -69,7 +76,7 @@ const HODStudentOverview = () => {
             <div>
                 <h2 className="text-3xl font-black text-[#003B73] tracking-tight">Student Overview</h2>
                 <p className="text-gray-500 font-bold text-sm mt-1 uppercase tracking-widest">
-                    {auth?.department} — {students.length} Students
+                    {auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR') ? 'All 1st Year Students' : auth?.department} — {students.length} Students
                 </p>
             </div>
 

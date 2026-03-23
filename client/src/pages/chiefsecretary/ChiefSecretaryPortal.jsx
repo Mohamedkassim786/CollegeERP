@@ -7,6 +7,11 @@ import Header from '../../components/Header';
 import ChiefSecretaryDashboard from './Dashboard';
 import StudentManager from '../admin/academics/StudentManager';
 import StudentProfile from '../admin/academics/StudentProfile';
+import FacultyManager from '../admin/academics/FacultyManager';
+import FacultyProfile from '../admin/academics/FacultyProfile';
+import AttendanceEligibility from '../admin/examination/AttendanceEligibility';
+import AdminMarksApproval from '../admin/examination/AdminMarksApproval';
+import ResultsConsolidation from '../admin/examination/ResultsConsolidation';
 import Settings from '../shared/Settings';
 
 const ComingSoon = ({ title }) => (
@@ -37,9 +42,11 @@ const ChiefSecretaryPortal = () => {
                         <Route path="/" element={<ChiefSecretaryDashboard />} />
                         <Route path="/students" element={<StudentManager readOnly={true} />} />
                         <Route path="/students/profile/:id" element={<StudentProfile readOnly={true} />} />
-                        <Route path="/eligibility" element={<ComingSoon title="Institutional Eligibility" />} />
-                        <Route path="/approvals" element={<ComingSoon title="Pending Approvals" />} />
-                        <Route path="/results" element={<ComingSoon title="Results Insights" />} />
+                        <Route path="/faculty" element={<FacultyManager readOnly={true} />} />
+                        <Route path="/faculty/:id" element={<FacultyProfile readOnly={true} />} />
+                        <Route path="/eligibility" element={<AttendanceEligibility readOnly={true} />} />
+                        <Route path="/approvals" element={<AdminMarksApproval readOnly={true} />} />
+                        <Route path="/results" element={<ResultsConsolidation readOnly={true} />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="*" element={<Navigate to="/chief-secretary" replace />} />
                     </Routes>

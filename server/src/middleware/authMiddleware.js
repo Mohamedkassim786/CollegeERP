@@ -42,12 +42,24 @@ const isChiefSecretary = (req, res, next) => {
 };
 
 const isHod = (req, res, next) => {
-    if (req.user && (req.user.role === ROLES.HOD || req.user.role === ROLES.ADMIN)) return next();
+    const computedRoles = req.user?.computedRoles || [];
+    if (req.user && (
+        req.user.role === ROLES.HOD || 
+        req.user.role === ROLES.ADMIN || 
+        computedRoles.includes(ROLES.FIRST_YEAR_COORDINATOR)
+    )) return next();
     return res.status(403).json({ message: 'Require HOD Role' });
 };
 
 const isFaculty = (req, res, next) => {
-    if (req.user && (req.user.role === ROLES.FACULTY || req.user.role === ROLES.HOD || req.user.role === ROLES.ADMIN)) return next();
+    const computedRoles = req.user?.computedRoles || [];
+    if (req.user && (
+        req.user.role === ROLES.FACULTY || 
+        req.user.role === ROLES.HOD || 
+        req.user.role === ROLES.ADMIN ||
+        req.user.role === ROLES.FIRST_YEAR_COORDINATOR ||
+        computedRoles.includes(ROLES.FIRST_YEAR_COORDINATOR)
+    )) return next();
     return res.status(403).json({ message: 'Require Faculty Role' });
 };
 
@@ -62,8 +74,23 @@ const isStudent = (req, res, next) => {
 };
 
 const isFirstYearCoordinator = (req, res, next) => {
-    if (req.user && (req.user.role === ROLES.FIRST_YEAR_COORDINATOR || req.user.role === ROLES.ADMIN)) return next();
+    const computedRoles = req.user?.computedRoles || [];
+    if (req.user && (
+        req.user.role === ROLES.FIRST_YEAR_COORDINATOR || 
+        req.user.role === ROLES.ADMIN ||
+        computedRoles.includes(ROLES.FIRST_YEAR_COORDINATOR)
+    )) return next();
     return res.status(403).json({ message: 'Require First Year Coordinator Role' });
+};
+
+const canReadAdminData = (req, res, next) => {
+    const computedRoles = req.user?.computedRoles || [];
+    const allowed = [ROLES.ADMIN, ROLES.PRINCIPAL, ROLES.CHIEF_SECRETARY, ROLES.HOD, ROLES.FIRST_YEAR_COORDINATOR];
+    if (req.user && (
+        allowed.includes(req.user.role) ||
+        computedRoles.some(r => allowed.includes(r))
+    )) return next();
+    return res.status(403).json({ message: 'Read Access Denied' });
 };
 
 module.exports = { 
@@ -76,6 +103,7 @@ module.exports = {
     isExternal, 
     isStudent,
     isFirstYearCoordinator,
+    canReadAdminData,
     checkFirstLogin: (req, res, next) => {
         if (req.user && req.user.isFirstLogin && req.user.role !== ROLES.ADMIN) {
             return res.status(403).json({ 

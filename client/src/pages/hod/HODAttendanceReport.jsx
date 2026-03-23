@@ -96,9 +96,13 @@ const HODAttendanceReport = () => {
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Semester</label>
                     <CustomSelect value={semester} onChange={e => setSemester(e.target.value)}>
                         <option value="">Select Semester</option>
-                        {(SEMESTER_OPTIONS[deptInfo?.degree || 'B.E.'] || [1, 2, 3, 4, 5, 6, 7, 8]).map(s => (
-                            <option key={s} value={s}>Semester {s}</option>
-                        ))}
+                        {(() => {
+                            const isFYC = auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR');
+                            const options = isFYC ? [1, 2] : (SEMESTER_OPTIONS[deptInfo?.degree || 'B.E.'] || [1, 2, 3, 4, 5, 6, 7, 8]);
+                            return options.map(s => (
+                                <option key={s} value={s}>Semester {s}</option>
+                            ));
+                        })()}
                     </CustomSelect>
                 </div>
                 <div>

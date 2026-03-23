@@ -34,30 +34,31 @@ async function main() {
   console.log('✓ MECH Department ensured');
 
   // 2. Academic Year
-  const ay = await prisma.academicYear.upsert({
-    where: { id: 1 }, // Assuming ID 1 or just find by year
-    create: {
-      year: '2023-2024',
-      isActive: true
-    },
-    update: {
-      isActive: true
+  const yearStr = '2025-2026';
+  
+  // Use a transaction to ensure only one year is active
+  const activeAY = await prisma.$transaction(async (tx) => {
+    // Deactivate all existing years
+    await tx.academicYear.updateMany({
+      where: { isActive: true },
+      data: { isActive: false }
+    });
+
+    // Upsert the desired year as active
+    const year = await tx.academicYear.findFirst({ where: { year: yearStr } });
+    if (year) {
+      return await tx.academicYear.update({
+        where: { id: year.id },
+        data: { isActive: true }
+      });
+    } else {
+      return await tx.academicYear.create({
+        data: { year: yearStr, isActive: true }
+      });
     }
   });
-  // Since year might not be unique in schema (it's not marked @unique), we use findFirst or similar if upsert by ID is not reliable.
-  // Actually, schema says "year String" (no unique). Let's just find or create.
-  let activeAY = await prisma.academicYear.findFirst({ where: { year: '2023-2024' } });
-  if (!activeAY) {
-    activeAY = await prisma.academicYear.create({
-      data: { year: '2023-2024', isActive: true }
-    });
-  } else {
-    await prisma.academicYear.update({
-      where: { id: activeAY.id },
-      data: { isActive: true }
-    });
-  }
-  console.log('✓ Academic Year 2023-2024 set as active');
+
+  console.log(`✓ Academic Year ${yearStr} set as active`);
 
   // 3. Sections
   // CSE 1st Year Sem 2 Section A

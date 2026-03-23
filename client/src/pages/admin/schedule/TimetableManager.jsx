@@ -783,7 +783,7 @@ const TimetableManager = () => {
               </div>
             </div>
 
-            <div className="hidden space-y-3">
+            <div className="space-y-3">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">
                 Semester
               </label>

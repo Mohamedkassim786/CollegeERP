@@ -14,23 +14,31 @@ const HODFacultyOverview = () => {
     useEffect(() => {
         const fetchFaculty = async () => {
             try {
+                const isFYC = auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR');
                 const myDeptId = auth?.departmentId;
-                const res = await api.get(`/admin/faculty${myDeptId ? `?departmentId=${myDeptId}` : ''}`);
+                
+                let url = '/admin/faculty';
+                if (isFYC) url += '?isFirstYear=true';
+                else if (myDeptId) url += `?departmentId=${myDeptId}`;
+
+                const res = await api.get(url);
                 const myDept = auth?.department;
 
-                const deptFaculty = (res.data || []).filter(f => {
-                    // Filter by ID if available (robust)
-                    if (myDeptId && f.departmentId) {
-                        return f.departmentId == myDeptId; // Loose equality for string/number mismatch
-                    }
-                    // Fallback to name-based filtering with trimming and case-insensitivity
-                    const facultyDept = f.department?.trim().toLowerCase();
-                    const userDept = myDept?.trim().toLowerCase();
-                    return facultyDept === userDept;
-                });
-                setFacultyList(deptFaculty); // Assuming setFacultyList is the correct setter for the main list
-                // If setFiltered is intended for a separate state, it needs to be declared.
-                // For now, I'm assuming the instruction meant to update the primary list.
+                let deptFaculty = res.data || [];
+
+                if (!isFYC) {
+                    deptFaculty = deptFaculty.filter(f => {
+                        // Filter by ID if available (robust)
+                        if (myDeptId && f.departmentId) {
+                            return f.departmentId == myDeptId; // Loose equality for string/number mismatch
+                        }
+                        // Fallback to name-based filtering with trimming and case-insensitivity
+                        const facultyDept = f.department?.trim().toLowerCase();
+                        const userDept = myDept?.trim().toLowerCase();
+                        return facultyDept === userDept;
+                    });
+                }
+                setFacultyList(deptFaculty);
             } catch (err) {
                 console.error('Failed to load faculty', err);
             } finally {
@@ -38,7 +46,7 @@ const HODFacultyOverview = () => {
             }
         };
         fetchFaculty();
-    }, [auth?.department, auth?.departmentId]);
+    }, [auth?.department, auth?.departmentId, auth?.computedRoles]);
 
 
     if (loading) return (
@@ -52,7 +60,7 @@ const HODFacultyOverview = () => {
             <div>
                 <h2 className="text-3xl font-black text-[#003B73] tracking-tight">Faculty Overview</h2>
                 <p className="text-gray-500 font-bold text-sm mt-1 uppercase tracking-widest">
-                    {auth?.department} Department — {facultyList.length} Staff Members
+                    {auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR') ? 'All 1st Year Teaching Staff' : `${auth?.department} Department`} — {facultyList.length} Staff Members
                 </p>
             </div>
 
@@ -60,7 +68,7 @@ const HODFacultyOverview = () => {
                 <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-xl">
                     <GraduationCap size={64} className="mx-auto text-gray-200 mb-4" />
                     <p className="text-xl font-black text-gray-300 uppercase tracking-widest">No Faculty Found</p>
-                    <p className="text-gray-400 mt-2 font-medium">No faculty assigned to {auth?.department} yet.</p>
+                    <p className="text-gray-400 mt-2 font-medium">No faculty assigned to {auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR') ? '1st Year subjects' : auth?.department} yet.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

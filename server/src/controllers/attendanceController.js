@@ -324,12 +324,20 @@ const getDepartmentAttendanceReport = async (req, res) => {
 
         const semInt = parseInt(semester);
 
+        let subjectWhere = {
+            semester: semInt,
+            OR: [{ department }, { type: 'COMMON' }]
+        };
+
+        if (semInt === 1 || semInt === 2) {
+            subjectWhere.OR.push({ department: 'GEN' });
+            subjectWhere.OR.push({ department: 'S&H' });
+            subjectWhere.OR.push({ department: 'Science and Humanities' });
+        }
+
         // Get subjects for this dept+semester
         const subjects = await prisma.subject.findMany({
-            where: {
-                semester: semInt,
-                OR: [{ department }, { type: 'COMMON' }]
-            },
+            where: subjectWhere,
             orderBy: { code: 'asc' }
         });
 

@@ -143,9 +143,11 @@ const AttendanceEligibility = () => {
                         <CustomSelect value={filters.semester} onChange={e => setFilters(f => ({ ...f, semester: e.target.value }))}>
                             <option value="">Select...</option>
                             {(() => {
+                                const isFYC = auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR');
                                 const dept = departments.find(d => (d.code || d.name) === filters.department);
                                 const degree = dept?.degree || 'B.E.';
-                                return (SEMESTER_OPTIONS[degree] || [1, 2, 3, 4, 5, 6, 7, 8]).map(s => (
+                                const options = isFYC ? [1, 2] : (SEMESTER_OPTIONS[degree] || [1, 2, 3, 4, 5, 6, 7, 8]);
+                                return options.map(s => (
                                     <option key={s} value={s}>Sem {s}</option>
                                 ));
                             })()}

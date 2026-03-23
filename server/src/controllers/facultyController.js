@@ -624,13 +624,23 @@ const exportClassAttendanceExcel = async (req, res) => {
 
 const getFaculties = async (req, res) => {
     try {
-        const { role, departmentId } = req.query;
+        const { role, departmentId, isFirstYear } = req.query;
+        let where = { isActive: true };
+        if (role) where.role = role;
+        if (departmentId) where.departmentId = parseInt(departmentId);
+
+        if (isFirstYear === 'true') {
+            const fyAssignments = await prisma.facultyAssignment.findMany({
+                where: { subject: { semester: { in: [1, 2] } } },
+                select: { facultyId: true }
+            });
+            const fyFacultyIds = [...new Set(fyAssignments.map(a => a.facultyId))];
+            where.id = { in: fyFacultyIds };
+            delete where.departmentId; // Coordinator sees across departments
+        }
+
         const facultyList = await prisma.faculty.findMany({
-            where: {
-                isActive: true, // only active
-                ...(role && { role }),
-                ...(departmentId && { departmentId: parseInt(departmentId) })
-            },
+            where,
             orderBy: { fullName: 'asc' },
             select: {
                 id: true, staffId: true, fullName: true, department: true, departmentId: true,
@@ -664,6 +674,11 @@ const getFaculties = async (req, res) => {
 
 const getFacultyProfile = async (req, res) => {
     const { id } = req.params;
+    const requesterId = req.user.id;
+    const requesterRole = req.user.role;
+    const computedRoles = req.user.computedRoles || [];
+    const isFYC = computedRoles.includes('FIRST_YEAR_COORDINATOR');
+
     try {
         const faculty = await prisma.faculty.findUnique({
             where: { id: parseInt(id) },
@@ -675,6 +690,23 @@ const getFacultyProfile = async (req, res) => {
         if (!faculty) return res.status(404).json({ message: 'Faculty not found' });
         
         const { password, ...safeFaculty } = faculty;
+
+        // Privacy Control for First Year Coordinator
+        if (isFYC && requesterRole !== 'ADMIN') {
+            const isSelf = faculty.id === requesterId;
+            const isSameDept = faculty.departmentId === req.user.departmentId;
+
+            if (!isSelf && !isSameDept) {
+                // Redact sensitive personal info for faculty from other departments
+                delete safeFaculty.address;
+                delete safeFaculty.dateOfBirth;
+                delete safeFaculty.bloodGroup;
+                delete safeFaculty.phone;
+                delete safeFaculty.email;
+                safeFaculty.isRedacted = true;
+            }
+        }
+
         res.json(safeFaculty);
     } catch (error) {
         handleError(res, error, "Failed to get faculty profile");

@@ -37,13 +37,13 @@ const HODPortal = () => {
     }, []);
 
     // Wait for assignments to load before rendering sidebar
-    // This prevents sidebar flicker from HOD → HOD_WITH_SUBJECTS
     const hasAssignments = assignedSubjects.length > 0;
-    const sidebarRole = loadingAssignments ? 'HOD' : (hasAssignments ? 'HOD_WITH_SUBJECTS' : 'HOD');
+    const isFYC = auth?.computedRoles?.includes('FIRST_YEAR_COORDINATOR');
+    const sidebarRole = isFYC ? 'FIRST_YEAR_COORDINATOR' : (loadingAssignments ? 'HOD' : (hasAssignments ? 'HOD_WITH_SUBJECTS' : 'HOD'));
 
     return (
         <div className="flex h-screen bg-gray-50">
-            <Sidebar role={loadingAssignments ? 'HOD' : (hasAssignments ? 'HOD_WITH_SUBJECTS' : 'HOD')} />
+            <Sidebar role={sidebarRole} />
             <div className="flex-1 flex flex-col ml-64 transition-all duration-300">
                 <Header title="HOD Portal" />
                 <main className="flex-1 p-8 mt-24 overflow-y-auto animate-fadeIn">

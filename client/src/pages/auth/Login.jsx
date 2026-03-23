@@ -33,13 +33,19 @@ const Login = () => {
         return;
       }
 
+      const isHodPortal = user.role === "HOD" || 
+                          user.computedRoles?.includes("HOD") || 
+                          user.computedRoles?.includes("FIRST_YEAR_COORDINATOR");
+
       if (user.role === "ADMIN") {
         target = "/admin";
       } else if (user.role === "EXTERNAL_STAFF") {
         target = "/external";
       } else if (user.role === "PRINCIPAL") {
         target = "/principal";
-      } else if (user.role === "HOD" || (user.computedRoles && user.computedRoles.includes("HOD"))) {
+      } else if (user.role === "CHIEF_SECRETARY") {
+        target = "/chief-secretary";
+      } else if (isHodPortal) {
         target = "/hod";
       } else if (user.role === "STUDENT") {
         target = "/student";

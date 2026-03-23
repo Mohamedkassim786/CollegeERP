@@ -9,7 +9,10 @@ const ProtectedRoute = ({ allowedRoles }) => {
         return <Navigate to="/" replace />;
     }
 
-    if (allowedRoles && !allowedRoles.includes(auth.role)) {
+    const userRoles = [auth.role, ...(auth.computedRoles || [])];
+    const hasAccess = !allowedRoles || allowedRoles.some(role => userRoles.includes(role));
+
+    if (!hasAccess) {
         return <Navigate to="/unauthorized" replace />;
     }
 

@@ -10,7 +10,8 @@ const StudentTable = ({
   loading,
   onViewProfile,
   onEdit,
-  onDelete
+  onDelete,
+  readOnly = false
 }) => {
   if (loading) {
     return (
@@ -131,20 +132,24 @@ const StudentTable = ({
                     >
                       <User size={14} />
                     </button>
-                    <button
-                      onClick={() => onEdit(s)}
-                      className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                      title="Edit"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(s)}
-                      className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {!readOnly && (
+                      <>
+                        <button
+                          onClick={() => onEdit(s)}
+                          className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                          title="Edit"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => onDelete(s)}
+                          className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

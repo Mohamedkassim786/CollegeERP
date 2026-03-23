@@ -7265,3 +7265,271 @@ TypeError: Cannot read properties of undefined (reading 'map')
 [2026-03-20T11:32:43.681Z] [INFO] - Local:   http://localhost:3000
 [2026-03-20T11:32:43.681Z] [INFO] - Network: http://192.168.137.1:3000
 [2026-03-20T11:32:43.781Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T03:49:06.744Z] [INFO] Server running on:
+[2026-03-23T03:49:06.761Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T03:49:06.745Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T03:49:06.745Z] [INFO] - Network: http://169.254.238.119:3000
+[2026-03-23T03:50:50.385Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T03:57:06.289Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T03:57:29.861Z] [INFO] Server running on:
+[2026-03-23T03:57:29.862Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T03:57:29.862Z] [INFO] - Network: http://169.254.238.119:3000
+[2026-03-23T03:57:29.878Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T03:57:51.412Z] [INFO] Server running on:
+[2026-03-23T03:57:51.413Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T03:57:51.429Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T03:57:51.414Z] [INFO] - Network: http://169.254.238.119:3000
+[2026-03-23T03:58:05.725Z] [INFO] Server running on:
+[2026-03-23T03:58:05.726Z] [INFO] - Network: http://169.254.238.119:3000
+[2026-03-23T03:58:05.741Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T03:58:05.726Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T03:59:25.688Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T03:59:54.998Z] [WARN] Failed login attempt: admin
+[2026-03-23T04:00:17.155Z] [WARN] Failed login attempt: admin
+[2026-03-23T04:01:30.894Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T04:01:54.604Z] [INFO] Faculty Login: MECH_FAC001 (Roles: FACULTY)
+[2026-03-23T04:03:26.297Z] [WARN] Failed login attempt: admin
+[2026-03-23T04:03:55.144Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T04:05:42.760Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T04:06:11.593Z] [WARN] Failed login attempt: 23MECH001
+[2026-03-23T04:06:27.506Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T04:07:28.390Z] [INFO] Student Login: 23MECH002 (MECH)
+[2026-03-23T04:09:24.825Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T04:12:52.220Z] [INFO] Server running on:
+[2026-03-23T04:12:52.221Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T04:12:52.221Z] [INFO] - Network: http://169.254.238.119:3000
+[2026-03-23T04:12:52.236Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T04:13:56.397Z] [INFO] Server running on:
+[2026-03-23T04:13:56.398Z] [INFO] - Network: http://169.254.238.119:3000
+[2026-03-23T04:13:56.398Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T04:13:56.413Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T04:14:05.139Z] [INFO] Server running on:
+[2026-03-23T04:14:05.140Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T04:14:05.156Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T04:14:05.140Z] [INFO] - Network: http://169.254.238.119:3000
+[2026-03-23T05:06:24.436Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T05:21:49.875Z] [INFO] Server running on:
+[2026-03-23T05:21:49.876Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:21:49.892Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:21:49.876Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:24:14.121Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:24:14.121Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:24:14.136Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:24:14.120Z] [INFO] Server running on:
+[2026-03-23T05:24:28.196Z] [INFO] Server running on:
+[2026-03-23T05:24:28.197Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:24:28.212Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:24:28.198Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:24:41.271Z] [INFO] Server running on:
+[2026-03-23T05:24:41.272Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:24:41.287Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:24:41.272Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:24:53.665Z] [INFO] Server running on:
+[2026-03-23T05:24:53.666Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:24:53.681Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:24:53.666Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:25:07.577Z] [INFO] Server running on:
+[2026-03-23T05:25:07.593Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:25:07.578Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:25:07.578Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:25:21.380Z] [INFO] Server running on:
+[2026-03-23T05:25:21.381Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:25:21.381Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:25:21.396Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:25:51.667Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:26:17.326Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:26:33.894Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:26:51.522Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:27:31.968Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:27:42.144Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T05:30:17.828Z] [INFO] Server running on:
+[2026-03-23T05:30:17.829Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:30:17.844Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:30:17.829Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:41:44.691Z] [INFO] Server running on:
+[2026-03-23T05:41:44.691Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:41:44.692Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:41:44.707Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:42:44.054Z] [INFO] Server running on:
+[2026-03-23T05:42:44.055Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:42:44.070Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:42:44.055Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:43:20.699Z] [INFO] Server running on:
+[2026-03-23T05:43:20.715Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:43:20.700Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:43:20.700Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:50:24.942Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:50:40.886Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:51:30.137Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:52:53.360Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:53:09.312Z] [WARN] Failed login attempt: COE
+[2026-03-23T05:53:24.173Z] [WARN] Failed login attempt: ADMIN
+[2026-03-23T05:53:41.592Z] [WARN] Failed login attempt: admin
+[2026-03-23T05:56:00.634Z] [INFO] Server running on:
+[2026-03-23T05:56:00.636Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:56:00.636Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:56:00.651Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:57:44.207Z] [INFO] Server running on:
+[2026-03-23T05:57:44.208Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:57:44.208Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:57:44.223Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:58:17.402Z] [INFO] Server running on:
+[2026-03-23T05:58:17.403Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:58:17.403Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:58:17.418Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:58:31.622Z] [INFO] Server running on:
+[2026-03-23T05:58:31.623Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:58:31.638Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:58:31.623Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:59:00.312Z] [INFO] Server running on:
+[2026-03-23T05:59:00.327Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T05:59:00.312Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T05:59:00.313Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T05:59:33.144Z] [WARN] Failed login attempt: FAC_GRAND_1
+[2026-03-23T05:59:53.873Z] [WARN] Failed login attempt: FAC_GRAND_1
+[2026-03-23T06:00:12.170Z] [WARN] Failed login attempt: fac_grand_1
+[2026-03-23T06:01:52.229Z] [WARN] Failed login attempt: FAC_GRAND_1
+[2026-03-23T06:02:13.483Z] [WARN] Failed login attempt: STU_GRAND_1
+[2026-03-23T06:02:24.319Z] [WARN] Failed login attempt: password123
+[2026-03-23T06:02:47.405Z] [WARN] Failed login attempt: FAC_GRAND_1
+[2026-03-23T06:03:11.258Z] [WARN] Failed login attempt: FAC_GRAND_1
+[2026-03-23T06:03:29.772Z] [WARN] Failed login attempt: ADMIN
+[2026-03-23T06:03:50.612Z] [WARN] Failed login attempt: FAC_GRAND_1
+[2026-03-23T06:05:38.924Z] [INFO] Server running on:
+[2026-03-23T06:05:38.925Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:05:38.925Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:05:38.940Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:06:28.386Z] [INFO] Faculty Login: FAC_GRAND_1 (Roles: FACULTY)
+[2026-03-23T06:08:18.743Z] [INFO] Faculty Login: FAC_GRAND_1 (Roles: FACULTY)
+[2026-03-23T06:09:10.177Z] [WARN] Failed login attempt: admin
+[2026-03-23T06:09:31.537Z] [WARN] Failed login attempt: adminFAC_GRAND_1
+[2026-03-23T06:09:51.254Z] [INFO] Faculty Login: FAC_GRAND_1 (Roles: FACULTY)
+[2026-03-23T06:14:34.420Z] [INFO] Server running on:
+[2026-03-23T06:14:34.421Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:14:34.421Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:14:34.436Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:15:14.682Z] [INFO] Faculty Login: FAC_GRAND_1 (Roles: FACULTY)
+[2026-03-23T06:18:58.562Z] [INFO] Server running on:
+[2026-03-23T06:18:58.577Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:18:58.563Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:18:58.562Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:21:37.426Z] [INFO] Server running on:
+[2026-03-23T06:21:37.427Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:21:37.442Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:21:37.427Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:25:53.085Z] [INFO] Server running on:
+[2026-03-23T06:25:53.086Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:25:53.101Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:25:53.086Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:26:24.030Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T06:29:24.763Z] [INFO] Server running on:
+[2026-03-23T06:29:24.763Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:29:24.764Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:29:24.778Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:30:20.461Z] [INFO] Server running on:
+[2026-03-23T06:30:20.462Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:30:20.462Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:30:20.476Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:30:39.340Z] [INFO] Server running on:
+[2026-03-23T06:30:39.341Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:30:39.341Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:30:39.355Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:33:10.986Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:33:10.985Z] [INFO] Server running on:
+[2026-03-23T06:33:11.000Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:33:10.986Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:33:28.764Z] [INFO] Server running on:
+[2026-03-23T06:33:28.765Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:33:28.765Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:33:28.780Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:35:52.269Z] [INFO] Faculty Login: STFCSE3 (Roles: FACULTY, FIRST_YEAR_COORDINATOR)
+[2026-03-23T06:38:59.496Z] [INFO] Server running on:
+[2026-03-23T06:38:59.497Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:38:59.512Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:38:59.497Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:39:22.435Z] [INFO] Server running on:
+[2026-03-23T06:39:22.437Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:39:22.451Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:39:22.437Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:44:32.929Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T06:44:54.859Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T06:45:34.451Z] [INFO] Server running on:
+[2026-03-23T06:45:34.452Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T06:45:34.467Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T06:45:34.452Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T06:51:15.299Z] [INFO] Faculty Login: STFCSE3 (Roles: FACULTY, FIRST_YEAR_COORDINATOR)
+[2026-03-23T06:56:25.501Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T07:03:08.331Z] [INFO] Server running on:
+[2026-03-23T07:03:08.333Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T07:03:08.332Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T07:03:08.347Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T07:03:35.428Z] [INFO] Server running on:
+[2026-03-23T07:03:35.429Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T07:03:35.443Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T07:03:35.429Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T07:04:42.051Z] [INFO] Server running on:
+[2026-03-23T07:04:42.052Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T07:04:42.052Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T07:04:42.066Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T07:05:33.967Z] [INFO] Server running on:
+[2026-03-23T07:05:33.968Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T07:05:33.983Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T07:05:33.968Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T07:08:43.359Z] [INFO] Server running on:
+[2026-03-23T07:08:43.375Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T07:08:43.360Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T07:08:43.360Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T07:23:00.025Z] [INFO] Faculty Login: STFCSE3 (Roles: FACULTY, FIRST_YEAR_COORDINATOR)
+[2026-03-23T07:24:17.131Z] [INFO] Faculty Login: STFCSE3 (Roles: FACULTY, FIRST_YEAR_COORDINATOR)
+[2026-03-23T07:27:27.308Z] [INFO] Server running on:
+[2026-03-23T07:27:27.309Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T07:27:27.325Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T07:27:27.309Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T07:32:47.219Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T09:35:04.680Z] [INFO] Faculty Login: STFCSE3 (Roles: FACULTY, FIRST_YEAR_COORDINATOR)
+[2026-03-23T09:36:56.004Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T09:37:38.885Z] [INFO] Server running on:
+[2026-03-23T09:37:38.886Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T09:37:38.886Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T09:37:38.901Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T09:40:26.084Z] [INFO] Faculty Login: STFCSE3 (Roles: FACULTY, FIRST_YEAR_COORDINATOR)
+[2026-03-23T09:44:50.427Z] [INFO] Server running on:
+[2026-03-23T09:44:50.428Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T09:44:50.429Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T09:44:50.444Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T09:45:56.918Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T09:50:54.166Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T09:51:26.856Z] [INFO] Login: mutton (CHIEF_SECRETARY)
+[2026-03-23T09:52:08.251Z] [INFO] Login: naveen (PRINCIPAL)
+[2026-03-23T09:53:04.019Z] [INFO] Login: mutton (CHIEF_SECRETARY)
+[2026-03-23T09:56:26.254Z] [INFO] Login: naveen (PRINCIPAL)
+[2026-03-23T09:58:58.626Z] [INFO] Server running on:
+[2026-03-23T09:58:58.626Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T09:58:58.641Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T09:58:58.626Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T09:59:21.318Z] [INFO] Server running on:
+[2026-03-23T09:59:21.319Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T09:59:21.319Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T09:59:21.333Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T09:59:54.129Z] [INFO] Server running on:
+[2026-03-23T09:59:54.130Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T09:59:54.146Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T09:59:54.130Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T10:03:18.973Z] [INFO] Server running on:
+[2026-03-23T10:03:18.974Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T10:03:18.988Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T10:03:18.974Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T10:09:37.194Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T10:11:42.946Z] [INFO] Server running on:
+[2026-03-23T10:11:42.948Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T10:11:42.948Z] [INFO] - Network: http://172.27.50.143:3000
+[2026-03-23T10:11:42.962Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T10:19:35.521Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T10:19:53.978Z] [INFO] Faculty Login: STFMECH2 (Roles: FACULTY)
+[2026-03-23T10:30:40.690Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T10:57:53.673Z] [INFO] Hall tickets generated for 4 students — Session 13
+[2026-03-23T11:03:41.202Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 8
+[2026-03-23T11:20:00.225Z] [INFO] Running 4:50 PM attendance check...
+[2026-03-23T11:20:00.241Z] [WARN] Alert: Dr. Alice (CSE) (CSE) missed attendance on MON
+[2026-03-23T11:20:00.256Z] [WARN] Alert: Dr. Bob (MECH) (MECH) missed attendance on MON
+[2026-03-23T11:20:00.256Z] [INFO] Attendance check complete. 2 alerts created.

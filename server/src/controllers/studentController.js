@@ -294,7 +294,14 @@ const deleteStudent = async (req, res) => {
 const getStudents = async (req, res) => {
     try {
         const { semester, departmentId, sectionId, status, batch, page, limit } = req.query;
+        const computedRoles = req.user?.computedRoles || [];
+        const isFYC = computedRoles.includes('FIRST_YEAR_COORDINATOR');
+
         let whereClause = {};
+
+        if (isFYC) {
+            whereClause.year = 1;
+        }
 
         if (status) {
             whereClause.status = status;
