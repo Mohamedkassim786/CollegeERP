@@ -115,12 +115,7 @@ const PublishedResults = () => {
                 <th className="px-6 py-4 font-semibold uppercase text-sm">
                   Student Name
                 </th>
-                <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
-                  Internal Marks
-                </th>
-                <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
-                  Final External
-                </th>
+
                 <th className="px-6 py-4 font-semibold uppercase text-sm text-center">
                   Grade
                 </th>
@@ -140,12 +135,7 @@ const PublishedResults = () => {
                     <td className="px-6 py-4 font-medium text-gray-800">
                       {s.name}
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-600 font-bold">
-                      {internal}
-                    </td>
-                    <td className="px-6 py-4 text-center text-gray-600 font-bold">
-                      {external}
-                    </td>
+
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-bold ${s.marks[0]?.endSemMarks?.resultStatus === "PASS" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}

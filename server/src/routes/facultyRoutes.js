@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAssignedSubjects, getSubjectMarks, updateMarks, getFacultyDashboardStats, getMyTimetable, getClassDetails, getClassStudents, getClassAttendance, exportClassAttendanceExcel } = require('../controllers/facultyController');
+const { getAssignedSubjects, getSubjectMarks, updateMarks, getFacultyDashboardStats, getMyTimetable, getClassDetails, getClassStudents, getClassAttendance, exportClassAttendanceExcel, getActiveSessions } = require('../controllers/facultyController');
 const { getStudentsForAttendance, submitAttendance, getAttendanceReport } = require('../controllers/attendanceController');
 const { verifyToken, isFaculty, checkFirstLogin } = require('../middleware/authMiddleware');
 
@@ -11,6 +11,7 @@ router.use(checkFirstLogin);
 
 router.get('/stats', getFacultyDashboardStats);
 router.get('/assignments', getAssignedSubjects);
+router.get('/sessions', getActiveSessions);
 router.get('/marks/:subjectId', getSubjectMarks);
 router.get('/timetable', getMyTimetable);
 router.get('/class/:subjectId/details', getClassDetails);

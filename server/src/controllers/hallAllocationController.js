@@ -371,9 +371,45 @@ exports.generateAllocations = async (req, res) => {
         }
 
         // 3. Algorithm
-        const { allocations, remaining } = session.examMode === 'CIA'
-            ? calculateSeatingCIA(uniqueStudents, halls)
-            : calculateSeatingENDSEM(uniqueStudents, halls);
+        let allocations = [];
+        let remaining = [];
+
+        if (session.examMode === 'LAB') {
+            let currentHallIndex = 0;
+            let currentHallAllocatedCount = 0;
+
+            for (const student of uniqueStudents) {
+                if (currentHallIndex >= halls.length) {
+                    remaining.push(student);
+                    continue;
+                }
+                const currentHall = halls[currentHallIndex];
+                const hallCapacity = currentHall.capacityEND > 0 ? currentHall.capacityEND : currentHall.totalBenches;
+                
+                allocations.push({
+                    hallId: currentHall.id,
+                    studentId: student.id,
+                    subjectId: student.currentSubjectId,
+                    department: student.department || 'Unknown',
+                    year: student.year || 0,
+                    seatNumber: `LAB-${currentHallAllocatedCount + 1}`,
+                    benchIndex: currentHallAllocatedCount,
+                    columnLabel: 'LAB'
+                });
+                
+                currentHallAllocatedCount++;
+                if (currentHallAllocatedCount >= hallCapacity) {
+                    currentHallIndex++;
+                    currentHallAllocatedCount = 0;
+                }
+            }
+        } else {
+            const seatingResult = session.examMode === 'CIA'
+                ? calculateSeatingCIA(uniqueStudents, halls)
+                : calculateSeatingENDSEM(uniqueStudents, halls);
+            allocations = seatingResult.allocations;
+            remaining = seatingResult.remaining;
+        }
 
         // 4. Save to DB
         await prisma.$transaction(async (tx) => {

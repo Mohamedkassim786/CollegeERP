@@ -25,4 +25,7 @@ export const getTimetable = (params) => api.get('/admin/timetable', { params })
 export const toggleFacultyStatus = (data) => api.post('/profile/faculty/toggle-status', data)
 export const resetFacultyPassword = (data) => api.post('/profile/faculty/reset-password', data)
 
+export const getFacultyDashboardStats = () => api.get('/faculty/stats')
+export const getActiveSessions = () => api.get('/faculty/sessions')
+
 export const getFacultyAssignments = () => api.get('/faculty/assignments')

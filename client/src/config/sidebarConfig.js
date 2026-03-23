@@ -30,7 +30,7 @@ export const adminMenu = [
         isGroup: true,
         children: [
             { key: 'students', label: 'Students', path: '/admin/students', icon: Users },
-            { key: 'promote', label: 'Student Promotion', path: '/admin/students/promote', icon: TrendingUp },
+            { key: 'promote', label: 'Students Promotion', path: '/admin/students/promote', icon: TrendingUp },
             { key: 'depts', label: 'Departments', path: '/admin/departments', icon: Building2 },
             { key: 'subjects', label: 'Subjects', path: '/admin/subjects', icon: BookOpen },
             { key: 'faculty', label: 'Faculty', path: '/admin/faculty', icon: GraduationCap },
@@ -44,6 +44,7 @@ export const adminMenu = [
         children: [
             { key: 'timetable', label: 'Timetable', path: '/admin/timetable', icon: Calendar },
             { key: 'attendance', label: 'Attendance', path: '/admin/attendance', icon: FileText },
+            { key: 'session-creation', label: 'Session Creation', path: '/admin/session-creation', icon: Calendar },
         ],
     },
     {
@@ -52,16 +53,17 @@ export const adminMenu = [
         icon: ClipboardList,
         isGroup: true,
         children: [
-            { key: 'marks-approval', label: 'Marks Approval', path: '/admin/marks-approval', icon: CheckCircle },
-            { key: 'results-consolidation', label: 'Results Consolidation', path: '/admin/results-consolidation', icon: Award },
-            { key: 'attendance-eligibility', label: 'Attendance Eligibility', path: '/admin/attendance-eligibility', icon: AlertTriangle },
             { key: 'hall-allocation', label: 'Hall Allocation', path: '/admin/hall-allocation', icon: Layout },
+            { key: 'marks-approval', label: 'Marks Approval', path: '/admin/marks-approval', icon: CheckCircle },
+            { key: 'attendance-eligibility', label: 'Attendance Eligibility', path: '/admin/attendance-eligibility', icon: AlertTriangle },
             { key: 'hall-ticket', label: 'Hall Ticket', path: '/admin/hall-ticket', icon: Ticket },
-            { key: 'exam-attendance-sheet', label: 'Exam Attendance Sheet', path: '/admin/exam-attendance-sheet', icon: ClipboardCheck },
+            { key: 'exam-attendance', label: 'Exam Attendance', path: '/admin/exam-attendance-sheet', icon: ClipboardCheck },
+            { key: 'dispatch', label: 'Dispatch', path: '/admin/dispatch', icon: Send },
             { key: 'dummy-mapping', label: 'Dummy Mapping', path: '/admin/dummy-mapping', icon: Book },
             { key: 'external', label: 'External Staff', path: '/admin/external', icon: Users },
-            { key: 'dispatch', label: 'Dispatch', path: '/admin/dispatch', icon: Send },
+            { key: 'results-consolidation', label: 'Result Consolidation', path: '/admin/results-consolidation', icon: Award },
             { key: 'provisional-results', label: 'Provisional Results', path: '/admin/provisional-results', icon: TrendingUp },
+            { key: 'session-results', label: 'Exam Session results', path: '/admin/session-results', icon: ClipboardList },
             { key: 'arrears', label: 'Arrear Management', path: '/admin/arrears', icon: ClipboardList },
         ],
     },
@@ -91,37 +93,43 @@ export const facultyMenu = [
 ];
 
 export const hodMenu = [
-    { key: 'hod-db',   label: 'Dashboard',     path: '/hod',                 icon: LayoutDashboard },
-    { key: 'hod-dept', label: 'My Department',  icon: Building2, isGroup: true, children: [
-        { key: 'hod-fac',   label: 'Faculty Overview', path: '/hod/faculty',         icon: GraduationCap },
-        { key: 'hod-stu',   label: 'Student Overview', path: '/hod/students',        icon: Users },
-        { key: 'hod-att',   label: 'Dept Attendance',  path: '/hod/dept-attendance', icon: Activity },
-        { key: 'hod-notif', label: 'Notifications',    path: '/hod/notifications',   icon: Bell },
-        { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
-    ]},
-    { key: 'hod-ann',  label: 'Announcements', path: '/hod/announcements',   icon: Bell },
-    { key: 'hod-set',  label: 'Settings',       path: '/hod/settings',        icon: SettingsIcon },
+    { key: 'hod-db', label: 'Dashboard', path: '/hod', icon: LayoutDashboard },
+    {
+        key: 'hod-dept', label: 'My Department', icon: Building2, isGroup: true, children: [
+            { key: 'hod-fac', label: 'Faculty Overview', path: '/hod/faculty', icon: GraduationCap },
+            { key: 'hod-stu', label: 'Student Overview', path: '/hod/students', icon: Users },
+            { key: 'hod-att', label: 'Dept Attendance', path: '/hod/dept-attendance', icon: Activity },
+            { key: 'hod-notif', label: 'Notifications', path: '/hod/notifications', icon: Bell },
+            { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
+        ]
+    },
+    { key: 'hod-ann', label: 'Announcements', path: '/hod/announcements', icon: Bell },
+    { key: 'hod-set', label: 'Settings', path: '/hod/settings', icon: SettingsIcon },
 ];
 
 export const hodWithSubjectsMenu = [
-    { key: 'hod-db',   label: 'Dashboard',     path: '/hod',                 icon: LayoutDashboard },
-    { key: 'hod-dept', label: 'My Department',  icon: Building2, isGroup: true, children: [
-        { key: 'hod-fac',   label: 'Faculty Overview', path: '/hod/faculty',         icon: GraduationCap },
-        { key: 'hod-stu',   label: 'Student Overview', path: '/hod/students',        icon: Users },
-        { key: 'hod-att',   label: 'Dept Attendance',  path: '/hod/dept-attendance', icon: Activity },
-        { key: 'hod-notif', label: 'Notifications',    path: '/hod/notifications',   icon: Bell },
-        { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
-    ]},
-    { key: 'hod-teach', label: 'My Teaching', icon: BookOpen, isGroup: true, children: [
-        { key: 'hod-tt',  label: 'My Timetable',   path: '/hod/timetable',   icon: Calendar },
-        { key: 'hod-at',  label: 'Attendance',      path: '/hod/attendance',  icon: UserCheck },
-        { key: 'hod-mk',  label: 'Enter CIA Marks', path: '/hod/marks',       icon: Award },
-        { key: 'hod-rs',  label: 'View Results',    path: '/hod/results',     icon: CheckCircle },
-        { key: 'hod-cl',  label: 'My Classes',      path: '/hod/classes',     icon: Users },
-        { key: 'hod-mt',  label: 'Materials',       path: '/hod/materials',   icon: Book },
-    ]},
-    { key: 'hod-ann',  label: 'Announcements', path: '/hod/announcements',   icon: Bell },
-    { key: 'hod-set',  label: 'Settings',       path: '/hod/settings',        icon: SettingsIcon },
+    { key: 'hod-db', label: 'Dashboard', path: '/hod', icon: LayoutDashboard },
+    {
+        key: 'hod-dept', label: 'My Department', icon: Building2, isGroup: true, children: [
+            { key: 'hod-fac', label: 'Faculty Overview', path: '/hod/faculty', icon: GraduationCap },
+            { key: 'hod-stu', label: 'Student Overview', path: '/hod/students', icon: Users },
+            { key: 'hod-att', label: 'Dept Attendance', path: '/hod/dept-attendance', icon: Activity },
+            { key: 'hod-notif', label: 'Notifications', path: '/hod/notifications', icon: Bell },
+            { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
+        ]
+    },
+    {
+        key: 'hod-teach', label: 'My Teaching', icon: BookOpen, isGroup: true, children: [
+            { key: 'hod-tt', label: 'My Timetable', path: '/hod/timetable', icon: Calendar },
+            { key: 'hod-at', label: 'Attendance', path: '/hod/attendance', icon: UserCheck },
+            { key: 'hod-mk', label: 'Enter CIA Marks', path: '/hod/marks', icon: Award },
+            { key: 'hod-rs', label: 'View Results', path: '/hod/results', icon: CheckCircle },
+            { key: 'hod-cl', label: 'My Classes', path: '/hod/classes', icon: Users },
+            { key: 'hod-mt', label: 'Materials', path: '/hod/materials', icon: Book },
+        ]
+    },
+    { key: 'hod-ann', label: 'Announcements', path: '/hod/announcements', icon: Bell },
+    { key: 'hod-set', label: 'Settings', path: '/hod/settings', icon: SettingsIcon },
 ];
 
 // ─── PRINCIPAL MENU ───────────────────────────────────────────────────────────
@@ -180,24 +188,28 @@ export const externalStaffMenu = [
 
 // ─── FIRST YEAR COORDINATOR MENU ─────────────────────────────────────────────
 export const firstYearCoordinatorMenu = [
-    { key: 'hod-db',   label: 'Dashboard',     path: '/hod',                 icon: LayoutDashboard },
-    { key: 'hod-dept', label: 'My Department',  icon: Building2, isGroup: true, children: [
-        { key: 'hod-fac',   label: 'Faculty Overview', path: '/hod/faculty',         icon: GraduationCap },
-        { key: 'hod-stu',   label: 'Student Overview', path: '/hod/students',        icon: Users },
-        { key: 'hod-att',   label: 'Dept Attendance',  path: '/hod/dept-attendance', icon: Activity },
-        { key: 'hod-notif', label: 'Notifications',    path: '/hod/notifications',   icon: Bell },
-        { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
-    ]},
-    { key: 'hod-teach', label: 'My Teaching', icon: BookOpen, isGroup: true, children: [
-        { key: 'hod-tt',  label: 'My Timetable',   path: '/hod/timetable',   icon: Calendar },
-        { key: 'hod-at',  label: 'Attendance',      path: '/hod/attendance',  icon: UserCheck },
-        { key: 'hod-mk',  label: 'Enter CIA Marks', path: '/hod/marks',       icon: Award },
-        { key: 'hod-rs',  label: 'View Results',    path: '/hod/results',     icon: CheckCircle },
-        { key: 'hod-cl',  label: 'My Classes',      path: '/hod/classes',     icon: Users },
-        { key: 'hod-mt',  label: 'Materials',       path: '/hod/materials',   icon: Book },
-    ]},
-    { key: 'hod-ann',  label: 'Announcements', path: '/hod/announcements',   icon: Bell },
-    { key: 'hod-set',  label: 'Settings',       path: '/hod/settings',        icon: SettingsIcon },
+    { key: 'hod-db', label: 'Dashboard', path: '/hod', icon: LayoutDashboard },
+    {
+        key: 'hod-dept', label: 'My Department', icon: Building2, isGroup: true, children: [
+            { key: 'hod-fac', label: 'Faculty Overview', path: '/hod/faculty', icon: GraduationCap },
+            { key: 'hod-stu', label: 'Student Overview', path: '/hod/students', icon: Users },
+            { key: 'hod-att', label: 'Dept Attendance', path: '/hod/dept-attendance', icon: Activity },
+            { key: 'hod-notif', label: 'Notifications', path: '/hod/notifications', icon: Bell },
+            { key: 'hod-elig', label: 'Eligibility Check', path: '/hod/attendance-eligibility', icon: ShieldCheck },
+        ]
+    },
+    {
+        key: 'hod-teach', label: 'My Teaching', icon: BookOpen, isGroup: true, children: [
+            { key: 'hod-tt', label: 'My Timetable', path: '/hod/timetable', icon: Calendar },
+            { key: 'hod-at', label: 'Attendance', path: '/hod/attendance', icon: UserCheck },
+            { key: 'hod-mk', label: 'Enter CIA Marks', path: '/hod/marks', icon: Award },
+            { key: 'hod-rs', label: 'View Results', path: '/hod/results', icon: CheckCircle },
+            { key: 'hod-cl', label: 'My Classes', path: '/hod/classes', icon: Users },
+            { key: 'hod-mt', label: 'Materials', path: '/hod/materials', icon: Book },
+        ]
+    },
+    { key: 'hod-ann', label: 'Announcements', path: '/hod/announcements', icon: Bell },
+    { key: 'hod-set', label: 'Settings', path: '/hod/settings', icon: SettingsIcon },
 ];
 
 // ─── MENU SELECTOR MAP ────────────────────────────────────────────────────────

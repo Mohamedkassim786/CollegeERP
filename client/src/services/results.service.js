@@ -22,3 +22,4 @@ export const exportProvisionalLandscape = (params) => api.get('/exam/export-land
 export const getFacultyPublishedResults = (params) => api.get('/exam/faculty-results', { params })
 
 export const getIndividualStudentResults = () => api.get('/exam/student-results')
+export const getIndividualStudentResultsAdmin = (params) => api.get('/exam/student-results/admin', { params })

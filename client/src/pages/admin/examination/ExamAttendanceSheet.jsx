@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Users } from 'lucide-react';
 import { getExamAttendanceSessions, getHalls, generateExamAttendanceSheet } from '../../../services/examination.service';
+import { getSubjects } from '../../../services/subject.service';
 import CustomSelect from '../../../components/CustomSelect';
 
 const ExamAttendanceSheet = () => {
     const [sessions, setSessions] = useState([]);
+    const [allSubjects, setAllSubjects] = useState([]);
     const [form, setForm] = useState({ examSessionId: '', semester: '', subjectId: '', session: 'FN' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -13,17 +15,20 @@ const ExamAttendanceSheet = () => {
     const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
     useEffect(() => {
-        getExamAttendanceSessions()
-            .then(sRes => setSessions(sRes.data))
+        Promise.all([getExamAttendanceSessions(), getSubjects()])
+            .then(([sRes, subRes]) => {
+                setSessions(sRes.data);
+                setAllSubjects(subRes.data);
+            })
             .finally(() => setInitLoading(false));
     }, []);
 
     const selectedSession = sessions.find(s => s.id === parseInt(form.examSessionId));
     
     // Filter subjects by semester if selected
-    const sessionSubjects = selectedSession?.subjects
-        ?.map(s => s.subject)
-        ?.filter(sub => !form.semester || sub.semester === parseInt(form.semester)) || [];
+    const sessionSubjects = selectedSession?.examMode === 'LAB'
+        ? allSubjects.filter(sub => sub.subjectCategory === 'LAB' && (!form.semester || sub.semester === parseInt(form.semester)))
+        : selectedSession?.subjects?.map(s => s.subject)?.filter(sub => !form.semester || sub.semester === parseInt(form.semester)) || [];
 
     const handleDownload = async () => {
         if (!form.examSessionId || !form.subjectId) {

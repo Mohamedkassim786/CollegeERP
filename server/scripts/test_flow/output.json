@@ -1,0 +1,36 @@
+--- ALL HODS ---
+[
+  {
+    "id": 1,
+    "fullName": "Dr. MECH Staff 1",
+    "department": "MECH",
+    "isActive": true
+  },
+  {
+    "id": 4,
+    "fullName": "Dr. CSE Staff 1",
+    "department": "CSE",
+    "isActive": true
+  },
+  {
+    "id": 7,
+    "fullName": "Dr. ECE Staff 1",
+    "department": "Electronics and Communication Engineering",
+    "isActive": true
+  }
+]
+--- ALL DEPARTMENTS ---
+[
+  {
+    "department": "MECH"
+  },
+  {
+    "department": "CSE"
+  },
+  {
+    "department": "Electronics and Communication Engineering"
+  },
+  {
+    "department": "Electrical and Electronics Engineering"
+  }
+]

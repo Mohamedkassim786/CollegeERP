@@ -7533,3 +7533,59 @@ TypeError: Cannot read properties of undefined (reading 'map')
 [2026-03-23T11:20:00.241Z] [WARN] Alert: Dr. Alice (CSE) (CSE) missed attendance on MON
 [2026-03-23T11:20:00.256Z] [WARN] Alert: Dr. Bob (MECH) (MECH) missed attendance on MON
 [2026-03-23T11:20:00.256Z] [INFO] Attendance check complete. 2 alerts created.
+[2026-03-23T14:34:38.702Z] [INFO] Server running on:
+[2026-03-23T14:34:38.704Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T14:34:38.704Z] [INFO] - Network: http://192.168.137.1:3000
+[2026-03-23T14:34:38.826Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T14:37:05.115Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T14:37:24.460Z] [INFO] Login: naveen (PRINCIPAL)
+[2026-03-23T14:57:21.423Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T15:00:23.258Z] [INFO] Server running on:
+[2026-03-23T15:00:23.259Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T15:00:23.260Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T15:00:23.366Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T15:01:06.440Z] [INFO] Server running on:
+[2026-03-23T15:01:06.442Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T15:01:06.442Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T15:01:06.463Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T15:01:45.677Z] [INFO] Server running on:
+[2026-03-23T15:01:45.679Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T15:01:45.679Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T15:01:45.703Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T15:01:52.284Z] [INFO] Server running on:
+[2026-03-23T15:01:52.286Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T15:01:52.286Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T15:01:52.309Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T15:02:25.615Z] [INFO] Server running on:
+[2026-03-23T15:02:25.617Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T15:02:25.617Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T15:02:25.643Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T15:05:25.330Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T15:53:36.793Z] [INFO] Student Login: 23MECH002 (MECH)
+[2026-03-23T15:55:07.017Z] [INFO] Login: admin (ADMIN)
+[2026-03-23T17:42:32.430Z] [INFO] Server running on:
+[2026-03-23T17:42:32.432Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T17:42:32.432Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T17:42:32.473Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T17:53:51.696Z] [INFO] Server running on:
+[2026-03-23T17:53:51.726Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T17:53:51.699Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T17:53:51.698Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T17:55:51.639Z] [INFO] Server running on:
+[2026-03-23T17:55:51.642Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T17:55:51.642Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T17:55:51.671Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T17:56:34.851Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 7
+[2026-03-23T17:59:14.048Z] [INFO] Hall tickets generated for 4 students — Session 13
+[2026-03-23T17:59:38.102Z] [INFO] Server running on:
+[2026-03-23T17:59:38.127Z] [INFO] - Local:   http://localhost:3000
+[2026-03-23T17:59:38.127Z] [INFO] - Network: http://192.168.1.8:3000
+[2026-03-23T17:59:38.155Z] [INFO] HOD Attendance Cron registered — runs Mon–Sat at 4:50 PM (IST)
+[2026-03-23T17:59:38.253Z] [INFO] Hall tickets generated for 5 students — Session 13
+[2026-03-23T18:00:33.376Z] [INFO] Exam attendance sheet generated for Hall undefined, Subject 7
+[2026-03-23T18:01:46.163Z] [INFO] Faculty Login: STFMECH1 (Roles: FACULTY, HOD)
+[2026-03-23T18:02:47.398Z] [INFO] Student Login: 23MECH002 (MECH)
+[2026-03-23T18:03:15.389Z] [INFO] Faculty Login: MECH_FAC001 (Roles: FACULTY)
+[2026-03-23T18:03:47.979Z] [INFO] Student Login: 23MECH002 (MECH)
+[2026-03-23T18:05:18.254Z] [INFO] Login: naveen (PRINCIPAL)
+[2026-03-23T18:06:02.346Z] [INFO] Login: admin (ADMIN)

@@ -930,8 +930,21 @@ const bulkUploadFaculty = async (req, res) => {
     }
 };
 
+const getActiveSessions = async (req, res) => {
+    try {
+        const sessions = await prisma.examSession.findMany({
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, examName: true, examMode: true, month: true, year: true, session: true, isLocked: true }
+        });
+        res.json(sessions);
+    } catch (error) {
+        handleError(res, error, "Failed to fetch active exam sessions");
+    }
+};
+
 module.exports = {
     getAssignedSubjects, getSubjectMarks, updateMarks, bulkUpdateMarks, getFacultyDashboardStats,
     getMyTimetable, getClassDetails, getClassStudents, getClassAttendance, exportClassAttendanceExcel,
-    getFaculties, getFacultyProfile, createFaculty, updateFaculty, deleteFaculty, bulkUploadFaculty
+    getFaculties, getFacultyProfile, createFaculty, updateFaculty, deleteFaculty, bulkUploadFaculty,
+    getActiveSessions
 };

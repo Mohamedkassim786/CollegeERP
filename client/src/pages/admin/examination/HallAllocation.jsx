@@ -29,7 +29,6 @@ const HallAllocation = () => {
   const [wizardStep, setWizardStep] = useState(1);
   const [allAllocationsForSession, setAllAllocationsForSession] = useState([]);
 
-  const [newSession, setNewSession] = useState({ examName: '', month: '', year: '', examMode: 'CIA' });
   const [wizardData, setWizardData] = useState({ date: '', session: 'FN', subjectIds: [], hallIds: [] });
   const [newHall, setNewHall] = useState({
     hallName: '', blockName: '', numColumns: 1, regMode: 'CIA',
@@ -72,29 +71,7 @@ const HallAllocation = () => {
     }
   };
 
-  const handleCreateSession = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await createHallSession(newSession);
-      toast.success("Session created!");
-      setNewSession({ examName: '', month: '', year: '', examMode: 'CIA' });
-      await fetchInitialData();
-      loadSessionDetails(res.data);
-    } catch {
-      toast.error("Failed to create session");
-    }
-  };
 
-  const handleDeleteSession = async (id) => {
-    if (!window.confirm("Delete this session and all its allocations?")) return;
-    try {
-      await deleteHallSession(id);
-      toast.success("Session deleted");
-      fetchInitialData();
-    } catch {
-      toast.error("Failed to delete session");
-    }
-  };
 
   const startWizard = () => {
     setWizardData({ date: '', session: 'FN', subjectIds: [], hallIds: [] });
@@ -309,78 +286,35 @@ const HallAllocation = () => {
       <main className="max-w-[1400px] mx-auto w-full">
         {/* ═══════════════ SESSION LIST ═══════════════ */}
         {!selectedSession ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            {/* Create Session Form */}
-            <section className="lg:col-span-4 bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
-              <h2 className="text-xl font-black text-[#003B73] mb-6 flex items-center gap-3">
-                <PlusSquare className="text-blue-500" size={22} /> Create Session
-              </h2>
-              <form onSubmit={handleCreateSession} className="space-y-5">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Session Name</label>
-                  <input type="text" required placeholder="e.g. END SEMESTER NOV 2025"
-                    className="w-full px-5 py-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-[#003B73] outline-none font-semibold"
-                    value={newSession.examName} onChange={e => setNewSession({ ...newSession, examName: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Month</label>
-                    <CustomSelect value={newSession.month} onChange={e => setNewSession({ ...newSession, month: e.target.value })}>
-                      <option value="">Select Month</option>
-                      {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                    </CustomSelect>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Year</label>
-                    <input type="text" placeholder="2025"
-                      className="w-full px-5 py-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-[#003B73] outline-none font-semibold"
-                      value={newSession.year} onChange={e => setNewSession({ ...newSession, year: e.target.value })} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Exam Mode</label>
-                  <CustomSelect value={newSession.examMode} onChange={e => setNewSession({ ...newSession, examMode: e.target.value })}>
-                    <option value="CIA">CIA</option>
-                    <option value="END_SEM">End Semester</option>
-                  </CustomSelect>
-                </div>
-                <button type="submit" className="w-full py-4 bg-[#003B73] text-white rounded-xl font-black text-sm hover:bg-[#002850] transition-all flex items-center justify-center gap-2">
-                  <Save size={18} /> Create Session
-                </button>
-              </form>
-            </section>
-
+          <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto">
             {/* Sessions List */}
-            <section className="lg:col-span-8 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-black text-[#003B73]">Exam Sessions</h3>
+            <section className="w-full space-y-4">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-black text-[#003B73]">Select Examination Session</h3>
                 <span className="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full">{sessions.length} sessions</span>
               </div>
               {sessions.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-                  <p className="text-gray-400 font-bold">No sessions yet. Create one to get started.</p>
+                  <p className="text-gray-400 font-bold">No sessions yet. Create one in the Schedule module first.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {sessions.map(s => (
+                <div className="space-y-4">
+                  {sessions.filter(s => s.examMode !== 'LAB').map(s => (
                     <div key={s.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all">
                       <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-blue-50 text-[#003B73] rounded-xl flex flex-col items-center justify-center">
-                          <span className="text-[9px] font-black uppercase tracking-tighter opacity-60">{s.examMode}</span>
-                          <span className="text-2xl font-black leading-none">{s.year ? s.year.slice(-2) : '--'}</span>
+                        <div className="w-16 h-16 bg-blue-50 text-[#003B73] rounded-2xl flex flex-col items-center justify-center">
+                          <span className="text-[10px] font-black uppercase tracking-tighter opacity-60 w-11 truncate text-center">{s.examMode.replace('_', ' ')}</span>
+                          <span className="text-2xl font-black leading-none mt-1">{s.year ? s.year.slice(-2) : '--'}</span>
                         </div>
                         <div>
-                          <h4 className="text-lg font-black text-[#003B73]">{s.examName}</h4>
-                          <p className="text-xs text-gray-400 font-bold mt-1">{s.month} {s.year}</p>
+                          <h4 className="text-xl font-black text-[#003B73]">{s.examName}</h4>
+                          <p className="text-sm text-gray-400 font-bold mt-1 uppercase tracking-wider">{s.month} {s.year}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <button onClick={() => loadSessionDetails(s)}
-                          className="px-6 py-3 bg-[#003B73] text-white rounded-xl font-black text-xs uppercase tracking-wider hover:bg-[#002850] transition-all active:scale-95">
-                          Open
-                        </button>
-                        <button onClick={() => handleDeleteSession(s.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
-                          <Trash2 size={20} />
+                          className="px-8 py-4 bg-[#003B73] text-white rounded-xl font-black text-sm uppercase tracking-wider hover:bg-[#002850] transition-all active:scale-95 shadow-md">
+                          Open Allocations
                         </button>
                       </div>
                     </div>
@@ -573,6 +507,16 @@ const HallAllocation = () => {
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-[500px] overflow-y-auto pb-2">
                     {subjects
                       .filter(sub => !getUsedSubjectIds().includes(sub.id))
+                      .filter(sub => {
+                        const mode = selectedSession?.examMode;
+                        if (mode?.startsWith('CIA')) {
+                          return sub.subjectCategory !== 'LAB';
+                        }
+                        if (mode === 'LAB') {
+                          return sub.subjectCategory === 'LAB';
+                        }
+                        return true;
+                      })
                       .map(sub => {
                         const isSelected = wizardData.subjectIds.includes(sub.id);
                         return (
@@ -588,9 +532,16 @@ const HallAllocation = () => {
                           </div>
                         );
                       })}
-                    {subjects.filter(sub => !getUsedSubjectIds().includes(sub.id)).length === 0 && (
+                    {subjects
+                      .filter(sub => !getUsedSubjectIds().includes(sub.id))
+                      .filter(sub => {
+                        const mode = selectedSession?.examMode;
+                        if (mode?.startsWith('CIA')) return sub.subjectCategory !== 'LAB';
+                        if (mode === 'LAB') return sub.subjectCategory === 'LAB';
+                        return true;
+                      }).length === 0 && (
                       <div className="col-span-full py-16 text-center text-gray-300">
-                        <p className="font-bold text-lg">All subjects already allocated for this date and session.</p>
+                        <p className="font-bold text-lg">No eligible subjects found for this category or all already allocated.</p>
                       </div>
                     )}
                   </div>

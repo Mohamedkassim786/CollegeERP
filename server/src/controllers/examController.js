@@ -1307,3 +1307,66 @@ exports.recalculateAllGrades = async (req, res) => {
         handleError(res, error, "Failed to recalculate all grades");
     }
 };
+
+exports.getStudentResultsAdmin = async (req, res) => {
+    try {
+        const { regNo, semester } = req.query;
+        if (!regNo) return res.status(400).json({ message: "Register Number required" });
+
+        const student = await prisma.student.findUnique({
+            where: { registerNumber: regNo },
+            include: {
+                departmentRef: true,
+                results: {
+                    where: { semester: semester ? parseInt(semester) : undefined },
+                    orderBy: { semester: 'desc' },
+                },
+                marks: {
+                    include: {
+                        subject: true,
+                        endSemMarks: true
+                    }
+                }
+            }
+        });
+
+        if (!student) return res.status(404).json({ message: 'Student not found.' });
+
+        // Format the results dynamically if required, or let the frontend handle it
+        const control = await prisma.semesterControl.findFirst({
+            where: {
+                department: student.department,
+                semester: semester ? parseInt(semester) : student.semester,
+                isPublished: true
+            },
+            orderBy: { publishedAt: 'desc' }
+        });
+
+        const results = student.marks
+            .filter(m => m.endSemMarks && (m.endSemMarks.isPublished || req.user.role === 'ADMIN'))
+            .map(m => ({
+                subjectCode: m.subject.code,
+                subjectName: m.subject.name,
+                cia: Math.round(m.internal || 0),
+                external: Math.round(m.endSemMarks.externalMarks || 0),
+                total: Math.round(m.endSemMarks.totalMarks || 0),
+                grade: m.endSemMarks.grade,
+                result: m.endSemMarks.resultStatus,
+                attendanceSnapshot: m.endSemMarks.attendanceSnapshot
+            }));
+
+        const gpaRecord = student.results.find(r => r.semester === (semester ? parseInt(semester) : student.semester)) || student.results[0];
+
+        res.json({
+            studentDetails: { name: student.name, rollNo: student.rollNo, registerNumber: student.registerNumber, department: student.department },
+            isPublished: results.length > 0,
+            semester: semester ? parseInt(semester) : student.semester,
+            publishedAt: control?.publishedAt || null,
+            results,
+            gpa: gpaRecord?.gpa?.toFixed(2) || '0.00',
+            cgpa: gpaRecord?.cgpa?.toFixed(2) || '0.00'
+        });
+    } catch (error) {
+        handleError(res, error, "Failed to get student results");
+    }
+};

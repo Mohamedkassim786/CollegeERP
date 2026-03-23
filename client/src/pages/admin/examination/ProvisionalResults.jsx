@@ -11,7 +11,7 @@ import {
   Search,
   Printer
 } from "lucide-react";
-import { getConsolidatedResults, calculateBulkGPA, exportPortraitResults, exportLandscapeResults, getPublishStatus, publishResult, unpublishResult } from "../../../services/results.service";
+import { getConsolidatedResults, calculateBulkGPA, exportPortraitResults, exportLandscapeResults } from "../../../services/results.service";
 import { getDepartments } from "../../../services/department.service";
 import toast from "react-hot-toast";
 
@@ -27,7 +27,6 @@ const ProvisionalResults = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [resultsData, setResultsData] = useState(null);
-  const [isPublished, setIsPublished] = useState(false);
 
   const fetchInitialData = async () => {
     try {
@@ -41,19 +40,6 @@ const ProvisionalResults = () => {
     }
   };
 
-  const checkPublishStatus = async (currentFilters) => {
-    try {
-      const res = await getPublishStatus({
-        department: currentFilters.department,
-        semester: currentFilters.semester,
-        year: currentFilters.year,
-        section: currentFilters.section
-      });
-      setIsPublished(res.data.isPublished);
-    } catch (error) {
-      console.error("Status check failed", error);
-    }
-  };
 
   const fetchResults = async () => {
     if (!filters.department || !filters.semester) {
@@ -65,7 +51,6 @@ const ProvisionalResults = () => {
     try {
       const res = await getConsolidatedResults(filters);
       setResultsData(res.data);
-      await checkPublishStatus(filters);
       toast.success("Results loaded successfully");
     } catch (error) {
       console.error(error);
@@ -97,33 +82,6 @@ const ProvisionalResults = () => {
     }
   };
 
-  const handlePublishToggle = async () => {
-    const action = isPublished ? 'unpublish' : 'publish';
-    const confirmMsg = isPublished 
-      ? "Are you sure you want to UNPUBLISH these results? Students will no longer be able to see them."
-      : "Are you sure you want to PUBLISH these results? They will be visible to students.";
-    
-    if (!window.confirm(confirmMsg)) return;
-
-    setLoading(true);
-    const toastId = toast.loading(`${isPublished ? 'Unpublishing' : 'Publishing'} results...`);
-    try {
-      if (isPublished) {
-        await unpublishResult(filters);
-        setIsPublished(false);
-        toast.success("Results unpublished successfully", { id: toastId });
-      } else {
-        await publishResult(filters);
-        setIsPublished(true);
-        toast.success("Results published successfully", { id: toastId });
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(`Failed to ${action} results`, { id: toastId });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchInitialData();
@@ -159,11 +117,6 @@ const ProvisionalResults = () => {
         <div>
           <h1 className="text-4xl font-black text-[#003B73] tracking-tight flex items-center gap-3">
             <Award className="text-blue-600" size={32} /> Provisional Results
-            {isPublished && (
-              <span className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full uppercase tracking-widest font-black ml-2 animate-pulse">
-                Published
-              </span>
-            )}
           </h1>
           <p className="text-gray-500 font-medium mt-1">
             Consolidated visualization and management of semester examinations.
@@ -275,18 +228,7 @@ const ProvisionalResults = () => {
           Process GPA
         </button>
 
-        <button
-          onClick={handlePublishToggle}
-          disabled={loading || !resultsData}
-          className={`h-[52px] px-8 rounded-2xl transition-all font-black flex items-center gap-2 shadow-lg text-sm ${
-            isPublished 
-              ? 'bg-red-50 text-red-600 border-2 border-red-200 hover:bg-red-100 shadow-red-900/10' 
-              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20'
-          }`}
-        >
-          {isPublished ? <XCircle size={18} /> : <CheckCircle size={18} />}
-          {isPublished ? 'Unpublish' : 'Publish Result'}
-        </button>
+
       </div>
 
       {loading ? (

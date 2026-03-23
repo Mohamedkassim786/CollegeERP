@@ -81,8 +81,11 @@ const getStudentsForDispatch = async (req, res) => {
             ...arrearStudents
         ];
 
-        // 4) Sort by register number numerically (extract trailing digits if any)
+        // 4) Sort by Arrear status first, then by register number
         allStudents.sort((a, b) => {
+            if (a.isArrear && !b.isArrear) return -1;
+            if (!a.isArrear && b.isArrear) return 1;
+
             const numA = parseInt((a.registerNumber || '').replace(/\D/g, '')) || 0;
             const numB = parseInt((b.registerNumber || '').replace(/\D/g, '')) || 0;
             if (numA !== numB) return numA - numB;

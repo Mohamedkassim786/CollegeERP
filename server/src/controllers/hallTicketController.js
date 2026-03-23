@@ -68,6 +68,9 @@ exports.generateHallTickets = async (req, res) => {
                         departmentRef: true,
                         eligibility: {
                             where: { semester: parseInt(semester) || undefined }
+                        },
+                        arrears: {
+                            where: { isCleared: false }
                         }
                     }
                 },
@@ -106,6 +109,9 @@ exports.generateHallTickets = async (req, res) => {
                     subjects: []
                 };
             }
+            
+            const isArrear = student.arrears?.some(a => a.subjectId === subject.id) || false;
+
             byStudent[sid].subjects.push({
                 code: subject?.code,
                 name: subject?.name,
@@ -114,7 +120,8 @@ exports.generateHallTickets = async (req, res) => {
                 examDate: formattedDate,
                 session: examSession.session || 'FN',
                 hallNumber: alloc.hall?.hallName || alloc.hall?.name || '',
-                seatNumber: alloc.seatNumber || ''
+                seatNumber: alloc.seatNumber || '',
+                isArrear
             });
         }
 

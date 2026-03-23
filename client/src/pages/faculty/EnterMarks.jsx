@@ -2,7 +2,7 @@ import CustomSelect from "../../components/CustomSelect";
 import toast from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
-import { getFacultyAssignments } from "../../services/faculty.service";
+import { getFacultyAssignments, getActiveSessions } from "../../services/faculty.service";
 import { getFacultyMarks, submitFacultyMarks } from "../../services/marks.service";
 import {
   Search,
@@ -25,6 +25,7 @@ const EnterMarks = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [activeSessions, setActiveSessions] = useState([]);
 
   const [currentCategory, setCurrentCategory] = useState("THEORY");
 
@@ -44,8 +45,14 @@ const EnterMarks = () => {
 
   const fetchAssignments = async () => {
     try {
-      const res = await getFacultyAssignments();
-      setAssignments(res.data);
+      const [assignmentsRes, sessionsRes] = await Promise.all([
+        getFacultyAssignments(),
+        getActiveSessions()
+      ]);
+      setAssignments(assignmentsRes.data);
+      setActiveSessions(sessionsRes.data || []);
+      
+      const res = assignmentsRes;
       if (res.data.length > 0) {
         setSelectedAssignmentId(res.data[0].id);
         const cat = res.data[0].subject.subjectCategory || "THEORY";
@@ -339,18 +346,18 @@ const EnterMarks = () => {
               {/* CIA options: only for THEORY and INTEGRATED subjects */}
               {currentCategory !== 'LAB' && (
                 <>
-                  <option value="cia1">CIA - I (Theory)</option>
-                  <option value="cia2">CIA - II (Theory)</option>
-                  <option value="cia3">CIA - III (Theory)</option>
+                  <option value="cia1" disabled={!activeSessions.some(s => s.examMode === 'CIA 1')}>CIA - I (Theory) {!activeSessions.some(s => s.examMode === 'CIA 1') && '(Inactive)'}</option>
+                  <option value="cia2" disabled={!activeSessions.some(s => s.examMode === 'CIA 2')}>CIA - II (Theory) {!activeSessions.some(s => s.examMode === 'CIA 2') && '(Inactive)'}</option>
+                  <option value="cia3" disabled={!activeSessions.some(s => s.examMode === 'CIA 3')}>CIA - III (Theory) {!activeSessions.some(s => s.examMode === 'CIA 3') && '(Inactive)'}</option>
                 </>
               )}
               {/* Lab Marks: shown for pure LAB subjects */}
               {currentCategory === 'LAB' && (
-                <option value="lab_marks">Lab Marks (Internal)</option>
+                <option value="lab_marks" disabled={!activeSessions.some(s => s.examMode === 'LAB')}>Lab Marks (Internal) {!activeSessions.some(s => s.examMode === 'LAB') && '(Inactive)'}</option>
               )}
               {/* Integrated Lab: shown for INTEGRATED subjects */}
               {currentCategory === 'INTEGRATED' && (
-                <option value="integrated_lab">Integrated Lab Marks</option>
+                <option value="integrated_lab" disabled={!activeSessions.some(s => s.examMode === 'LAB')}>Integrated Lab Marks {!activeSessions.some(s => s.examMode === 'LAB') && '(Inactive)'}</option>
               )}
             </CustomSelect>
           </div>

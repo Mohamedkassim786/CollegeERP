@@ -33,6 +33,7 @@ router.get('/export-landscape', verifyToken, isAdmin, examController.exportResul
 router.get('/grade-sheet', verifyToken, examController.getGradeSheet);
 
 router.get('/student-results', verifyToken, examController.getStudentResults);
+router.get('/student-results/admin', verifyToken, isAdmin, examController.getStudentResultsAdmin);
 
 // Global Recalculation (Admin)
 router.post('/recalculate-all-grades', verifyToken, isAdmin, examController.recalculateAllGrades);

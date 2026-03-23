@@ -8,6 +8,7 @@ import StudentManager from "./academics/StudentManager";
 import AutoPromote from "./academics/AutoPromote";
 import AdminMarksApproval from "./examination/AdminMarksApproval";
 import TimetableManager from "./schedule/TimetableManager";
+import SessionCreation from "./schedule/SessionCreation";
 import DepartmentManager from "./academics/DepartmentManager";
 import AttendanceReports from "./schedule/AttendanceReports";
 import EndSemMarksEntry from "./examination/ResultsConsolidation";
@@ -24,6 +25,7 @@ import StudentProfile from "./academics/StudentProfile";
 import FacultyProfile from "./academics/FacultyProfile";
 import AttendanceEligibility from "./examination/AttendanceEligibility";
 import ProvisionalResults from "./examination/ProvisionalResults";
+import ExamSessionResults from "./examination/ExamSessionResults";
 import UserManager from "./settings/UserManager";
 
 /** Placeholder for pages that are being built */
@@ -59,6 +61,7 @@ const AdminPortal = () => {
             {/* Schedule */}
             <Route path="timetable" element={<TimetableManager />} />
             <Route path="attendance" element={<AttendanceReports />} />
+            <Route path="session-creation" element={<SessionCreation />} />
 
 
 
@@ -73,6 +76,7 @@ const AdminPortal = () => {
             <Route path="exam-attendance-sheet" element={<ExamAttendanceSheet />} />
             <Route path="dispatch" element={<Dispatch />} />
             <Route path="provisional-results" element={<ProvisionalResults />} />
+            <Route path="session-results" element={<ExamSessionResults />} />
             <Route path="arrears" element={<ArrearManagement />} />
 
             {/* Legacy redirect */}

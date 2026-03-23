@@ -955,8 +955,81 @@ exports.generateExamAttendanceSheet = (res, data) => {
                 // Logo
                 const logoPath = path.join(__dirname, '../../../client/public/miet-logo.png');
                 if (fs.existsSync(logoPath)) {
-                    doc.image(logoPath, M, y, { width: LOGO_SZ });
+                    doc.image(logoPath, M + (data.examMode === 'LAB' ? 10 : 0), y + (data.examMode === 'LAB' ? 5 : 0), { width: LOGO_SZ + (data.examMode === 'LAB' ? 10 : 0) });
                 }
+
+                if (data.examMode === 'LAB') {
+                    doc.font('Helvetica-Bold').fontSize(14).fillColor('#000').text('M.I.E.T. ENGINEERING COLLEGE', M, y, { width: CW, align: 'center' });
+                    doc.fontSize(10).text('(AUTONOMOUS)', M, y + 15, { width: CW, align: 'center' });
+                    doc.font('Helvetica').fontSize(10).text('(AFFILIATED TO ANNA UNIVERSITY, CHENNAI)', M, y + 27, { width: CW, align: 'center' });
+                    doc.fontSize(10).text('TIRUCHIRAPPALLI', M, y + 40, { width: CW, align: 'center' });
+                    
+                    y += LOGO_SZ + 15;
+                    doc.font('Helvetica-Bold').fontSize(11).text('EXAMINATION PRACTICAL ATTENDANCE SHEET', M, y, { width: CW, align: 'center' });
+                    y += 20;
+
+                    const c1 = M, c2 = M + 110, c3 = M + 380, c4 = M + 470;
+                    doc.font('Helvetica-Bold').fontSize(8);
+                    
+                    doc.text('Branch Name', c1, y);
+                    doc.font('Helvetica').text(`: ${dept.deptName || data.department || ''}`, c2, y);
+                    doc.font('Helvetica-Bold').text('Date of Examination', c3, y);
+                    doc.font('Helvetica').text(`: ${data.dateSession ? data.dateSession.split('/')[0].trim() : ''}`, c4, y);
+                    y += 18;
+
+                    doc.font('Helvetica-Bold').text('Subject Code/Name', c1, y);
+                    doc.font('Helvetica').text(`: ${data.subject?.code || ''} - ${data.subject?.name || ''}`, c2, y, { width: c3 - c2 - 10 });
+                    doc.font('Helvetica-Bold').text('Session', c3, y);
+                    doc.font('Helvetica').text(`: ${data.dateSession ? data.dateSession.split('/')[1]?.trim() || '' : ''}`, c4, y);
+                    y += 18;
+                    
+                    doc.font('Helvetica-Bold').text('Semester', c3, y);
+                    doc.font('Helvetica').text(`: ${data.semester || ''}`, c4, y);
+                    y += 18;
+
+                    const colW = [30, 80, 160, 100, 65, 100]; 
+                    const abSubW = 20;
+                    const rowH = 30;
+                    doc.rect(M, y, CW, rowH).stroke();
+                    doc.font('Helvetica-Bold').fontSize(7.5);
+                    let hx = M;
+                    
+                    doc.text('S.No.', hx, y + 10, { width: colW[0], align: 'center' }); hx += colW[0]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                    doc.text('Register Number', hx, y + 10, { width: colW[1], align: 'center' }); hx += colW[1]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                    doc.text('Name of the Candidate', hx, y + 10, { width: colW[2], align: 'center' }); hx += colW[2]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                    
+                    const abX = hx;
+                    doc.text('Answer Book No.', abX, y + 4, { width: colW[3], align: 'center' });
+                    doc.moveTo(abX, y + 15).lineTo(abX + colW[3], y + 15).stroke();
+                    for (let i = 1; i < 5; i++) {
+                        doc.moveTo(abX + i * abSubW, y + 15).lineTo(abX + i * abSubW, y + rowH).stroke();
+                    }
+                    hx += colW[3]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                    
+                    doc.text('* Write AB for\nAbsent', hx + 2, y + 8, { width: colW[4] - 4, align: 'center' }); hx += colW[4]; doc.moveTo(hx, y).lineTo(hx, y + rowH).stroke();
+                    doc.text('Signature of the Candidate', hx + 2, y + 10, { width: colW[5] - 4, align: 'center' });
+                    
+                    y += rowH;
+
+                    const pageEntries = rows.slice(pageIdx * PAGE_ROWS, (pageIdx + 1) * PAGE_ROWS);
+                    pageEntries.forEach((row, ri) => {
+                        const dataRowH = 22;
+                        doc.rect(M, y, CW, dataRowH).stroke();
+                        let rx = M;
+                        doc.font('Helvetica-Bold').fontSize(8.5).text(String(pageIdx * PAGE_ROWS + ri + 1), rx + 2, y + 7, { width: colW[0] - 4, align: 'center' }); rx += colW[0]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                        doc.text(String(row.registerNumber || ''), rx + 2, y + 7, { width: colW[1] - 4, align: 'center' }); rx += colW[1]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                        doc.text(String(row.name || ''), rx + 4, y + 7, { width: colW[2] - 8, align: 'left' }); rx += colW[2]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                        
+                        const abStartX = rx;
+                        for (let i = 1; i <= 5; i++) {
+                            doc.moveTo(abStartX + i * abSubW, y).lineTo(abStartX + i * abSubW, y + dataRowH).stroke();
+                        }
+                        rx += colW[3]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                        rx += colW[4]; doc.moveTo(rx, y).lineTo(rx, y + dataRowH).stroke();
+                        
+                        y += dataRowH;
+                    });
+                } else {
 
                 // Header text
                 const TX = M + LOGO_SZ + 8;
@@ -1060,6 +1133,8 @@ exports.generateExamAttendanceSheet = (res, data) => {
                 doc.rect(totBOX, botY + 4, 35, 22).stroke();
                 doc.text('Total Absent', totLX, botY + 45);
                 doc.rect(totBOX, botY + 39, 35, 22).stroke();
+                }
+
                 doc.font('Helvetica-Bold').fontSize(8.5).text(`Page ${pageIdx + 1} of ${totalPages}`, M, 800-40, { width: CW, align: 'right' });
             }
         });
