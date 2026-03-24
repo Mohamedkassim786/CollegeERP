@@ -5,6 +5,7 @@ import { UserCheck, BookOpen, AlertCircle, CheckCircle, Search } from 'lucide-re
 const StudentAttendance = () => {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [expandedSubject, setExpandedSubject] = useState(null);
 
     useEffect(() => {
         const fetchAttendance = async () => {
@@ -29,6 +30,11 @@ const StudentAttendance = () => {
         if (p >= 75) return 'text-emerald-600 bg-emerald-50 border-emerald-100';
         if (p >= 65) return 'text-amber-600 bg-amber-50 border-amber-100';
         return 'text-rose-600 bg-rose-50 border-rose-100';
+    };
+
+    const formatDate = (dateStr) => {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
     if (loading) return (
@@ -67,7 +73,7 @@ const StudentAttendance = () => {
             {/* Subject Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {attendance.map((sub, idx) => (
-                    <div key={idx} className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                    <div key={idx} className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 group">
                         <div className="flex justify-between items-start mb-6">
                             <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-[#003B73] group-hover:bg-[#003B73] group-hover:text-white transition-colors duration-300">
                                 <BookOpen size={20} />
@@ -101,8 +107,33 @@ const StudentAttendance = () => {
                         </div>
 
                         <div className="mt-6">
+                            <button 
+                                onClick={() => setExpandedSubject(expandedSubject === idx ? null : idx)}
+                                className="w-full py-3 bg-[#003B73]/5 hover:bg-[#003B73]/10 text-[#003B73] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all mb-4"
+                            >
+                                {expandedSubject === idx ? 'Hide History' : 'View Period History'}
+                            </button>
+
+                            {expandedSubject === idx && (
+                                <div className="mt-4 space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                                    {sub.details?.length > 0 ? sub.details.map((rec, rIdx) => (
+                                        <div key={rIdx} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-600 uppercase">{formatDate(rec.date)}</p>
+                                                <p className="text-[8px] font-bold text-gray-400">Period {rec.period}</p>
+                                            </div>
+                                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : rec.status === 'OD' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                {rec.status}
+                                            </span>
+                                        </div>
+                                    )) : (
+                                        <p className="text-[9px] text-gray-400 text-center py-4">No individual records found.</p>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="flex justify-between items-end mb-2">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Availability Range</span>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attendance Range</span>
                                 <span className="text-xl font-black text-[#003B73]">{sub.percentage}%</span>
                             </div>
                             <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">

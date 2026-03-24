@@ -137,7 +137,7 @@ const Sidebar = ({ role, activePath }) => {
                     <div className="leading-tight">
                         <span className="text-xl font-black tracking-tighter text-white">MIET ERP</span>
                         <p className="text-[9px] text-blue-300 font-bold uppercase tracking-[0.2em]">
-                            {String(role || '').replace(/_/g, ' ')}
+                            {role === 'CHIEF_SECRETARY' ? 'CHIEF SUPERINTENDENT' : String(role || '').replace(/_/g, ' ')}
                         </p>
                     </div>
                 </div>

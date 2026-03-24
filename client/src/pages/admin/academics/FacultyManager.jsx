@@ -832,6 +832,7 @@ const BulkUploadModal = ({ onClose, onSuccess }) => {
     const [activeTab, setActiveTab] = useState('excel');
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState(null);
+    const [zipFile, setZipFile] = useState(null);
     const [results, setResults] = useState(null);
 
     const downloadTemplate = async () => {
@@ -862,6 +863,7 @@ const BulkUploadModal = ({ onClose, onSuccess }) => {
             setLoading(true);
             const data = new FormData();
             data.append('file', file);
+            if (zipFile) data.append('photosZip', zipFile);
             const res = await bulkUploadFaculty(data);
             setResults(res.data);
             if (res.data.created > 0 && res.data.failed.length === 0) {
@@ -950,10 +952,23 @@ const BulkUploadModal = ({ onClose, onSuccess }) => {
                                     <li>Upload the .zip file below</li>
                                 </ul>
                             </div>
-                            <div className="text-center py-20 text-gray-300">
-                                <Upload size={48} className="mx-auto mb-4 opacity-30" />
-                                <p className="font-bold">ZIP upload coming soon...</p>
+                            
+                            <div className="bg-indigo-50/30 p-8 rounded-[40px] border-4 border-dashed border-indigo-100 flex flex-col items-center justify-center relative">
+                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => setZipFile(e.target.files[0])} accept=".zip" />
+                                <div className="text-center">
+                                    <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                        <Upload size={32} className="text-indigo-400" />
+                                    </div>
+                                    <p className="text-sm font-black text-indigo-600">{zipFile ? zipFile.name : 'Select or drop .zip file'}</p>
+                                    <p className="text-[10px] font-bold text-indigo-400 uppercase mt-1 tracking-widest">ZIP archives only</p>
+                                </div>
                             </div>
+
+                            <button onClick={handleUpload} disabled={!zipFile || loading || !file} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-30">
+                                {loading && <RefreshCw size={16} className="animate-spin" />}
+                                Upload Excel + Photos
+                            </button>
+                            {!file && <p className="text-[10px] text-center font-bold text-amber-600 uppercase tracking-widest">Please select Excel file first in the other tab</p>}
                         </div>
                     )}
                 </div>

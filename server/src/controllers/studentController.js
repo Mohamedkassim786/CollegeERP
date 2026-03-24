@@ -8,8 +8,9 @@ const createStudent = async (req, res) => {
         rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
         dateOfBirth, gender, bloodGroup, nationality,
         phoneNumber, email, address, city, district, state, pincode,
-        fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
         status: studentStatus,
+        aadharNumber, umisNumber,
+        fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
     } = req.body;
     
     // Explicitly override photo with the uploaded filename if present
@@ -39,7 +40,7 @@ const createStudent = async (req, res) => {
         // Keep legacy department/section strings in sync with IDs
         if (targetDeptId) {
             const deptObj = await prisma.department.findUnique({ where: { id: targetDeptId } });
-            if (deptObj) department = deptObj.code || deptObj.name;
+            if (deptObj) department = deptObj.name; // Standardize on Full Name
         } else if (department) {
             const allDepts = await prisma.department.findMany();
             const deptText = department.trim().toUpperCase();
@@ -49,7 +50,7 @@ const createStudent = async (req, res) => {
             );
             if (deptObj) {
                 targetDeptId = deptObj.id;
-                department = deptObj.code || deptObj.name;
+                department = deptObj.name; // Standardize on Full Name
             }
         }
 
@@ -115,10 +116,17 @@ const createStudent = async (req, res) => {
                 guardianName,
                 guardianPhone,
                 status: studentStatus || "ACTIVE",
+                aadharNumber,
+                umisNumber,
             }
         });
         res.status(201).json(student);
     } catch (error) {
+        if (error.code === 'P2002') {
+            return res.status(400).json({ 
+                message: `Duplicate entry: A student with this ${error.meta?.target || 'Roll Number'} already exists.` 
+            });
+        }
         handleError(res, error, "Error creating student");
     }
 };
@@ -129,8 +137,9 @@ const updateStudent = async (req, res) => {
         rollNo, registerNumber, name, department, year, section, semester, regulation, batch,
         dateOfBirth, gender, bloodGroup, nationality,
         phoneNumber, email, address, city, district, state, pincode,
-        fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
         status: studentStatus,
+        aadharNumber, umisNumber,
+        fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
     } = req.body;
     
     // Explicitly override photo with the uploaded filename if present
@@ -144,6 +153,23 @@ const updateStudent = async (req, res) => {
         let targetDeptId = req.body.departmentId && !isNaN(parseInt(req.body.departmentId)) ? parseInt(req.body.departmentId) : null;
         let targetSecId = req.body.sectionId && !isNaN(parseInt(req.body.sectionId)) ? parseInt(req.body.sectionId) : null;
         let academicYearId = req.body.academicYearId;
+
+        // Keep legacy department/section strings in sync with IDs
+        if (targetDeptId) {
+            const deptObj = await prisma.department.findUnique({ where: { id: targetDeptId } });
+            if (deptObj) department = deptObj.name; // Standardize on Full Name
+        } else if (department) {
+            const allDepts = await prisma.department.findMany();
+            const deptText = String(department).trim().toUpperCase();
+            const deptObj = allDepts.find(d =>
+                (d.code && d.code.toUpperCase() === deptText) ||
+                (d.name && d.name.toUpperCase() === deptText)
+            );
+            if (deptObj) {
+                targetDeptId = deptObj.id;
+                department = deptObj.name; // Standardize on Full Name
+            }
+        }
 
         if (!academicYearId) {
             const activeYear = await prisma.academicYear.findFirst({ where: { isActive: true } });
@@ -232,10 +258,17 @@ const updateStudent = async (req, res) => {
                 guardianName,
                 guardianPhone,
                 status: studentStatus,
+                aadharNumber,
+                umisNumber,
             }
         });
         res.json(student);
     } catch (error) {
+        if (error.code === 'P2002') {
+            return res.status(400).json({ 
+                message: `Duplicate entry: A student with this ${error.meta?.target || 'Roll Number'} already exists.` 
+            });
+        }
         handleError(res, error, "Error updating student");
     }
 };
@@ -514,7 +547,7 @@ const promoteStudents = async (req, res) => {
             );
             if (deptObj) {
                 targetDeptId = deptObj.id;
-                standardizedDept = deptObj.code || deptObj.name;
+                standardizedDept = deptObj.name; // Standardize on Full Name
             }
         }
 
@@ -597,6 +630,7 @@ const bulkUploadStudents = async (req, res) => {
                 phoneNumber, email, address, city, district, state, pincode,
                 fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianPhone,
                 status: studentStatus,
+                aadharNumber, umisNumber,
             } = s;
 
             if (!rollNo) {
@@ -625,7 +659,7 @@ const bulkUploadStudents = async (req, res) => {
                     );
                     if (deptObj) {
                         targetDeptId = deptObj.id;
-                        department = deptObj.code || deptObj.name;
+                        department = deptObj.name; // Standardize on Full Name
                     }
                 }
 
@@ -690,6 +724,8 @@ const bulkUploadStudents = async (req, res) => {
                             guardianName: guardianName || existing.guardianName,
                             guardianPhone: guardianPhone || existing.guardianPhone,
                             status: studentStatus || existing.status,
+                            aadharNumber: aadharNumber || existing.aadharNumber,
+                            umisNumber: umisNumber || existing.umisNumber,
                         }
                     });
                     updatedCount++;
@@ -729,6 +765,8 @@ const bulkUploadStudents = async (req, res) => {
                             guardianName,
                             guardianPhone,
                             status: studentStatus || "ACTIVE",
+                            aadharNumber,
+                            umisNumber,
                         }
                     });
                     createdCount++;
@@ -914,44 +952,96 @@ const getStudentProfile = async (req, res) => {
 
 const getGradeSheet = async (req, res) => {
     const { id } = req.params;
+    const requestedSemester = req.query.semester ? parseInt(req.query.semester) : null;
+
     try {
         const student = await prisma.student.findUnique({
             where: { id: parseInt(id) },
             include: {
                 departmentRef: true,
+                sectionRef: true,
+                academicYear: true,
                 marks: {
                     include: {
                         subject: true,
                         endSemMarks: true
                     }
+                },
+                results: {
+                    orderBy: { semester: 'asc' }
                 }
             }
         });
 
         if (!student) return res.status(404).json({ message: 'Student not found.' });
 
-        const results = student.marks
-            .filter(m => m.endSemMarks && m.endSemMarks.isPublished)
+        // Identify which semester to report (default to student's current if not specified)
+        const targetSem = requestedSemester || student.semester;
+
+        // Fetch Publication Date from SemesterControl
+        const semControl = await prisma.semesterControl.findFirst({
+            where: {
+                department: student.department || '',
+                semester: targetSem,
+                section: student.section || 'A',
+                isPublished: true
+            }
+        });
+
+        // Filter marks for the target semester that are published
+        const currentResults = student.marks
+            .filter(m => m.subject.semester === targetSem && m.endSemMarks && m.endSemMarks.isPublished)
             .map(m => ({
                 subjectCode: m.subject.code,
                 subjectName: m.subject.name,
+                credits: m.subject.credits || 0,
                 cia: Math.round(m.internal || 0),
                 external: Math.round(m.endSemMarks.externalMarks || 0),
-                grade: m.endSemMarks.grade
+                total: Math.round(m.endSemMarks.totalMarks || 0),
+                grade: m.endSemMarks.grade,
+                gradePoint: m.endSemMarks.grade === 'O' ? 10 : 
+                            m.endSemMarks.grade === 'A+' ? 9 :
+                            m.endSemMarks.grade === 'A' ? 8 :
+                            m.endSemMarks.grade === 'B+' ? 7 :
+                            m.endSemMarks.grade === 'B' ? 6 :
+                            m.endSemMarks.grade === 'C' ? 5 : 0,
+                result: m.endSemMarks.grade === 'U' || m.endSemMarks.grade === 'UA' ? 'RA' : 'PASS'
             }));
+
+        // Fetch Exam Session details for this semester's exams
+        // We look for any session that includes a subject from this semester
+        const subjectIds = currentResults.map(r => r.subjectCode);
+        const relatedSession = await prisma.examSession.findFirst({
+            where: {
+                subjects: {
+                    some: {
+                        subject: {
+                            code: { in: subjectIds }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const latestResult = student.results.find(r => r.semester === targetSem);
 
         const data = {
             student,
-            results,
-            semester: student.semester,
-            gpa: student.gpa?.toFixed(2) || '0.00',
-            cgpa: student.cgpa?.toFixed(2) || '0.00'
+            results: currentResults,
+            semester: targetSem,
+            publicationDate: semControl?.publishedAt || new Date(),
+            examSession: relatedSession ? `${relatedSession.month} - ${relatedSession.year}` : 'NOV - 2024',
+            gpa: latestResult?.gpa?.toFixed(2) || '0.00',
+            cgpa: latestResult?.cgpa?.toFixed(2) || '0.00',
+            history: student.results, // Pass all 8 semesters for the bottom matrix
+            regulation: student.regulation || '2021(CBCS)'
         };
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=GradeSheet_Sem${student.semester}_${student.registerNumber || student.rollNo}.pdf`);
+        res.setHeader('Content-Disposition', `attachment; filename=GradeSheet_Sem${targetSem}_${student.registerNumber || student.rollNo}.pdf`);
         
-        pdfService.generateStudentGradeSheet(res, data);
+        pdfService.generateOverlayMarksheet(res, data);
     } catch (error) {
         handleError(res, error, "Error generating Grade Sheet");
     }

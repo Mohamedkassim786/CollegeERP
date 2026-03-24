@@ -233,44 +233,68 @@ const getStudentDashboard = async (req, res) => {
 
 const getChiefSecretaryDashboard = async (req, res) => {
     try {
-        const departments = await prisma.department.findMany({
-            include: {
-                students: {
-                    where: { status: 'ACTIVE' },
-                    include: { results: true }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tonight = new Date(today);
+        tonight.setHours(23, 59, 59, 999);
+
+        // 1. Total Allocations Today
+        const totalAllocations = await prisma.hallAllocation.count({
+            where: {
+                examDate: { gte: today, lte: tonight }
+            }
+        });
+
+        // 2. Total Absentees Today
+        // Join SubjectDummyMapping with HallAllocation to filter by today's date
+        const absenteesCount = await prisma.subjectDummyMapping.count({
+            where: {
+                isAbsent: true,
+                student: {
+                    hallAllocations: {
+                        some: {
+                            examDate: { gte: today, lte: tonight }
+                        }
+                    }
                 }
             }
         });
 
-        const deptStats = departments.map(dept => {
-            const studentCount = dept.students.length;
-            const passedStudents = dept.students.filter(s => 
-                s.results.some(r => r.resultStatus === 'PASS' || r.resultStatus === 'P')
-            ).length;
-            const passPercentage = studentCount > 0 ? (passedStudents / studentCount * 100).toFixed(1) : 0;
-
-            return {
-                name: dept.name,
-                code: dept.code,
-                studentCount,
-                passPercentage
-            };
+        // 3. Active Halls Today
+        const activeHallsResult = await prisma.hallAllocation.groupBy({
+            by: ['hallId'],
+            where: {
+                examDate: { gte: today, lte: tonight }
+            }
         });
+        const activeHalls = activeHallsResult.length;
 
-        const totalStudents = await prisma.student.count({ where: { status: 'ACTIVE' } });
-        const totalFaculty = await prisma.faculty.count({ where: { isActive: true } });
-        const pendingApprovals = await prisma.marks.count({ where: { isApproved: false, isLocked: true } });
+        // 4. Dispatch Progress (Subjects with boardCode saved today)
+        const dispatchedSubjectsResult = await prisma.subjectDummyMapping.groupBy({
+            by: ['subjectId'],
+            where: {
+                boardCode: { not: null },
+                subject: {
+                    hallAllocations: {
+                        some: {
+                            examDate: { gte: today, lte: tonight }
+                        }
+                    }
+                }
+            }
+        });
+        const dispatchCount = dispatchedSubjectsResult.length;
 
         res.json({
-            deptStats,
             overallStats: {
-                totalStudents,
-                totalFaculty,
-                pendingApprovals
+                totalAllocations,
+                totalAbsentees: absenteesCount,
+                activeHalls,
+                dispatchProgress: dispatchCount
             }
         });
     } catch (error) {
-        handleError(res, error, "Error fetching Chief Secretary dashboard");
+        handleError(res, error, "Error fetching Chief Superintendent dashboard");
     }
 };
 

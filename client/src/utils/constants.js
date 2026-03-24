@@ -30,8 +30,8 @@ export const GRADE_POINTS = {
     'B+': 7,
     B: 6,
     C: 5,
-    RA: 0,
     U: 0,
+    UA: 0,
     SA: 0,
 };
 
@@ -44,7 +44,7 @@ export const GRADE_COLORS = {
     B: 'bg-yellow-100 text-yellow-700',
     C: 'bg-orange-100 text-orange-700',
     U: 'bg-red-100 text-red-700',
-    RA: 'bg-red-100 text-red-700',
+    UA: 'bg-red-100 text-red-700',
     SA: 'bg-gray-100 text-gray-600',
 };
 

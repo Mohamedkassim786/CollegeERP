@@ -44,7 +44,7 @@ const Login = () => {
       } else if (user.role === "PRINCIPAL") {
         target = "/principal";
       } else if (user.role === "CHIEF_SECRETARY") {
-        target = "/chief-secretary";
+        target = "/chief-superintendent";
       } else if (isHodPortal) {
         target = "/hod";
       } else if (user.role === "STUDENT") {

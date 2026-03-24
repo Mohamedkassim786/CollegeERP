@@ -3,7 +3,15 @@ import {
     Send, RefreshCw, CheckSquare, Square,
     Download, Users, AlertCircle, BookOpen
 } from "lucide-react";
-import { getDispatchSubjects, getDispatchStudents, exportDispatchPDF } from "../../../services/examination.service";
+import {
+    getDispatchSubjects,
+    getDispatchStudents,
+    exportDispatchPDF,
+    exportAbsenteesReport,
+    saveDispatchAbsentees,
+    getAllocationDates,
+    getSubjectsByAllocation
+} from "../../../services/examination.service";
 import toast from "react-hot-toast";
 import CustomSelect from "../../../components/CustomSelect";
 
@@ -12,6 +20,9 @@ const COLS = 5;
 const ROWS_PER_COL = 10;
 
 const Dispatch = () => {
+    const [allocationDates, setAllocationDates] = useState([]);
+    const [selectedDate, setSelectedDate] = useState("");
+
     const [subjects, setSubjects] = useState([]);
     const [selectedSubject, setSelectedSubject] = useState(null);
     const [students, setStudents] = useState([]);
@@ -19,16 +30,33 @@ const Dispatch = () => {
     const [exporting, setExporting] = useState(null);
 
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+    const [fromDate, setFromDate] = useState(date);
+    const [toDate, setToDate] = useState(date);
     const [time, setTime] = useState("10:00");
     const [ampm, setAmpm] = useState("AM");
     const [session, setSession] = useState("FN");
-    const [boardCode, setBoardCode] = useState("505");
+    const [boardCode, setBoardCode] = useState("");
     const [qpCode, setQpCode] = useState("");
 
     // groupSelected: { [studentId]: bool }
     const [groupSelected, setGroupSelected] = useState({});
 
-    useEffect(() => { fetchSubjects(); }, []);
+    useEffect(() => {
+        fetchAllocationDates();
+    }, []);
+
+    const fetchAllocationDates = async () => {
+        try {
+            const res = await getAllocationDates();
+            setAllocationDates(res.data);
+            if (res.data.length > 0) {
+                // Keep existing date if it exists in list, else pick first
+                if (!res.data.includes(date)) {
+                    setDate(res.data[0]);
+                }
+            }
+        } catch { toast.error("Failed to load allocation dates"); }
+    };
 
     const fetchSubjects = async () => {
         try {
@@ -37,17 +65,51 @@ const Dispatch = () => {
         } catch { toast.error("Failed to load subjects"); }
     };
 
+    const fetchSubjectsByAlloc = async (d, s) => {
+        if (!d || !s) return;
+        setLoading(true);
+        try {
+            const res = await getSubjectsByAllocation({ date: d, session: s });
+            setSubjects(res.data);
+            if (selectedSubject && !res.data.find(sub => sub.id === selectedSubject.id)) {
+                setSelectedSubject(null);
+                setStudents([]);
+            }
+        } catch { toast.error("Failed to load subjects"); }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => {
+        if (date && session) {
+            fetchSubjectsByAlloc(date, session);
+        }
+    }, [date, session]);
+
     const fetchStudents = async (subject) => {
         setLoading(true);
         try {
-            const res = await getDispatchStudents({ subjectId: subject.id, semester: subject.semester });
+            const res = await getDispatchStudents({
+                subjectId: subject.id,
+                semester: subject.semester,
+                date: date,
+                session: session,
+                mode: 'END'
+            });
             const enriched = res.data.map(s => ({
                 ...s,
-                isAbsent: false,
-                isMalpractice: false,
-                // isArrear comes from backend; markedAR controls whether AR shows in PDF
                 markedAR: s.isArrear ? true : false,
             }));
+
+            // Auto-fill codes from first student who has them
+            const withCodes = res.data.find(s => s.boardCode || s.qpCode);
+            if (withCodes) {
+                setBoardCode(withCodes.boardCode || "");
+                setQpCode(withCodes.qpCode || "");
+            } else {
+                setBoardCode("");
+                setQpCode("");
+            }
+
             setStudents(enriched);
             setGroupSelected({});
         } catch { toast.error("Failed to load students"); }
@@ -144,6 +206,51 @@ const Dispatch = () => {
         } finally { setExporting(null); }
     };
 
+    const handleExportAbsentees = async () => {
+        if (!date || !session) { toast.error("Please select Date and Session"); return; }
+
+        setLoading(true);
+        try {
+            const payload = {
+                date,
+                fromDate,
+                toDate,
+                time,
+                ampm,
+                session
+            };
+
+            const res = await exportAbsenteesReport(payload);
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `absentees_statement_${session}_${date}.pdf`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+            toast.success("Consolidated Absentees Statement exported!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to export absentees report");
+        } finally { setLoading(false); }
+    };
+
+    const handleSaveAbsentees = async () => {
+        if (!selectedSubject) return;
+        setLoading(true);
+        try {
+            await saveDispatchAbsentees({
+                subjectId: selectedSubject.id,
+                boardCode,
+                qpCode,
+                students: students.map(s => ({ id: s.id, isAbsent: s.isAbsent }))
+            });
+            toast.success("Absentees and exam codes saved successfully");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to save absentees");
+        } finally { setLoading(false); }
+    };
+
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
         <div className="w-full animate-fadeIn">
@@ -158,6 +265,26 @@ const Dispatch = () => {
                         Generate Answer Book dispatch sheets — 50 students per dispatch.
                     </p>
                 </div>
+                <div className="flex items-center gap-3">
+                    {date && session && (
+                        <button
+                            onClick={handleExportAbsentees}
+                            className="flex items-center gap-2 bg-red-50 text-red-600 font-black text-sm px-6 py-4 rounded-[20px] hover:bg-red-100 transition border border-red-100 shadow-sm"
+                        >
+                            <Download size={20} />
+                            Consolidated Absentees Report
+                        </button>
+                    )}
+                    {students.length > 0 && (
+                        <button
+                            onClick={handleSaveAbsentees}
+                            className="flex items-center gap-2 bg-green-50 text-green-700 font-black text-sm px-6 py-4 rounded-[20px] hover:bg-green-100 transition border border-green-100 shadow-sm"
+                        >
+                            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+                            Save Attendance
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Settings Card */}
@@ -165,28 +292,61 @@ const Dispatch = () => {
                 <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-5">Dispatch Settings</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                    {/* Subject — spans 2 cols */}
-                    <div className="col-span-1 sm:col-span-2 lg:col-span-2 min-w-0">
+                    {/* Date Selector */}
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Exam Date (Slot)</label>
+                        <CustomSelect value={date} onChange={e => {
+                            setDate(e.target.value);
+                            setFromDate(e.target.value);
+                            setToDate(e.target.value);
+                        }}>
+                            <option value="">— Select Date —</option>
+                            {allocationDates.map(d => (
+                                <option key={d} value={d.split('T')[0]}>
+                                    {new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </option>
+                            ))}
+                        </CustomSelect>
+                    </div>
+
+                    {/* Range Selectors */}
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 text-red-500">Report From Date</label>
+                        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+                            className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 transition" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 text-red-500">Report To Date</label>
+                        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+                            className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 transition" />
+                    </div>
+
+                    {/* Session */}
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Session</label>
+                        <div className="flex gap-2 h-[46px]">
+                            {["FN", "AN"].map(s => (
+                                <button key={s} onClick={() => setSession(s)}
+                                    className={`flex-1 rounded-2xl font-black text-sm transition-all ${session === s ? "bg-[#003B73] text-white shadow-lg shadow-blue-900/20" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Subject */}
+                    <div className="min-w-0">
                         <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Subject</label>
                         <CustomSelect
                             value={selectedSubject ? String(selectedSubject.id) : ""}
                             onChange={handleSubjectChange}
+                            disabled={!date || !session}
                         >
-                            <option value="">— Select Subject —</option>
+                            <option value="">— Select Slot First —</option>
                             {subjects.map(s => (
                                 <option key={s.id} value={s.id}>{s.code}: {s.name} — Sem {s.semester}</option>
                             ))}
                         </CustomSelect>
-                        {selectedSubject && (
-                            <p className="text-xs text-blue-600 font-bold mt-1 ml-1">Semester {selectedSubject.semester} · {selectedSubject.code}</p>
-                        )}
-                    </div>
-
-                    {/* Date */}
-                    <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Exam Date</label>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                            className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
                     </div>
 
                     {/* Time + AM/PM */}
@@ -206,30 +366,17 @@ const Dispatch = () => {
                         </div>
                     </div>
 
-                    {/* Session */}
-                    <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Session</label>
-                        <div className="flex gap-2 h-[46px]">
-                            {["FN", "AN"].map(s => (
-                                <button key={s} onClick={() => setSession(s)}
-                                    className={`flex-1 rounded-2xl font-black text-sm transition-all ${session === s ? "bg-[#003B73] text-white shadow-lg shadow-blue-900/20" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-                                    {s}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
                     {/* Board Code */}
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Board Code</label>
-                        <input type="text" value={boardCode} onChange={e => setBoardCode(e.target.value)} placeholder="505"
+                        <input type="text" value={boardCode} onChange={e => setBoardCode(e.target.value)} placeholder="Enter Board Code"
                             className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
                     </div>
 
                     {/* QP Code */}
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">QP Code</label>
-                        <input type="text" value={qpCode} onChange={e => setQpCode(e.target.value)} placeholder="50439"
+                        <input type="text" value={qpCode} onChange={e => setQpCode(e.target.value)} placeholder="Enter QP Code"
                             className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
                     </div>
 

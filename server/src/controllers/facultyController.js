@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma');
 const ExcelJS = require('exceljs');
 const markService = require('../services/markService');
 const { getDeptCriteria } = require('../utils/deptUtils');
+const { facultyDir } = require('../utils/uploadConfig');
 const { handleError } = require('../utils/errorUtils');
 
 const bcrypt = require('bcryptjs');
@@ -845,13 +846,25 @@ const deleteFaculty = async (req, res) => {
     }
 };
 
+const { extractPhotosFromZip } = require('../utils/zipExtractor');
+
 const bulkUploadFaculty = async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+        const excelFile = req.files?.['file']?.[0];
+        if (!excelFile) return res.status(400).json({ message: 'Excel file is required' });
 
         const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(req.file.buffer);
+        await workbook.xlsx.load(excelFile.buffer);
         const worksheet = workbook.worksheets[0];
+
+        let zipInfo = null;
+        if (req.files?.['photosZip']?.[0]) {
+            try {
+                zipInfo = await extractPhotosFromZip(req.files['photosZip'][0].buffer, facultyDir);
+            } catch (zipError) {
+                console.error("ZIP Extraction Failed:", zipError);
+            }
+        }
 
         const hashedPassword = await bcrypt.hash('password123', 10);
         let createdCount = 0;
@@ -882,6 +895,20 @@ const bulkUploadFaculty = async (req, res) => {
                 continue;
             }
 
+            // Photo Mapping from ZIP
+            let photo = row.getCell(13).text?.trim(); // Optional Excel-provided photo name
+            if (zipInfo && staffId) {
+                const extensions = ['.jpg', '.jpeg', '.png'];
+                for (const ext of extensions) {
+                    const fileName = `${staffId}${ext}`;
+                    const fullPath = require('path').join(facultyDir, fileName);
+                    if (require('fs').existsSync(fullPath)) {
+                        photo = fileName;
+                        break;
+                    }
+                }
+            }
+
             try {
                 // Find department ID if possible
                 let deptId = null;
@@ -897,12 +924,12 @@ const bulkUploadFaculty = async (req, res) => {
                     update: {
                         fullName, department: deptName, departmentId: deptId, role,
                         designation, qualification, phone, email, dateOfBirth,
-                        gender, bloodGroup, address, isActive: true
+                        gender, bloodGroup, address, photo, isActive: true
                     },
                     create: {
                         staffId, fullName, department: deptName, departmentId: deptId, role,
                         designation, qualification, phone, email, dateOfBirth,
-                        gender, bloodGroup, address, password: hashedPassword, isActive: true
+                        gender, bloodGroup, address, photo, password: hashedPassword, isActive: true
                     }
                 });
 

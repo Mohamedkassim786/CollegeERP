@@ -38,7 +38,12 @@ const isPrincipal = (req, res, next) => {
 
 const isChiefSecretary = (req, res, next) => {
     if (req.user && (req.user.role === ROLES.CHIEF_SECRETARY || req.user.role === ROLES.ADMIN)) return next();
-    return res.status(403).json({ message: 'Require Chief Secretary Role' });
+    return res.status(403).json({ message: 'Require Chief Superintendent Role' });
+};
+
+const isExamAdmin = (req, res, next) => {
+    if (req.user && (req.user.role === ROLES.CHIEF_SECRETARY || req.user.role === ROLES.ADMIN)) return next();
+    return res.status(403).json({ message: 'Read/Write Access Denied' });
 };
 
 const isHod = (req, res, next) => {
@@ -103,6 +108,7 @@ module.exports = {
     isExternal, 
     isStudent,
     isFirstYearCoordinator,
+    isExamAdmin,
     canReadAdminData,
     checkFirstLogin: (req, res, next) => {
         if (req.user && req.user.isFirstLogin && req.user.role !== ROLES.ADMIN) {

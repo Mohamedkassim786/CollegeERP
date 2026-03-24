@@ -156,6 +156,8 @@ model Student {
   pincode         String?
   state           String?
   password        String?
+  aadharNumber    String?
+  umisNumber      String?
   arrears         Arrear[]
   eligibility     AttendanceEligibility[]
   hallAllocations HallAllocation[]

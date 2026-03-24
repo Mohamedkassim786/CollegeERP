@@ -11,7 +11,16 @@ import {
   Search,
   Printer
 } from "lucide-react";
-import { getConsolidatedResults, calculateBulkGPA, exportPortraitResults, exportLandscapeResults } from "../../../services/results.service";
+import { 
+  getConsolidatedResults, 
+  calculateBulkGPA, 
+  exportPortraitResults, 
+  exportLandscapeResults, 
+  publishResult, 
+  unpublishResult, 
+  lockResult, 
+  unlockResult 
+} from "../../../services/results.service";
 import { getDepartments } from "../../../services/department.service";
 import toast from "react-hot-toast";
 
@@ -82,6 +91,57 @@ const ProvisionalResults = () => {
     }
   };
 
+
+  const handlePublish = async () => {
+    if (!filters.department || !filters.semester) return;
+    const confirm = window.confirm("Are you sure you want to PUBLISH these results? This will make them visible to students.");
+    if (!confirm) return;
+
+    setLoading(true);
+    try {
+      await publishResult({ ...filters, year: 2024 }); 
+      toast.success("Results published successfully!");
+      fetchResults();
+    } catch (error) {
+      toast.error("Failed to publish results");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (!filters.department || !filters.semester) return;
+    const confirm = window.confirm("Are you sure you want to UNPUBLISH these results? Students will no longer be able to see them.");
+    if (!confirm) return;
+
+    setLoading(true);
+    try {
+      await unpublishResult({ ...filters, year: 2024 }); 
+      toast.success("Results unpublished successfully!");
+      fetchResults();
+    } catch (error) {
+      toast.error("Failed to unpublish results");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    if (!filters.department || !filters.semester) return;
+    const confirm = window.confirm("Are you sure you want to UNLOCK these results? This will permitir mark updates again.");
+    if (!confirm) return;
+
+    setLoading(true);
+    try {
+      await unlockResult({ ...filters, year: 2024 });
+      toast.success("Semester results unlocked!");
+      fetchResults();
+    } catch (error) {
+      toast.error("Failed to unlock results");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -227,9 +287,71 @@ const ProvisionalResults = () => {
           {loading ? <RefreshCw className="animate-spin" size={18} /> : <Award size={18} />}
           Process GPA
         </button>
-
-
       </div>
+
+      {resultsData && (
+        <div className="mb-8 flex items-center justify-between p-6 bg-white rounded-[24px] border border-gray-100 shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Publication Status</span>
+              <div className="flex items-center gap-2 mt-1">
+                {resultsData.isPublished ? (
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full font-black text-[10px] border border-emerald-100 uppercase tracking-wider">
+                    <CheckCircle size={12} /> Published on {resultsData.publishedAt}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full font-black text-[10px] border border-yellow-100 uppercase tracking-wider">
+                    <RefreshCw size={12} /> Not Published
+                  </span>
+                )}
+                {resultsData.isLocked && (
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-[#003B73] rounded-full font-black text-[10px] border border-blue-100 uppercase tracking-wider">
+                    <CheckCircle size={12} /> Marks Locked
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            {resultsData.isPublished ? (
+              <button
+                onClick={handleUnpublish}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-xl font-bold hover:bg-red-100 transition-all text-sm disabled:opacity-50"
+              >
+                <XCircle size={16} /> Unpublish Results
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all text-sm shadow-lg shadow-emerald-900/10 disabled:opacity-50"
+              >
+                <CheckCircle size={16} /> Publish Results
+              </button>
+            )}
+
+            {resultsData.isLocked ? (
+              <button
+                onClick={handleUnlock}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-blue-50 text-[#003B73] border border-blue-100 rounded-xl font-bold hover:bg-blue-100 transition-all text-sm disabled:opacity-50"
+              >
+                <RefreshCw size={16} /> Unlock Semester
+              </button>
+            ) : (
+              <button
+                onClick={handleLock}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-[#003B73] text-white rounded-xl font-bold hover:bg-blue-800 transition-all text-sm shadow-lg shadow-blue-900/10 disabled:opacity-50"
+              >
+                <CheckCircle size={16} /> Lock Semester
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32">
@@ -294,14 +416,14 @@ const ProvisionalResults = () => {
                     {resultsData.subjects.map(sub => {
                       const m = student.marks[sub.code];
                       const isFail = m?.status === 'FAIL';
-                      const isAbsent = m?.grade === 'AB';
+                      const isAbsent = m?.grade === 'UA';
                       return (
                         <td key={sub.code} className="px-6 py-6 text-center">
-                          <span className={`inline-flex flex-col items-center justify-center p-2 rounded-xl min-w-[50px] ${isAbsent ? 'bg-gray-100 text-gray-400' :
-                            isFail ? 'bg-red-50 text-red-600' :
+                            <span className={`inline-flex flex-col items-center justify-center p-2 rounded-xl min-w-[50px] ${isAbsent ? 'bg-gray-100 text-gray-400' :
+                            isFail || m?.grade === 'RA' || m?.grade === 'U' ? 'bg-red-50 text-red-600' :
                               'bg-blue-50 text-blue-600'
                             }`}>
-                            <span className="text-xs font-black">{m?.grade || '-'}</span>
+                            <span className="text-xs font-black">{m?.grade === 'RA' ? 'U' : (m?.grade || '-')}</span>
                             {/* <span className="text-[9px] opacity-70 mt-0.5">{m?.total}</span> */}
                           </span>
                         </td>

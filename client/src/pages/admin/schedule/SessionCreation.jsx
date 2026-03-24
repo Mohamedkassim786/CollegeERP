@@ -63,7 +63,7 @@ const SessionCreation = () => {
         <p className="text-gray-500 font-bold">Manage academic examination sessions</p>
       </div>
 
-      <main className="max-w-[1200px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <main className="mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-10">
         
         {/* Create Session Form */}
         <section className="lg:col-span-5 bg-white p-8 rounded-3xl shadow-xl shadow-blue-900/5 border border-gray-100 flex flex-col justify-between">
@@ -83,7 +83,7 @@ const SessionCreation = () => {
                 <div>
                   <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2 ml-1">Month</label>
                   <CustomSelect 
-                    className="w-full font-bold bg-gray-50 rounded-2xl py-4"
+                    className="w-full h-full"
                     value={newSession.month} onChange={e => setNewSession({ ...newSession, month: e.target.value })}>
                     <option value="">Select Month</option>
                     {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -100,7 +100,7 @@ const SessionCreation = () => {
               <div>
                 <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2 ml-1">Exam Mode / Type</label>
                 <CustomSelect 
-                  className="w-full font-bold bg-gray-50 rounded-2xl py-4"
+                  className="w-full h-full"
                   value={newSession.examMode} onChange={e => setNewSession({ ...newSession, examMode: e.target.value })}>
                   <option value="CIA 1">CIA 1</option>
                   <option value="CIA 2">CIA 2</option>

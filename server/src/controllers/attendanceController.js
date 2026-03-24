@@ -232,13 +232,20 @@ const getAttendanceReport = async (req, res) => {
             // Group attendance by subject for this specific student
             const subjectsMap = {};
             
-            // We need to know all relevant subjects for this student's semester
+            // Resolve Department Name & Code for robust subject matching
+            const deptRecord = await prisma.department.findFirst({
+                where: { OR: [ { code: student.department }, { name: student.department }, { id: student.departmentId || -1 } ] }
+            });
+            const deptCode = deptRecord?.code || student.department;
+            const deptName = deptRecord?.name || student.department;
+
+            const studentSem = student.semester || student.currentSemester || 1;
             const academicSubjects = await prisma.subject.findMany({
                 where: {
-                    semester: student.semester,
+                    semester: studentSem,
                     OR: [
-                        { department: student.department },
-                        { department: student.departmentRef?.name },
+                        { department: { contains: deptCode || "" } },
+                        { department: { contains: deptName || "" } },
                         { type: 'COMMON' }
                     ]
                 }

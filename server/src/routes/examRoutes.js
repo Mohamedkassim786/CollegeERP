@@ -18,12 +18,16 @@ router.post('/calculate-bulk-gpa', verifyToken, isAdmin, examController.calculat
 router.post('/semester-control', verifyToken, isAdmin, examController.toggleSemesterControl);
 router.get('/semester-control', verifyToken, isAdmin, examController.getSemesterControl);
 
-// ── Publish / Unpublish Result ──────────────────────────────────────────────
+// ── Publish / Lock ──────────────────────────────────────────────
 // POST /api/exam/publish   — publish results for a dept/sem/section
 // POST /api/exam/unpublish — unpublish
+// POST /api/exam/lock      — lock semester marks
+// POST /api/exam/unlock    — unlock semester marks
 // GET  /api/exam/publish-status — check current publish state
 router.post('/publish', verifyToken, isAdmin, examController.publishResults);
 router.post('/unpublish', verifyToken, isAdmin, examController.unpublishResults);
+router.post('/lock', verifyToken, isAdmin, examController.lockResults);
+router.post('/unlock', verifyToken, isAdmin, examController.unlockResults);
 router.get('/publish-status', verifyToken, examController.getPublishStatus);
 
 // Consolidated + Export

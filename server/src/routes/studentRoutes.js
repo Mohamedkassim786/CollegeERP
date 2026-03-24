@@ -11,23 +11,35 @@ router.use(isStudent);
 router.get('/attendance', async (req, res) => {
   try {
     const studentId = req.user.id;
-    const student = await prisma.student.findUnique({ where: { id: studentId } });
+    const student = await prisma.student.findUnique({ 
+      where: { id: studentId },
+      include: { departmentRef: true }
+    });
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
-    const fetchDept = student.year === 1 ? 'FIRST_YEAR' : student.department;
+    // Resolve Department Code (student.department might be full name)
+    const deptCode = student.departmentRef?.code || student.department;
+    const fetchDept = student.year === 1 ? 'FIRST_YEAR' : (deptCode === 'Mechanical Engineering' ? 'MECH' : deptCode);
 
     const assignments = await prisma.facultyAssignment.findMany({
-      where: { section: student.section, department: fetchDept },
+      where: { 
+        section: student.section, 
+        OR: [
+          { department: fetchDept },
+          { department: { contains: fetchDept } }
+        ]
+      },
       include: { subject: true, faculty: true }
     });
 
     const relevantAssignments = assignments.filter(a => a.subject.semester === student.semester);
     const subjectIds = relevantAssignments.map(a => a.subjectId);
 
-    // Single query for all attendance records — no N+1
+    // Fetch all attendance records with timestamps
     const allAttendance = await prisma.studentAttendance.findMany({
       where: { studentId, subjectId: { in: subjectIds } },
-      select: { subjectId: true, status: true }
+      orderBy: { date: 'desc' },
+      select: { subjectId: true, status: true, date: true, period: true }
     });
 
     const result = relevantAssignments.map(a => {
@@ -35,6 +47,7 @@ router.get('/attendance', async (req, res) => {
       const total = records.length;
       const present = records.filter(r => r.status === 'PRESENT' || r.status === 'OD').length;
       const ratio = total > 0 ? present / total : 0;
+      
       return {
         subject: a.subject,
         faculty: a.faculty?.fullName,
@@ -42,7 +55,8 @@ router.get('/attendance', async (req, res) => {
         present,
         absent: total - present,
         percentage: total > 0 ? (ratio * 100).toFixed(1) : '0.0',
-        status: total === 0 ? 'NO_DATA' : ratio >= 0.75 ? 'ELIGIBLE' : ratio >= 0.65 ? 'CONDONATION' : 'DETAINED'
+        status: total === 0 ? 'NO_DATA' : ratio >= 0.75 ? 'ELIGIBLE' : ratio >= 0.65 ? 'CONDONATION' : 'DETAINED',
+        details: records // This provides the "period wise" data requested
       };
     });
 
@@ -78,10 +92,15 @@ router.get('/marks', async (req, res) => {
 router.get('/timetable', async (req, res) => {
   try {
     const studentId = req.user.id;
-    const student = await prisma.student.findUnique({ where: { id: studentId } });
+    const student = await prisma.student.findUnique({ 
+      where: { id: studentId },
+      include: { departmentRef: true }
+    });
     if (!student) return res.status(404).json({ message: 'Student not found' });
     
-    const fetchDept = student.year === 1 ? 'FIRST_YEAR' : student.department;
+    // Resolve Dept Code for timetable matching
+    const deptCode = student.departmentRef?.code || student.department;
+    const fetchDept = student.year === 1 ? 'FIRST_YEAR' : (deptCode === 'Mechanical Engineering' ? 'MECH' : deptCode);
 
     const timetable = await prisma.timetable.findMany({
       where: { 

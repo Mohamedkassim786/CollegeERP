@@ -184,29 +184,26 @@ const DepartmentManager = () => {
       </div>
 
       {confirmState && (
-        <div className="mb-8 mx-2 animate-fadeIn">
-          <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-red-900/5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
-                <AlertCircle size={28} />
-              </div>
-              <div>
-                <p className="text-red-900 font-black uppercase tracking-tight text-lg">Confirm Deletion</p>
-                <p className="text-red-700 font-bold text-sm">{confirmState.message}</p>
-              </div>
+        <div className="fixed inset-0 bg-[#003B73]/20 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fadeIn">
+          <div className="bg-white rounded-[48px] w-full max-w-md p-10 relative shadow-2xl border border-red-50 flex flex-col items-center text-center">
+            <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-8 shadow-sm">
+              <AlertCircle size={40} />
             </div>
-            <div className="flex gap-3 w-full md:w-auto">
+            <h3 className="text-3xl font-black text-red-900 mb-3 tracking-tighter uppercase">Confirm Deletion</h3>
+            <p className="text-red-700/80 font-bold text-base mb-10 max-w-sm">{confirmState.message}</p>
+            
+            <div className="flex gap-4 w-full">
               <button
                 onClick={() => setConfirmState(null)}
-                className="flex-1 md:flex-none px-10 py-4 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all"
+                className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-gray-200 transition-all font-black"
               >
                 Cancel
               </button>
               <button
                 onClick={() => { handleDelete(confirmState.id); setConfirmState(null); }}
-                className="flex-1 md:flex-none px-10 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-transform active:scale-95"
+                className="flex-1 py-5 bg-red-600 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-red-700 shadow-2xl shadow-red-900/20 transition-all hover:-translate-y-1 font-black"
               >
-                Confirm Delete
+                Confirm
               </button>
             </div>
           </div>

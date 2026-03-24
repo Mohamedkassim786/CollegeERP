@@ -79,15 +79,19 @@ const StudentFormFields = ({
           <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Department</label>
           <CustomSelect
             className="w-full"
-            value={data.department || ""}
-            onChange={(e) => setData({ ...data, department: e.target.value })}
+            value={data.departmentId || ""}
+            onChange={(e) => {
+              const id = parseInt(e.target.value);
+              const dept = departments.find(d => d.id === id);
+              setData({ ...data, departmentId: id, department: dept?.name || "" });
+            }}
             required
           >
             <option value="">Select Dept</option>
             {departments
               .filter((d) => d && d.name?.toLowerCase() !== "first year" && d.code !== (departments.find(dy => dy.name?.toLowerCase() === "first year")?.code || "GEN"))
               .map((d) => (
-                <option key={d.id} value={d.code || d.name}>{d.code || d.name}</option>
+                <option key={d.id} value={d.id}>{d.code || d.name}</option>
               ))}
           </CustomSelect>
         </div>
@@ -162,6 +166,30 @@ const StudentFormFields = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
+          <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Aadhar Number *</label>
+          <input
+            type="text"
+            className="input-field w-full font-mono"
+            value={data.aadharNumber || ""}
+            onChange={(e) => setData({ ...data, aadharNumber: e.target.value.replace(/[^0-9]/g, "").slice(0, 12) })}
+            required
+            placeholder="12-digit Aadhar"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">UMIS Number</label>
+          <input
+            type="text"
+            className="input-field w-full font-mono"
+            value={data.umisNumber || ""}
+            onChange={(e) => setData({ ...data, umisNumber: e.target.value })}
+            placeholder="Optional"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
           <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">Regulation</label>
           <CustomSelect
             className="w-full"
@@ -188,24 +216,97 @@ const StudentFormFields = ({
         </div>
       </div>
 
-      {/* Personal & Contact - Collapsed/Summarized */}
+      {/* Personal & Details */}
       <div className="border-t border-gray-100 pt-6">
-        <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Personal & Contact</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input type="date" className="input-field" value={data.dateOfBirth || ''} onChange={e => setData({ ...data, dateOfBirth: e.target.value })} required />
-          <CustomSelect value={data.gender} onChange={e => setData({ ...data, gender: e.target.value })} required>
-            <option value="">Gender</option>
-            <option value="MALE">Male</option>
-            <option value="FEMALE">Female</option>
-            <option value="OTHER">Other</option>
-          </CustomSelect>
-          <input
-            className="input-field"
-            placeholder="Phone"
-            value={data.phoneNumber || ""}
-            onChange={e => setData({ ...data, phoneNumber: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) })}
-            required
-          />
+        <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Personal & Identity</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">DOB *</label>
+            <input type="date" className="input-field w-full" value={data.dateOfBirth || ''} onChange={e => setData({ ...data, dateOfBirth: e.target.value })} required />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Gender *</label>
+            <CustomSelect className="w-full" value={data.gender} onChange={e => setData({ ...data, gender: e.target.value })} required>
+              <option value="">Select</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="OTHER">Other</option>
+            </CustomSelect>
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Blood Group</label>
+            <input className="input-field w-full" value={data.bloodGroup || ""} onChange={e => setData({ ...data, bloodGroup: e.target.value.toUpperCase() })} placeholder="e.g. O+" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Nationality</label>
+            <input className="input-field w-full" value={data.nationality || ""} onChange={e => setData({ ...data, nationality: e.target.value })} placeholder="e.g. Indian" />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Email Address</label>
+            <input className="input-field w-full" type="email" value={data.email || ""} onChange={e => setData({ ...data, email: e.target.value.toLowerCase() })} placeholder="student@example.com" />
+          </div>
+        </div>
+      </div>
+
+      {/* Address Section */}
+      <div className="border-t border-gray-100 pt-6">
+        <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Communication Address</h4>
+        <div className="grid grid-cols-1 gap-4 mb-4">
+          <textarea 
+            className="input-field w-full h-20 resize-none" 
+            placeholder="Door No, Street Name, Area..."
+            value={data.address || ""}
+            onChange={e => setData({ ...data, address: e.target.value })}
+          ></textarea>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <input className="input-field text-xs" placeholder="City" value={data.city || ""} onChange={e => setData({ ...data, city: e.target.value })} />
+          <input className="input-field text-xs" placeholder="District" value={data.district || ""} onChange={e => setData({ ...data, district: e.target.value })} />
+          <input className="input-field text-xs" placeholder="State" value={data.state || ""} onChange={e => setData({ ...data, state: e.target.value })} />
+          <input className="input-field text-xs" placeholder="Pincode" value={data.pincode || ""} onChange={e => setData({ ...data, pincode: e.target.value.replace(/\D/g,'') })} />
+        </div>
+      </div>
+
+      {/* Parent & Contact */}
+      <div className="border-t border-gray-100 pt-6">
+        <h4 className="text-sm font-black text-[#003B73] uppercase tracking-widest mb-4">Parent & Contact Details</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Student Mobile *</label>
+            <input
+              className="input-field w-full font-bold text-emerald-600"
+              placeholder="10-digit number"
+              value={data.phoneNumber || ""}
+              onChange={e => setData({ ...data, phoneNumber: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) })}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Father's Name</label>
+            <input className="input-field w-full" value={data.fatherName || ""} onChange={e => setData({ ...data, fatherName: e.target.value.toUpperCase() })} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Father's Contact</label>
+            <input className="input-field w-full" value={data.fatherPhone || ""} onChange={e => setData({ ...data, fatherPhone: e.target.value.replace(/\D/g,'') })} />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Mother's Name</label>
+            <input className="input-field w-full" value={data.motherName || ""} onChange={e => setData({ ...data, motherName: e.target.value.toUpperCase() })} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Mother's Contact</label>
+            <input className="input-field w-full" value={data.motherPhone || ""} onChange={e => setData({ ...data, motherPhone: e.target.value.replace(/\D/g,'') })} />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-2">Guardian Name</label>
+            <input className="input-field w-full" value={data.guardianName || ""} onChange={e => setData({ ...data, guardianName: e.target.value.toUpperCase() })} />
+          </div>
         </div>
       </div>
     </div>

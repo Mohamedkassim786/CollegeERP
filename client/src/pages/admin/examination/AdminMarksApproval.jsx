@@ -340,21 +340,18 @@ const AdminMarksApproval = () => {
         </div>
 
         {confirmState && (
-          <div className="mb-10 animate-fadeIn">
-            <div className="bg-white border-2 border-blue-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-blue-900/10">
-              <div className="flex items-center gap-4 text-left">
-                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-[#003B73]">
-                  <AlertCircle size={28} />
-                </div>
-                <div>
-                  <p className="text-[#003B73] font-black uppercase tracking-tight text-lg">Verification Required</p>
-                  <p className="text-gray-500 font-bold text-sm">{confirmState.message}</p>
-                </div>
+          <div className="fixed inset-0 bg-[#003B73]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-fadeIn">
+            <div className="bg-white rounded-[48px] w-full max-w-lg p-12 relative shadow-2xl border border-blue-50 flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-blue-50 text-[#003B73] rounded-[32px] flex items-center justify-center mb-8 shadow-sm">
+                <AlertCircle size={40} />
               </div>
-              <div className="flex gap-3 w-full md:w-auto">
+              <h2 className="text-3xl font-black text-[#003B73] mb-3 tracking-tighter uppercase">Verification Required</h2>
+              <p className="text-gray-500 font-bold text-lg mb-10 max-w-sm">{confirmState.message}</p>
+              
+              <div className="flex gap-4 w-full">
                 <button
                   onClick={() => setConfirmState(null)}
-                  className="flex-1 md:flex-none px-10 py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all"
+                  className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-[28px] font-black text-sm uppercase tracking-[0.2em] hover:bg-gray-200 transition-all"
                 >
                   Cancel
                 </button>
@@ -365,7 +362,7 @@ const AdminMarksApproval = () => {
                     if (confirmState.action === 'unapprove') handleUnapproveSelected();
                     setConfirmState(null);
                   }}
-                  className="flex-1 md:flex-none px-10 py-4 bg-[#003B73] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#002850] shadow-xl shadow-blue-900/20 transition-all"
+                  className="flex-[1.5] py-5 bg-[#003B73] text-white rounded-[28px] font-black text-sm uppercase tracking-[0.2em] hover:bg-[#002850] shadow-2xl shadow-blue-900/20 transition-all hover:-translate-y-1"
                 >
                   Confirm Action
                 </button>

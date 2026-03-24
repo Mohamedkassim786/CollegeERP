@@ -103,7 +103,7 @@ const autoGenerateArrears = async (req, res) => {
             where: {
                 subject: { semester: semInt },
                 endSemMarks: {
-                    resultStatus: { in: ['FAIL', 'AB'] }
+                    resultStatus: { in: ['FAIL', 'UA'] }
                 }
             },
             include: {

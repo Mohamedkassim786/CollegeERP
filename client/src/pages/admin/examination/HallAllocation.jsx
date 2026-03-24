@@ -509,13 +509,8 @@ const HallAllocation = () => {
                       .filter(sub => !getUsedSubjectIds().includes(sub.id))
                       .filter(sub => {
                         const mode = selectedSession?.examMode;
-                        if (mode?.startsWith('CIA')) {
-                          return sub.subjectCategory !== 'LAB';
-                        }
-                        if (mode === 'LAB') {
-                          return sub.subjectCategory === 'LAB';
-                        }
-                        return true;
+                        if (mode === 'LAB') return sub.subjectCategory === 'LAB';
+                        return sub.subjectCategory === 'THEORY' || sub.subjectCategory === 'INTEGRATED';
                       })
                       .map(sub => {
                         const isSelected = wizardData.subjectIds.includes(sub.id);
@@ -536,9 +531,8 @@ const HallAllocation = () => {
                       .filter(sub => !getUsedSubjectIds().includes(sub.id))
                       .filter(sub => {
                         const mode = selectedSession?.examMode;
-                        if (mode?.startsWith('CIA')) return sub.subjectCategory !== 'LAB';
                         if (mode === 'LAB') return sub.subjectCategory === 'LAB';
-                        return true;
+                        return sub.subjectCategory === 'THEORY' || sub.subjectCategory === 'INTEGRATED';
                       }).length === 0 && (
                       <div className="col-span-full py-16 text-center text-gray-300">
                         <p className="font-bold text-lg">No eligible subjects found for this category or all already allocated.</p>

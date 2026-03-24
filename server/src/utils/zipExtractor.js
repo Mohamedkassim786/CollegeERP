@@ -4,10 +4,10 @@ const path = require('path');
 const { defaultUploadDir } = require('./uploadConfig');
 
 /**
- * Extracts a ZIP buffer directly to the students uploads directory,
+ * Extracts a ZIP buffer directly to the specified or default uploads directory,
  * parsing ONLY allowed image types (jpg, jpeg, png) under 2MB.
  */
-const extractPhotosFromZip = async (zipBuffer) => {
+const extractPhotosFromZip = async (zipBuffer, targetDir = defaultUploadDir) => {
     return new Promise((resolve, reject) => {
         let extractedCount = 0;
         let errors = [];
@@ -44,7 +44,7 @@ const extractPhotosFromZip = async (zipBuffer) => {
                             console.warn(`[ZIP] Skipping suspicious filename: ${fileName}`);
                             continue;
                         }
-                        const destPath = path.join(defaultUploadDir, fileName);
+                        const destPath = path.join(targetDir, fileName);
 
                         await new Promise((resolveWrite, rejectWrite) => {
                             file.stream()

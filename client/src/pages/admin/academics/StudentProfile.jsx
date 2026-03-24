@@ -19,13 +19,15 @@ const StudentProfile = () => {
     const location = useLocation();
     const [student, setStudent] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showEditModal, setShowEditModal] = useState(false);
+    const [downloading, setDownloading] = useState(false);
+    const [activeTab, setActiveTab] = useState('Academics');
     const [showPhotoZoom, setShowPhotoZoom] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
-    const [departments, setDepartments] = useState([]);
-    const [activeTab, setActiveTab] = useState('Profile');
-    const [attendanceReport, setAttendanceReport] = useState(null);
+    const [attendanceReport, setAttendanceReport] = useState([]);
     const [fetchingAttendance, setFetchingAttendance] = useState(false);
+    const [departments, setDepartments] = useState([]);
+    const [selectedGradeSheetSem, setSelectedGradeSheetSem] = useState(null);
 
     const canEdit = auth?.role === 'ADMIN';
 
@@ -35,7 +37,7 @@ const StudentProfile = () => {
     }, [id]);
 
     useEffect(() => {
-        if (activeTab === 'Attendance' && !attendanceReport) {
+        if (activeTab === 'Attendance' && attendanceReport.length === 0) {
             fetchAttendanceReport();
         }
     }, [activeTab]);
@@ -65,6 +67,7 @@ const StudentProfile = () => {
             setLoading(true);
             const response = await getStudent(id);
             setStudent(response.data);
+            if (!selectedGradeSheetSem) setSelectedGradeSheetSem(response.data.semester);
         } catch (error) {
             handleApiError(error, "Failed to load student profile");
             navigate(`/${location.pathname.split('/')[1]}/students`);
@@ -117,14 +120,15 @@ const StudentProfile = () => {
 
     const handleDownloadGradeSheet = async () => {
         try {
-            toast.loading("Generating Grade Sheet...");
-            const res = await getGradeSheet(id, student.semester);
+            const targetSem = selectedGradeSheetSem || student.semester;
+            toast.loading(`Generating Official Grade Sheet (Sem ${targetSem})...`);
+            const res = await getGradeSheet(id, targetSem);
             const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
             const a = document.createElement('a'); a.href = url;
-            a.setAttribute('download', `GradeSheet_Sem${student.semester}_${student.rollNo}.pdf`);
+            a.setAttribute('download', `Official_GradeSheet_Sem${targetSem}_${student.rollNo}.pdf`);
             document.body.appendChild(a); a.click(); a.remove();
             window.URL.revokeObjectURL(url);
-            toast.dismiss(); toast.success("Grade Sheet Downloaded");
+            toast.dismiss(); toast.success("Official Grade Sheet Downloaded");
         } catch (err) { toast.dismiss(); handleApiError(err, "Grade Sheet download failed"); }
     };
 
@@ -207,7 +211,7 @@ const StudentProfile = () => {
                                 Reg No.&nbsp;<span className="text-white font-black">{student.registerNumber || student.rollNo}</span>
                             </p>
                             <p className="text-blue-100/80 text-sm font-medium">
-                                {student.department || 'General'} Engineering &middot; Batch <span className="text-white/90 font-semibold">{student.batch || '—'}</span>
+                                {student.department || 'General'} &middot; Batch <span className="text-white/90 font-semibold">{student.batch || '—'}</span>
                             </p>
                             <p className="text-blue-100/60 text-sm font-medium">
                                 {student.year ? `${student.year}${['st','nd','rd','th'][Math.min(student.year-1,3)]} Year` : ''}{student.semester ? ` / Semester ${student.semester}` : ''}{student.section ? ` · Section ${student.section}` : ''}
@@ -373,6 +377,11 @@ const StudentProfile = () => {
                                             </div>
                                         ))}
                                     </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100">
+                                        <InfoField label="Aadhar Number" value={student.aadharNumber} />
+                                        <InfoField label="UMIS Number" value={student.umisNumber} />
+                                    </div>
                                 </div>
 
                                 {/* Parent */}
@@ -498,15 +507,34 @@ const StudentProfile = () => {
                         <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
                             <h3 className="text-xl font-black text-[#003B73] uppercase tracking-tight mb-6">Credential Management</h3>
                             <div className="space-y-4">
-                                <div className="p-6 bg-[#003B73]/5 rounded-2xl border border-[#003B73]/10 flex justify-between items-center">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#003B73] shadow-sm"><FileText size={20}/></div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Semester Grade Registry</p>
-                                            <p className="font-black text-[#003B73] truncate">Grade Sheet — Sem {student.semester}</p>
+                                <div className="p-6 bg-[#003B73]/5 rounded-2xl border border-[#003B73]/10 space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#003B73] shadow-sm"><FileText size={20}/></div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Official Mark Sheet Overlay</p>
+                                                <p className="font-black text-[#003B73]">Pre-printed Form Print</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex flex-col">
+                                                <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Select Sem</label>
+                                                <select 
+                                                    className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-black text-[#003B73]"
+                                                    value={selectedGradeSheetSem || student.semester}
+                                                    onChange={(e) => setSelectedGradeSheetSem(parseInt(e.target.value))}
+                                                >
+                                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
+                                                        <option key={s} value={s}>Semester {s}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <button onClick={handleDownloadGradeSheet} className="btn-secondary px-6 shrink-0 bg-[#003B73] text-white hover:bg-[#002B53]"><Download size={14} className="mr-2"/> GENERATE</button>
                                         </div>
                                     </div>
-                                    <button onClick={handleDownloadGradeSheet} className="btn-secondary px-6 shrink-0"><Download size={14} className="mr-2"/> PDF</button>
+                                    <p className="text-[9px] font-bold text-gray-400 leading-relaxed max-w-md">
+                                        This will generate a **Data-Only PDF** designed for pre-printed certificates. Only the values (Name, Reg No, Grades) will be printed without headers or lines.
+                                    </p>
                                 </div>
 
                                 <div className="p-6 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex justify-between items-center opacity-60">
@@ -624,9 +652,24 @@ const StudentProfile = () => {
                                     <Field label="Section" k="section" state={editingStudent} set={setEditingStudent}/>
                                     <div className="space-y-1.5">
                                         <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">Department</label>
-                                        <select className="input-field" value={editingStudent.department||''} onChange={e=>setEditingStudent({...editingStudent,department:e.target.value})} required>
+                                        <select 
+                                            className="input-field" 
+                                            value={editingStudent.departmentId || ''} 
+                                            onChange={e => {
+                                                const id = parseInt(e.target.value);
+                                                const dept = departments.find(d => d.id === id);
+                                                setEditingStudent({ 
+                                                    ...editingStudent, 
+                                                    departmentId: id, 
+                                                    department: dept?.name || "" 
+                                                });
+                                            }} 
+                                            required
+                                        >
                                             <option value="">Select...</option>
-                                            {departments.map(d=><option key={d.id} value={d.code}>{d.name}</option>)}
+                                            {departments.map(d => (
+                                                <option key={d.id} value={d.id}>{d.code}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>
@@ -644,6 +687,12 @@ const StudentProfile = () => {
                                                 onChange={e => setEditingStudent({...editingStudent, name: e.target.value.replace(/[^a-zA-Z\s]/g, "")})}
                                                 required
                                             />
+                                        </div>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Field label="Aadhar Number *" k="aadharNumber" state={editingStudent} set={setEditingStudent} required={true}/>
+                                            <Field label="UMIS Number" k="umisNumber" state={editingStudent} set={setEditingStudent}/>
                                         </div>
                                     </div>
                                     <Field label="Date of Birth" k="dateOfBirth" type="date" state={editingStudent} set={setEditingStudent}/>

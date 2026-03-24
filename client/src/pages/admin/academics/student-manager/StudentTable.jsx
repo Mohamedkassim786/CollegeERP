@@ -96,8 +96,8 @@ const StudentTable = ({
                 </td>
                 <td className="px-4 py-6">
                   <div className="flex flex-col items-center">
-                    <span className="font-bold text-[#003B73] text-sm truncate max-w-[150px]" title={s.departmentRef?.name || s.department}>
-                      {s.departmentRef?.code || s.department || "-"}
+                    <span className="font-bold text-[#003B73] text-sm truncate max-w-[200px]" title={s.departmentRef?.name || s.department}>
+                      {s.departmentRef?.name || s.department || "-"}
                     </span>
                     <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Sec {s.section || "-"}</span>
                   </div>

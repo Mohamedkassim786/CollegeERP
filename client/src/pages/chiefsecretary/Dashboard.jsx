@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    ShieldCheck, Users, GraduationCap, TrendingUp, 
-    Activity, ClipboardCheck, BarChart3, AlertCircle,
-    LayoutDashboard, Globe, Zap
+    Users, ClipboardCheck, Layout, Send,
+    Activity, ShieldCheck, AlertCircle, Clock
 } from 'lucide-react';
 import api from '../../api/axios';
 
-const ChiefSecretaryDashboard = () => {
+const ChiefSuperintendentDashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -16,7 +15,7 @@ const ChiefSecretaryDashboard = () => {
                 const response = await api.get('/dashboard/chief-secretary');
                 setStats(response.data);
             } catch (error) {
-                console.error("Failed to fetch Chief Secretary stats", error);
+                console.error("Failed to fetch Chief Superintendent stats", error);
             } finally {
                 setLoading(false);
             }
@@ -32,133 +31,85 @@ const ChiefSecretaryDashboard = () => {
         );
     }
 
+    const oStats = stats?.overallStats || {};
+
     return (
         <div className="p-8 space-y-10 animate-fadeIn bg-[#F8FAFC]">
             {/* Premium Header */}
             <div className="flex justify-between items-end border-b border-gray-200 pb-8">
                 <div>
-                    <h1 className="text-4xl font-extrabold text-[#003B73] tracking-tighter mb-2">Institutional Overwatch</h1>
-                    <p className="text-gray-500 font-bold text-sm uppercase tracking-[0.3em]">Chief Secretary Management Console</p>
+                    <h1 className="text-4xl font-extrabold text-[#003B73] tracking-tighter mb-2">Examination Console</h1>
+                    <p className="text-gray-500 font-bold text-sm uppercase tracking-[0.3em]">Chief Superintendent Dashboard</p>
                 </div>
-                <div className="flex gap-4">
-                    <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
-                        <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs font-black text-gray-700 uppercase tracking-widest">System Live</span>
+                <div className="flex gap-4 text-right">
+                    <div className="bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Date</p>
+                        <p className="text-sm font-bold text-[#003B73]">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
                     </div>
                 </div>
             </div>
 
-            {/* Quick Intel Grid */}
+            {/* Core Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 {[
-                    { label: 'Total Enrolment', value: stats?.overallStats?.totalStudents || 0, icon: Users, color: 'blue' },
-                    { label: 'Faculty Strength', value: stats?.overallStats?.totalFaculty || 0, icon: GraduationCap, color: 'indigo' },
-                    { label: 'Pending Approvals', value: stats?.overallStats?.pendingApprovals || 0, icon: ShieldCheck, color: 'emerald' },
-                    { label: 'System Uptime', value: '99.9%', icon: Zap, color: 'amber' }
+                    { label: "Today's Allocations", value: oStats.totalAllocations || 0, icon: Users, color: 'blue', desc: 'Total scheduled students' },
+                    { label: "Today's Absentees", value: oStats.totalAbsentees || 0, icon: AlertCircle, color: 'red', desc: 'Marked as absent' },
+                    { label: "Active Halls", value: oStats.activeHalls || 0, icon: Layout, color: 'emerald', desc: 'In-use examination halls' },
+                    { label: "Dispatch Progress", value: oStats.dispatchProgress || 0, icon: Send, color: 'amber', desc: 'Subjects processed' }
                 ].map((item, idx) => (
-                    <div key={idx} className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-200/50 border border-gray-100 group hover:scale-[1.05] transition-all duration-500">
-                        <div className={`w-14 h-14 bg-${item.color}-50 text-${item.color}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform`}>
+                    <div key={idx} className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-200/40 border border-gray-100 group hover:-translate-y-2 transition-all duration-500">
+                        <div className={`w-14 h-14 bg-${item.color}-50 text-${item.color}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                             <item.icon size={28} />
                         </div>
                         <h3 className="text-4xl font-black text-[#003B73] mb-1">{item.value}</h3>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{item.label}</p>
+                        <p className="text-[9px] text-gray-300 mt-2 font-medium">{item.desc}</p>
                     </div>
                 ))}
             </div>
 
-            {/* Main Analytics Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Institutional Performance */}
-                <div className="lg:col-span-2 bg-white rounded-[40px] p-10 shadow-2xl shadow-blue-900/5 border border-gray-100">
-                    <div className="flex justify-between items-center mb-10">
-                        <h3 className="text-2xl font-black text-[#003B73] flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><TrendingUp size={24}/></div>
-                            Performance Analytics
-                        </h3>
-                        <div className="flex gap-2">
-                             <span className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 border border-gray-100 transition-all hover:bg-gray-100 cursor-pointer">Semester View</span>
-                        </div>
-                    </div>
-                    
-                    <div className="h-64 flex items-end justify-between gap-4 px-4">
-                        {[75, 82, 91, 84, 95, 88].map((height, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-4 group">
-                                <div 
-                                    className="w-full bg-gradient-to-t from-[#003B73] to-blue-500 rounded-2xl transition-all duration-1000 group-hover:brightness-125 relative"
-                                    style={{ height: `${height}%` }}
-                                >
-                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#003B73] text-white text-[10px] font-black py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {height}%
-                                    </div>
-                                </div>
-                                <span className="text-[10px] font-black text-gray-400 uppercase">Batch {2020 + i}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Compliance & Risk Cards */}
-                <div className="space-y-8">
-                    <div className="bg-[#003B73] rounded-[40px] p-8 text-white shadow-2xl shadow-blue-900/20 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-x-10 -translate-y-10 group-hover:scale-150 transition-transform duration-700"></div>
-                        <div className="relative z-10">
-                            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-6"><ClipboardCheck size={28}/></div>
-                            <h4 className="text-3xl font-black mb-1">124</h4>
-                            <p className="text-xs font-black text-blue-200 uppercase tracking-widest">Pending Approvals</p>
-                            <button className="mt-8 w-full py-4 bg-white text-[#003B73] rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all">Review Pipeline</button>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-xl shadow-gray-100">
-                        <h4 className="text-xl font-black text-[#003B73] mb-6 flex items-center gap-3">
-                            <AlertCircle className="text-red-500" size={20}/>
-                            Risk Indicators
-                        </h4>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center p-4 bg-red-50 rounded-2xl border border-red-100">
-                                <span className="text-[10px] font-black text-red-700 uppercase">Critical Attendance</span>
-                                <span className="font-black text-red-700">12%</span>
-                            </div>
-                            <div className="flex justify-between items-center p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                                <span className="text-[10px] font-black text-amber-700 uppercase">Exam Eligibility</span>
-                                <span className="font-black text-amber-700">08%</span>
-                            </div>
+            {/* Examination Quick Actions */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-[#003B73] rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2 group-hover:scale-125 transition-transform duration-700"></div>
+                    <div className="relative z-10">
+                        <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-8"><ShieldCheck size={32}/></div>
+                        <h2 className="text-3xl font-black mb-4">Command & Control</h2>
+                        <p className="text-blue-200 text-sm font-medium max-w-sm mb-10 leading-relaxed">
+                            Full operational access to hall allocations, student attendance tracking, and answer booklet dispatching for all university examinations.
+                        </p>
+                        <div className="flex flex-wrap gap-4">
+                            <span className="px-4 py-2 bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">End Sem Theory</span>
+                            <span className="px-4 py-2 bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest">Integrated Exams</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Bottom Row - Institutional Intel */}
-            <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-gray-200/50 border border-gray-100">
-                <div className="flex justify-between items-center mb-10">
-                    <h3 className="text-2xl font-black text-[#003B73] flex items-center gap-4">
-                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center"><BarChart3 size={24}/></div>
-                        Intel Roster
+                <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-xl flex flex-col justify-center">
+                    <h3 className="text-xl font-black text-[#003B73] mb-8 flex items-center gap-3">
+                        <Clock className="text-emerald-500" size={24}/>
+                        Operations Live Status
                     </h3>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {(stats?.deptStats || []).map((dept, i) => (
-                        <div key={i} className="p-8 bg-gray-50 rounded-[32px] border border-gray-100 group hover:border-[#003B73] transition-all">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <h4 className="text-xl font-black text-gray-800">{dept.code || dept.name}</h4>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dept.studentCount} Students</p>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-2xl font-black text-[#003B73]">{dept.passPercentage}%</span>
-                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">PASS RATE</p>
-                                </div>
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between p-6 bg-gray-50 rounded-3xl">
+                            <div>
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Allocation Status</p>
+                                <p className="text-sm font-bold text-gray-700 mt-1">Halls mapped for today</p>
                             </div>
-                            <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                                <div className="bg-[#003B73] h-full" style={{ width: `${dept.passPercentage}%` }}></div>
-                            </div>
+                            <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
                         </div>
-                    ))}
+                        <div className="flex items-center justify-between p-6 bg-gray-50 rounded-3xl">
+                            <div>
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Attendance Feed</p>
+                                <p className="text-sm font-bold text-gray-700 mt-1">Real-time absentee tracking</p>
+                            </div>
+                            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-export default ChiefSecretaryDashboard;
+export default ChiefSuperintendentDashboard;

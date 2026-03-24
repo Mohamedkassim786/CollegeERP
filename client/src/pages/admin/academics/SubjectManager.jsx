@@ -205,21 +205,18 @@ const SubjectManager = () => {
       </div>
 
       {confirmState && (
-        <div className="mb-6 mx-2 animate-fadeIn">
-          <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-red-900/5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600">
-                <AlertCircle size={24} />
-              </div>
-              <div>
-                <p className="text-red-900 font-black uppercase tracking-tight">Confirm Action</p>
-                <p className="text-red-700 font-bold text-sm">{confirmState.message}</p>
-              </div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-fadeIn">
+          <div className="bg-white rounded-[32px] w-full max-w-md p-8 relative shadow-2xl border border-red-100 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-[20px] flex items-center justify-center mb-6 shadow-sm">
+              <AlertCircle size={32} />
             </div>
-            <div className="flex gap-3 w-full md:w-auto">
+            <h2 className="text-2xl font-black text-red-900 mb-2 tracking-tight uppercase">Confirm Action</h2>
+            <p className="text-red-700/80 font-bold text-sm mb-8">{confirmState.message}</p>
+            
+            <div className="flex gap-4 w-full">
               <button
                 onClick={() => setConfirmState(null)}
-                className="flex-1 md:flex-none px-8 py-3 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all"
+                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
               >
                 Cancel
               </button>
@@ -229,7 +226,7 @@ const SubjectManager = () => {
                   if (confirmState.action === 'remove-assignment') handleRemoveAssignment(confirmState.id);
                   setConfirmState(null);
                 }}
-                className="flex-1 md:flex-none px-8 py-3 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-900/20 transition-all"
+                className="flex-1 py-4 bg-red-600 text-white rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all"
               >
                 Confirm
               </button>

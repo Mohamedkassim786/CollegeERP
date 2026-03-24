@@ -22,18 +22,26 @@ exports.getEligibility = async (req, res) => {
             return res.status(400).json({ message: 'department is required' });
         }
 
-        const deptFilter = (isYear1 || department === 'FIRST_YEAR') ? {} : {
-            OR: [
-                { department: department },
-                { departmentRef: { code: department } },
-                { departmentRef: { name: department } }
-            ]
-        };
+        // 1. Resolve Department Name & Code for robust matching
+        const deptRecord = await prisma.department.findFirst({
+            where: {
+                OR: [
+                    { code: department },
+                    { name: department }
+                ]
+            }
+        });
 
-        // Fetch students - improved filtering to handle both department code and name
+        const deptCode = deptRecord?.code || department;
+        const deptName = deptRecord?.name || department;
+
+        // Fetch students
         const students = await prisma.student.findMany({
             where: {
-                ...deptFilter,
+                OR: [
+                    { department: deptName },
+                    { departmentRef: { code: deptCode } }
+                ],
                 semester: semInt,
                 ...(section ? { section } : {}),
                 ...(year ? { year: parseInt(year) } : {}),
@@ -55,7 +63,8 @@ exports.getEligibility = async (req, res) => {
             OR: [ {type: 'COMMON'}, { semester: semInt } ]
         } : {
             OR: [
-                { department: department },
+                { department: { contains: deptCode } },
+                { department: { contains: deptName } },
                 { type: 'COMMON' }
             ]
         };
@@ -143,17 +152,25 @@ exports.calculateAndSave = async (req, res) => {
             return res.status(400).json({ message: 'department is required' });
         }
 
-        const deptFilter = (isYear1 || department === 'FIRST_YEAR') ? {} : {
-            OR: [
-                { department: department },
-                { departmentRef: { code: department } },
-                { departmentRef: { name: department } }
-            ]
-        };
+        // 1. Resolve Department Name & Code for robust matching
+        const deptRecord = await prisma.department.findFirst({
+            where: {
+                OR: [
+                    { code: department },
+                    { name: department }
+                ]
+            }
+        });
+
+        const deptCode = deptRecord?.code || department;
+        const deptName = deptRecord?.name || department;
 
         const students = await prisma.student.findMany({
             where: {
-                ...deptFilter,
+                OR: [
+                    { department: deptName },
+                    { departmentRef: { code: deptCode } }
+                ],
                 semester: semInt,
                 ...(section ? { section } : {}),
                 ...(year ? { year: parseInt(year) } : {}),
@@ -166,7 +183,8 @@ exports.calculateAndSave = async (req, res) => {
             OR: [ {type: 'COMMON'}, { semester: semInt } ]
         } : {
             OR: [
-                { department: department },
+                { department: { contains: deptCode } },
+                { department: { contains: deptName } },
                 { type: 'COMMON' }
             ]
         };

@@ -21,36 +21,39 @@ const calculateIntegratedInternal = (theory25, lab25) => {
 const checkPassFail = (internal, external, subjectType, regulation = '2021') => {
   const total = (internal || 0) + (external || 0);
 
-  if (subjectType === 'LAB') {
-    const isExternalPass = external >= 16;   // 40% of 40
-    const isTotalPass = total >= 50;
-    if (!isExternalPass) return { passed: false, reason: 'Failed External (below 40% of 40)' };
-    if (!isTotalPass) return { passed: false, reason: 'Failed Aggregate (below 50)' };
+  if (subjectType === 'LAB' || subjectType === 'PRACTICAL') {
+    const isExternalPass = external >= PASS_MARKS.LAB_EXTERNAL_MIN;   // 45% of 40 = 18
+    const isTotalPass = total >= PASS_MARKS.TOTAL_MIN;
+    if (!isExternalPass) return { passed: false, reason: `Failed External (below ${PASS_MARKS.LAB_EXTERNAL_MIN})` };
+    if (!isTotalPass) return { passed: false, reason: `Failed Aggregate (below ${PASS_MARKS.TOTAL_MIN})` };
     return { passed: true, reason: '' };
   }
 
   if (subjectType === 'INTEGRATED') {
-    const internalPass = internal >= 20;     // 40% of 50
-    const externalPass = external >= 20;     // 40% of 50
-    const isTotalPass = total >= 50;
+    // 40% of 50 = 20 (Internal)
+    const internalPass = internal >= 20; 
+    const externalPass = external >= PASS_MARKS.INTEGRATED_EXTERNAL_MIN; // 45% of 50 = 22.5
+    const isTotalPass = total >= PASS_MARKS.TOTAL_MIN;
     if (!internalPass) return { passed: false, reason: 'Failed Internal (below 40% of 50)' };
-    if (!externalPass) return { passed: false, reason: 'Failed External (below 40% of 50)' };
-    if (!isTotalPass) return { passed: false, reason: 'Failed Aggregate (below 50)' };
+    if (!externalPass) return { passed: false, reason: `Failed External (below ${PASS_MARKS.INTEGRATED_EXTERNAL_MIN})` };
+    if (!isTotalPass) return { passed: false, reason: `Failed Aggregate (below ${PASS_MARKS.TOTAL_MIN})` };
     return { passed: true, reason: '' };
   }
 
   // THEORY (default)
-  const isExternalPass = external >= 21;     // 35% of 60
-  const isTotalPass = total >= 50;
-  if (!isExternalPass) return { passed: false, reason: 'Failed External (below 35% of 60)' };
-  if (!isTotalPass) return { passed: false, reason: 'Failed Aggregate (below 50)' };
+  const isExternalPass = external >= PASS_MARKS.THEORY_EXTERNAL_MIN;     // 45% of 60 = 27
+  const isTotalPass = total >= PASS_MARKS.TOTAL_MIN;
+  if (!isExternalPass) return { passed: false, reason: `Failed External (below ${PASS_MARKS.THEORY_EXTERNAL_MIN})` };
+  if (!isTotalPass) return { passed: false, reason: `Failed Aggregate (below ${PASS_MARKS.TOTAL_MIN})` };
   return { passed: true, reason: '' };
 };
 
-const getFixedGrade = (total, grades = []) => {
+const getFixedGrade = (total, grades = [], isAbsent = false) => {
+  if (isAbsent) return { grade: 'UA', points: 0 };
+
   if (grades && grades.length > 0) {
     const matched = grades.find(g => total >= g.minPercentage && total <= g.maxPercentage);
-    return matched ? { grade: matched.grade, points: matched.gradePoint } : { grade: 'RA', points: 0 };
+    return matched ? { grade: matched.grade, points: matched.gradePoint } : { grade: 'U', points: 0 };
   }
 
   if (total >= 90) return { grade: 'O', points: 10 };
@@ -59,7 +62,7 @@ const getFixedGrade = (total, grades = []) => {
   if (total >= 60) return { grade: 'B+', points: 7 };
   if (total >= 55) return { grade: 'B', points: 6 };
   if (total >= 50) return { grade: 'C', points: 5 };
-  return { grade: 'RA', points: 0 };
+  return { grade: 'U', points: 0 };
 };
 
 const calculateGPA = (subjectsWithMarks, grades) => {

@@ -24,14 +24,14 @@ const ATTENDANCE_THRESHOLDS = {
 
 const GRADE_POINTS = {
   'O': 10, 'A+': 9, 'A': 8,
-  'B+': 7, 'B': 6, 'C': 5, 'U': 0,
+  'B+': 7, 'B': 6, 'C': 5, 'U': 0, 'UA': 0,
 };
 
 const PASS_MARKS = {
   TOTAL_MIN: 50,
   THEORY_EXTERNAL_MIN: 27,
   LAB_EXTERNAL_MIN: 18,
-  INTEGRATED_EXTERNAL_MIN: 23,
+  INTEGRATED_EXTERNAL_MIN: 22.5,
 };
 
 const STUDENT_CATEGORIES = {

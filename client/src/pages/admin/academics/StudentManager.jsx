@@ -83,6 +83,7 @@ const StudentManager = ({ readOnly = false }) => {
     registerNumber: "",
     name: "",
     department: "",
+    departmentId: "",
     year: "",
     section: "",
     semester: "",
@@ -107,6 +108,8 @@ const StudentManager = ({ readOnly = false }) => {
     guardianName: "",
     guardianPhone: "",
     status: "ACTIVE",
+    aadharNumber: "",
+    umisNumber: "",
   });
 
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -456,7 +459,7 @@ const StudentManager = ({ readOnly = false }) => {
     e.preventDefault();
     
     // Basic validation
-    const required = ["rollNo", "name", "department", "year", "section", "semester"];
+    const required = ["rollNo", "name", "department", "year", "section", "semester", "aadharNumber"];
     const missing = required.filter(f => !newStudent[f]);
     
     if (missing.length > 0) {
@@ -506,7 +509,9 @@ const StudentManager = ({ readOnly = false }) => {
         fatherPhone: "",
         motherName: "",
         motherPhone: "",
-        status: "ACTIVE"
+        status: "ACTIVE",
+        aadharNumber: "",
+        umisNumber: ""
       });
       fetchStudents(selectedSection);
     } catch (err) {
@@ -575,7 +580,7 @@ const StudentManager = ({ readOnly = false }) => {
       rollNo: "E1245001",
       registerNumber: "812424104001",
       name: "ARJUN K",
-      department: "CSE",
+      department: "COMPUTER SCIENCE AND ENGINEERING",
       year: 1,
       semester: 1,
       section: "A",
@@ -936,7 +941,7 @@ const StudentManager = ({ readOnly = false }) => {
                   onClick={() => resetSelection(1)}
                   className={`px-4 py-2 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap ${!selectedYear ? "bg-indigo-600 text-white shadow-lg" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}
                 >
-                  {departments.find(d => d.code === selectedDept || d.name === selectedDept)?.code || selectedDept}
+                  {departments.find(d => d.code === selectedDept || d.name === selectedDept)?.name || selectedDept}
                 </button>
               </>
             )}
@@ -1456,21 +1461,18 @@ const StudentManager = ({ readOnly = false }) => {
       </div>
 
       {confirmState && (
-        <div className="mb-8 mx-auto max-w-7xl px-4 animate-fadeIn">
-          <div className="bg-red-50 border-2 border-red-100 p-8 rounded-[40px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-red-900/5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
-                <AlertCircle size={28} />
-              </div>
-              <div className="text-left">
-                <p className="text-red-900 font-black uppercase tracking-tight text-lg">Confirm Action</p>
-                <p className="text-red-700 font-bold text-sm">{confirmState.message}</p>
-              </div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-fadeIn">
+          <div className="bg-white rounded-[32px] w-full max-w-md p-8 relative shadow-2xl border border-red-100 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-[20px] flex items-center justify-center mb-6 shadow-sm">
+              <AlertCircle size={32} />
             </div>
-            <div className="flex gap-3 w-full md:w-auto">
+            <h2 className="text-2xl font-black text-red-900 mb-2 tracking-tight uppercase">Confirm Action</h2>
+            <p className="text-red-700/80 font-bold text-sm mb-8">{confirmState.message}</p>
+            
+            <div className="flex gap-4 w-full">
               <button
                 onClick={() => setConfirmState(null)}
-                className="flex-1 md:flex-none px-10 py-4 bg-white text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 hover:bg-gray-50 transition-all font-black"
+                className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all font-black"
               >
                 Cancel
               </button>
@@ -1480,7 +1482,7 @@ const StudentManager = ({ readOnly = false }) => {
                   if (confirmState.action === 'delete-section') handleDeleteSection({ stopPropagation: () => {} }, confirmState.id);
                   setConfirmState(null);
                 }}
-                className="flex-1 md:flex-none px-10 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all font-black"
+                className="flex-1 py-4 bg-red-600 text-white rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all font-black"
               >
                 Confirm
               </button>

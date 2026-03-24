@@ -509,11 +509,11 @@ const EndSemMarksEntry = () => {
                                                 <>
                                                     <td className="px-8 py-6 text-center">
                                                         <span className="font-bold text-blue-400 text-sm font-mono italic opacity-60">
-                                                            {s.theoryRaw100 != null ? s.theoryRaw100 : '--'}
+                                                            {s.theoryRaw100 === 'UA' ? 'UA' : (s.theoryRaw100 != null ? s.theoryRaw100 : '--')}
                                                         </span>
                                                     </td>
                                                     <td className="px-8 py-6 text-center">
-                                                        {s.external60 === 'AB' ? (
+                                                        {s.theoryExt25 === 'UA' ? (
                                                             <span className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">ABSENT</span>
                                                         ) : (
                                                             <span className="font-black text-indigo-600 text-lg font-mono">
@@ -523,27 +523,33 @@ const EndSemMarksEntry = () => {
                                                     </td>
                                                     <td className="px-8 py-6 text-center">
                                                         <span className="font-bold text-emerald-400 text-sm font-mono italic opacity-60">
-                                                            {s.labRaw100 != null ? s.labRaw100 : '--'}
+                                                            {s.labRaw100 === 'UA' ? 'UA' : (s.labRaw100 != null ? s.labRaw100 : '--')}
                                                         </span>
                                                     </td>
                                                     <td className="px-8 py-6 text-center">
-                                                        <span className="font-black text-emerald-600 text-lg font-mono">
-                                                            {s.labExt25 != null ? s.labExt25 : '--'}
-                                                        </span>
+                                                        {s.labExt25 === 'UA' ? (
+                                                            <span className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">ABSENT</span>
+                                                        ) : (
+                                                            <span className="font-black text-emerald-600 text-lg font-mono">
+                                                                {s.labExt25 != null ? s.labExt25 : '--'}
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="px-8 py-6 text-center">
-                                                        <span className="inline-flex items-center justify-center px-4 py-2 bg-gray-50 text-[#003B73] rounded-xl font-black text-sm border border-gray-100 font-mono">
-                                                            {(s.theoryExt25 != null && s.labExt25 != null) ? (s.theoryExt25 + s.labExt25) : '--'}
+                                                        <span className={`inline-flex items-center justify-center px-4 py-2 rounded-xl font-black text-sm border font-mono ${
+                                                            s.total100 === 'UA' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-[#003B73] border-gray-100'
+                                                        }`}>
+                                                            {s.total100}
                                                         </span>
                                                     </td>
                                                 </>
                                             ) : (
                                                 <>
                                                     <td className="px-8 py-6 text-center font-mono font-bold text-blue-400 italic opacity-60">
-                                                        {s.external60 === 'AB' ? '--' : (s.rawExternal100 != null ? s.rawExternal100 : '--')}
+                                                        {s.external60 === 'UA' ? '--' : (s.rawExternal100 != null ? s.rawExternal100 : '--')}
                                                     </td>
                                                     <td className="px-8 py-6 text-center font-mono font-black text-blue-600 text-lg">
-                                                        {s.external60 === 'AB' ? (
+                                                        {s.external60 === 'UA' ? (
                                                             <span className="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase font-sans">ABSENT</span>
                                                         ) : (
                                                             s.external60 != null ? s.external60 : '--'
@@ -553,9 +559,9 @@ const EndSemMarksEntry = () => {
                                             )}
 
                                             <td className="px-8 py-6 text-center relative">
-                                                <span className={`inline-flex items-center justify-center px-6 py-2 rounded-2xl font-black text-lg shadow-sm border ${s.total100 === 'AB' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-[#003B73] text-white border-transparent'
+                                                <span className={`inline-flex items-center justify-center px-6 py-2 rounded-2xl font-black text-lg shadow-sm border ${s.total100 === 'UA' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-[#003B73] text-white border-transparent'
                                                     }`}>
-                                                    {s.total100 !== 'AB' ? s.total100 : 'AB'}
+                                                    {s.total100 !== 'UA' ? s.total100 : 'UA'}
                                                 </span>
                                                 {s.total100 > 100 && (
                                                     <div className="absolute top-2 right-2 text-red-500 animate-pulse">
@@ -564,11 +570,12 @@ const EndSemMarksEntry = () => {
                                                 )}
                                             </td>
                                             <td className="px-8 py-6 text-center">
-                                                <div className={`inline-block px-4 py-2 rounded-2xl font-black text-xs shadow-inner tracking-widest ${s.grade === "RA" || s.grade === "N/A" || s.grade === 'AB'
+                                                <div className={`inline-block px-4 py-2 rounded-2xl font-black text-xs shadow-inner tracking-widest ${
+                                                    ['U', 'UA', 'RA', 'AB', 'N/A', 'FAIL'].includes(s.grade) || s.status === 'FAIL'
                                                     ? "bg-red-50 text-red-700"
                                                     : "bg-emerald-50 text-emerald-700"
                                                     }`}>
-                                                    {s.grade || 'PENDING'}
+                                                    {s.grade === 'RA' ? 'U' : (s.grade === 'AB' ? 'UA' : (s.grade || 'PENDING'))}
                                                 </div>
                                             </td>
                                         </tr>

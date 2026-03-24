@@ -53,7 +53,6 @@ const AdminPortal = () => {
             <Route path="faculty/:id" element={<FacultyProfile />} />
             <Route path="subjects" element={<SubjectManager />} />
             <Route path="departments" element={<DepartmentManager />} />
-            <Route path="courses" element={<Navigate to="/admin/subjects" replace />} />
             <Route path="students" element={<StudentManager />} />
             <Route path="students/profile/:id" element={<StudentProfile />} />
             <Route path="students/promote" element={<AutoPromote />} />
@@ -76,7 +75,6 @@ const AdminPortal = () => {
             <Route path="exam-attendance-sheet" element={<ExamAttendanceSheet />} />
             <Route path="dispatch" element={<Dispatch />} />
             <Route path="provisional-results" element={<ProvisionalResults />} />
-            <Route path="session-results" element={<ExamSessionResults />} />
             <Route path="arrears" element={<ArrearManagement />} />
 
             {/* Legacy redirect */}

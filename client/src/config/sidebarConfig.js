@@ -30,7 +30,7 @@ export const adminMenu = [
         isGroup: true,
         children: [
             { key: 'students', label: 'Students', path: '/admin/students', icon: Users },
-            { key: 'promote', label: 'Students Promotion', path: '/admin/students/promote', icon: TrendingUp },
+            { key: 'promote', label: 'Auto Promotion Engine', path: '/admin/students/promote', icon: TrendingUp },
             { key: 'depts', label: 'Departments', path: '/admin/departments', icon: Building2 },
             { key: 'subjects', label: 'Subjects', path: '/admin/subjects', icon: BookOpen },
             { key: 'faculty', label: 'Faculty', path: '/admin/faculty', icon: GraduationCap },
@@ -63,7 +63,6 @@ export const adminMenu = [
             { key: 'external', label: 'External Staff', path: '/admin/external', icon: Users },
             { key: 'results-consolidation', label: 'Result Consolidation', path: '/admin/results-consolidation', icon: Award },
             { key: 'provisional-results', label: 'Provisional Results', path: '/admin/provisional-results', icon: TrendingUp },
-            { key: 'session-results', label: 'Exam Session results', path: '/admin/session-results', icon: ClipboardList },
             { key: 'arrears', label: 'Arrear Management', path: '/admin/arrears', icon: ClipboardList },
         ],
     },
@@ -151,23 +150,13 @@ export const principalMenu = [
 ];
 
 
-// ─── CHIEF SECRETARY MENU ─────────────────────────────────────────────────────
-export const chiefSecretaryMenu = [
-    { key: 'dashboard', label: 'Overwatch', path: '/chief-secretary', icon: LayoutDashboard },
-    {
-        key: 'institutional', label: 'Institutional Intel', icon: Building2, isGroup: true, children: [
-            { key: 'students', label: 'Student Metrics', path: '/chief-secretary/students', icon: Users },
-            { key: 'faculty', label: 'Faculty Analytics', path: '/chief-secretary/faculty', icon: GraduationCap },
-        ]
-    },
-    {
-        key: 'compliance', label: 'Compliance', icon: ShieldCheck, isGroup: true, children: [
-            { key: 'eligibility', label: 'SA Eligibility', path: '/chief-secretary/eligibility', icon: CheckCircle },
-            { key: 'approvals', label: 'Admin Approvals', path: '/chief-secretary/approvals', icon: ClipboardCheck },
-        ]
-    },
-    { key: 'results', label: 'Results & Trends', path: '/chief-secretary/results', icon: TrendingUp },
-    { key: 'settings', label: 'Account', path: '/chief-secretary/settings', icon: SettingsIcon },
+// ─── CHIEF SUPERINTENDENT MENU ────────────────────────────────────────────────
+export const chiefSuperintendentMenu = [
+    { key: 'dashboard', label: 'Dashboard', path: '/chief-superintendent', icon: LayoutDashboard },
+    { key: 'hall-allocation', label: 'Hall Allocation', path: '/chief-superintendent/hall-allocation', icon: Layout },
+    { key: 'exam-attendance', label: 'Exam Attendance', path: '/chief-superintendent/exam-attendance', icon: ClipboardCheck },
+    { key: 'dispatch', label: 'Dispatch', path: '/chief-superintendent/dispatch', icon: Send },
+    { key: 'settings', label: 'Account', path: '/chief-superintendent/settings', icon: SettingsIcon },
 ];
 
 // ─── STUDENT MENU ─────────────────────────────────────────────────────────────
@@ -219,7 +208,7 @@ export const MENUS_BY_ROLE = {
     HOD: hodMenu,
     HOD_WITH_SUBJECTS: hodWithSubjectsMenu,
     PRINCIPAL: principalMenu,
-    CHIEF_SECRETARY: chiefSecretaryMenu,
+    CHIEF_SECRETARY: chiefSuperintendentMenu,
     STUDENT: studentMenu,
     EXTERNAL_STAFF: externalStaffMenu,
     EXTERNAL: externalStaffMenu,

@@ -76,10 +76,10 @@ const StudentResult = () => {
                                             res.grade === 'O' ? 'bg-purple-50 text-purple-700' :
                                             res.grade === 'A+' ? 'bg-blue-50 text-blue-700' :
                                             res.grade === 'A' ? 'bg-emerald-50 text-emerald-700' :
-                                            res.grade === 'U' || res.grade === 'W' || res.grade === 'RA' ? 'bg-red-50 text-red-700' :
+                                            res.grade === 'U' || res.grade === 'W' || res.grade === 'UA' ? 'bg-red-50 text-red-700' :
                                             'bg-gray-50 text-gray-700'
                                         }`}>
-                                            {res.grade}
+                                            {res.grade === 'RA' ? 'U' : (res.grade === 'AB' ? 'UA' : res.grade)}
                                         </span>
                                     </td>
                                     <td className="px-6 py-5 text-center">

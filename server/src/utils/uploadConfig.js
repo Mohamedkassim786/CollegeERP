@@ -46,4 +46,4 @@ const upload = multer({
     limits: { fileSize: 2 * 1024 * 1024 } // 2MB restriction
 });
 
-module.exports = { upload, defaultUploadDir };
+module.exports = { upload, defaultUploadDir, studentDir, facultyDir };

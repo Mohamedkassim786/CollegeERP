@@ -10,8 +10,8 @@ async function main() {
         { grade: 'A', gradePoint: 8, minPercentage: 71, maxPercentage: 80, regulation: '2021' },
         { grade: 'B+', gradePoint: 7, minPercentage: 61, maxPercentage: 70, regulation: '2021' },
         { grade: 'B', gradePoint: 6, minPercentage: 50, maxPercentage: 60, regulation: '2021' },
-        { grade: 'RA', gradePoint: 0, minPercentage: 0, maxPercentage: 49, regulation: '2021' },
-        { grade: 'AB', gradePoint: 0, minPercentage: -1, maxPercentage: -1, regulation: '2021' }
+        { grade: 'U', gradePoint: 0, minPercentage: 0, maxPercentage: 49, regulation: '2021' },
+        { grade: 'UA', gradePoint: 0, minPercentage: -1, maxPercentage: -1, regulation: '2021' }
     ];
 
     for (const g of grades) {

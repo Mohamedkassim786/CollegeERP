@@ -43,9 +43,9 @@ function App() {
             </Route>
 
 
-            {/* Chief Secretary */}
+            {/* Chief Superintendent */}
             <Route element={<ProtectedRoute allowedRoles={['CHIEF_SECRETARY']} />}>
-                <Route path="/chief-secretary/*" element={<ChiefSecretaryPortal />} />
+                <Route path="/chief-superintendent/*" element={<ChiefSecretaryPortal />} />
             </Route>
 
             {/* Student */}

@@ -124,7 +124,7 @@ exports.getEndSemMarks = async (req, res) => {
                 }
             }
 
-            const total100 = isAbsent ? 'AB' : Math.round(internalProcessed + externalProcessed);
+            const total100 = isAbsent ? 'UA' : Math.round(internalProcessed + externalProcessed);
 
             // For INTEGRATED, expose both external components separately and SCALED/RAW
             let theoryRaw100 = null;
@@ -134,12 +134,12 @@ exports.getEndSemMarks = async (req, res) => {
 
             if (category === 'INTEGRATED') {
                 const tRaw = (extTheoryMap[lookupKey] || extTheoryMap[student.registerNumber])?.rawExternal100 || 0;
-                theoryRaw100 = tRaw;
-                theoryExt25 = Math.round((tRaw / 100) * 25);
+                theoryRaw100 = isAbsent ? 'UA' : tRaw;
+                theoryExt25 = isAbsent ? 'UA' : Math.round((tRaw / 100) * 25);
 
                 const lRaw = (extLabMap[student.registerNumber] || extLabMap[lookupKey])?.rawExternal100 || 0;
-                labRaw100 = lRaw;
-                labExt25 = Math.round((lRaw / 100) * 25);
+                labRaw100 = isAbsent ? 'UA' : lRaw;
+                labExt25 = isAbsent ? 'UA' : Math.round((lRaw / 100) * 25);
             }
 
             // For THEORY/LAB: raw external for display
@@ -154,13 +154,13 @@ exports.getEndSemMarks = async (req, res) => {
                 registerNumber: student.registerNumber,
                 rollNo: student.rollNo,
                 internal40: Math.round(internalProcessed),
-                external60: isAbsent ? 'AB' : Math.round(externalProcessed),
-                rawExternal100: isAbsent ? 'AB' : rawExternal100,
+                external60: isAbsent ? 'UA' : Math.round(externalProcessed),
+                rawExternal100: isAbsent ? 'UA' : rawExternal100,
                 theoryRaw100,
                 theoryExt25,
                 labRaw100,
                 labExt25,
-                total100,
+                total100: isAbsent ? 'UA' : total100,
                 dummyNumber: dummyMapping.dummyNumber || student.registerNumber,
                 isLocked: ciaRecord.endSemMarks?.isLocked || false,
                 isPublished: ciaRecord.endSemMarks?.isPublished || false,
@@ -260,19 +260,23 @@ exports.updateEndSemMarks = async (req, res) => {
                 }
 
                 const extRecord = extLookupKey ? extTheoryMap[extLookupKey] : null;
+
+                // If not absent and no external marks found, skip this student
                 if (!isAbsent && !extRecord) continue;
-                if (ciaRecord.endSemMarks?.isLocked || ciaRecord.endSemMarks?.isPublished) continue;
+
+                // Logging for debugging (optional, can be removed after verification)
+                // console.log(`Processing student ${student.registerNumber}: isAbsent=${isAbsent}, extRecord=${!!extRecord}, existingGrade=${ciaRecord.endSemMarks?.grade}`);
 
                 // ── Mark calculation based on subject category ──────────────────
                 let internalVal = 0;
                 let externalVal = 0;
                 let rawExternal = 0;
-                let finalGrade = 'RA';
+                let finalGrade = 'U';
                 let finalResultStatus = 'FAIL';
 
                 if (isAbsent) {
-                    finalGrade = 'AB';
-                    finalResultStatus = 'FAIL';
+                    finalGrade = 'UA';
+                    finalResultStatus = 'UA';
                 } else if (subjectCategory === 'LAB') {
                     // LAB: internal /60, external /40
                     internalVal = (ciaRecord.internal && ciaRecord.isApproved)
@@ -286,7 +290,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     const totalMarks = Math.round(internalVal + externalVal);
                     const { passed: isExternalPass } = calcService.checkPassFail(internalVal, externalVal, 'LAB', regulation);
 
-                    let matchedGrade = { grade: 'RA', resultStatus: 'FAIL' };
+                    let matchedGrade = { grade: 'U', resultStatus: 'FAIL' };
                     if (isExternalPass) {
                         const gradeResult = calcService.getFixedGrade(totalMarks, grades);
                         matchedGrade = { grade: gradeResult.grade, resultStatus: 'PASS' };
@@ -319,7 +323,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     const totalMarks = Math.round(internalVal + externalVal); // max 100
                     const { passed: isPass } = calcService.checkPassFail(internalVal, externalVal, 'INTEGRATED', regulation);
 
-                    let matchedGrade = { grade: 'RA', resultStatus: 'FAIL' };
+                    let matchedGrade = { grade: 'U', resultStatus: 'FAIL' };
                     if (isPass) {
                         const gradeResult = calcService.getFixedGrade(totalMarks, grades);
                         matchedGrade = { grade: gradeResult.grade, resultStatus: 'PASS' };
@@ -337,7 +341,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     const totalMarks = Math.round(internalVal + externalVal);
                     const { passed: isExternalPass } = calcService.checkPassFail(internalVal, externalVal, 'THEORY', regulation);
 
-                    let matchedGrade = { grade: 'RA', resultStatus: 'FAIL' };
+                    let matchedGrade = { grade: 'U', resultStatus: 'FAIL' };
                     if (isExternalPass) {
                         const gradeResult = calcService.getFixedGrade(totalMarks, grades);
                         matchedGrade = { grade: gradeResult.grade, resultStatus: 'PASS' };
@@ -347,7 +351,7 @@ exports.updateEndSemMarks = async (req, res) => {
                     finalGrade = matchedGrade.grade;
                 }
 
-                const totalMarks = Math.round(
+                const totalMarks = isAbsent ? 0 : Math.round(
                     subjectCategory === 'THEORY'
                         ? (ciaRecord.isApproved ? ciaRecord.internal * 0.4 : 0) + externalVal
                         : internalVal + externalVal
@@ -408,7 +412,7 @@ exports.updateEndSemMarks = async (req, res) => {
                                     data: { isCleared: true, clearedInSem: student.semester }
                                 });
                             }
-                        } else if (finalResultStatus === 'FAIL' || finalResultStatus === 'AB') {
+                        } else if (finalResultStatus === 'FAIL' || finalResultStatus === 'UA') {
                              // Re-fail or absenteeism: ensure arrear is active
                              await tx.arrear.update({
                                  where: { id: arrear.id },
@@ -416,7 +420,7 @@ exports.updateEndSemMarks = async (req, res) => {
                              });
                         }
                     }
-                } else if (finalResultStatus === 'FAIL' || finalResultStatus === 'AB') {
+                } else if (finalResultStatus === 'FAIL' || finalResultStatus === 'UA') {
                     // First time fail - Auto-generate arrear record for future tracking
                     await tx.arrear.upsert({
                         where: { studentId_subjectId: { studentId: student.id, subjectId: subIdInt } },
@@ -484,7 +488,7 @@ const _performGPACalculation = async (studentId, semester, grades) => {
         
         for (const ar of clearedArrears) {
             const attempt = allAttempts.find(a => a.arrearId === ar.id);
-            ar.passedGrade = attempt ? attempt.grade : 'RA';
+            ar.passedGrade = attempt ? attempt.grade : 'U';
         }
     }
 
@@ -582,7 +586,7 @@ exports.calculateBulkGPA = async (req, res) => {
             const studentArrears = allClearedArrears.filter(ar => ar.studentId === student.id);
             for (const ar of studentArrears) {
                 const attempt = allAttempts.find(a => a.arrearId === ar.id);
-                ar.passedGrade = attempt ? attempt.grade : 'RA';
+                ar.passedGrade = attempt ? attempt.grade : 'U';
             }
 
             const pastMarks = studentMarks.filter(m => m.subject.semester <= semInt);
@@ -679,7 +683,7 @@ exports.getFacultyResults = async (req, res) => {
                 ...s,
                 internalScaled,
                 externalScaled,
-                grade: esm?.grade || (esm?.resultStatus === 'AB' ? 'AB' : 'N/A')
+                grade: esm?.grade || (esm?.resultStatus === 'UA' ? 'UA' : 'N/A')
             };
         });
 
@@ -853,6 +857,37 @@ const getConsolidatedResultsData = async (department, semester, regulation) => {
         orderBy: { code: 'asc' }
     });
 
+    const deptRecord = await prisma.department.findFirst({
+        where: { OR: [{ name: department }, { code: department }] }
+    });
+
+    const control = await prisma.semesterControl.findFirst({
+        where: {
+            department: deptRecord?.name || department,
+            semester: semInt
+        },
+        orderBy: { updatedAt: 'desc' }
+    });
+
+    // Try to find the actual exam session text from ExamSession table
+    const examSessionRecord = await prisma.examSession.findFirst({
+        where: {
+            subjects: {
+                some: { subjectId: { in: subjects.map(s => s.id) } }
+            }
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    let examSession = 'NOV/DEC ' + new Date().getFullYear();
+    if (examSessionRecord) {
+        if (examSessionRecord.month && examSessionRecord.year) {
+            examSession = `${examSessionRecord.month.toUpperCase()} ${examSessionRecord.year}`;
+        } else {
+            examSession = examSessionRecord.examName.toUpperCase();
+        }
+    }
+
     const students = await prisma.student.findMany({
         where: {
             ...deptFilter,
@@ -927,7 +962,7 @@ const getConsolidatedResultsData = async (department, semester, regulation) => {
                 theoryExt: theoryExt,
                 labExt: labExt,
                 total: markRecord?.endSemMarks?.totalMarks || 0,
-                grade: markRecord?.endSemMarks?.grade || (markRecord?.endSemMarks?.resultStatus === 'AB' ? 'AB' : 'RA'),
+                grade: markRecord?.endSemMarks?.grade || (markRecord?.endSemMarks?.resultStatus === 'UA' ? 'UA' : 'U'),
                 status: markRecord?.endSemMarks?.resultStatus || 'FAIL'
             };
         });
@@ -946,10 +981,16 @@ const getConsolidatedResultsData = async (department, semester, regulation) => {
     });
 
     return {
-        department,
+        department: department,
+        fullDepartmentName: deptRecord ? `${deptRecord.degree} ${deptRecord.name}` : department,
         semester: semInt,
         regulation,
+        examSession,
+        publishedAt: control?.publishedAt ? new Date(control.publishedAt).toLocaleDateString('en-GB').replace(/\//g, '-') : null,
+        isLocked: control?.isLocked || false,
+        isPublished: control?.isPublished || false,
         subjects: subjects.map(s => ({
+            id: s.id,
             code: s.code,
             name: s.name,
             credits: s.credits,
@@ -1177,6 +1218,125 @@ exports.unpublishResults = async (req, res) => {
         });
     } catch (error) {
         handleError(res, error, "Failed to unpublish results");
+    }
+};
+
+/**
+ * POST /api/exam/lock
+ * Lock the semester to prevent any further marks updates and allow promotion
+ */
+exports.lockResults = async (req, res) => {
+    try {
+        const { department, year, semester, section } = req.body;
+        const deptFilter = await getDeptCriteria(department);
+
+        const deptDef = await prisma.department.findFirst({
+            where: { OR: [{ name: department }, { code: department }] }
+        });
+        const officialDept = deptDef ? deptDef.name : department;
+
+        const control = await prisma.semesterControl.upsert({
+            where: {
+                department_year_semester_section: {
+                    department: officialDept,
+                    year: parseInt(year),
+                    semester: parseInt(semester),
+                    section
+                }
+            },
+            update: {
+                isLocked: true
+            },
+            create: {
+                department: officialDept,
+                year: parseInt(year),
+                semester: parseInt(semester),
+                section,
+                isLocked: true
+            }
+        });
+
+        const students = await prisma.student.findMany({
+            where: {
+                ...deptFilter,
+                semester: parseInt(semester),
+                section
+            },
+            include: { marks: { include: { endSemMarks: true } } }
+        });
+
+        let updatedCount = 0;
+        for (const student of students) {
+            for (const mark of student.marks) {
+                if (mark.endSemMarks) {
+                    await prisma.endSemMarks.update({
+                        where: { id: mark.endSemMarks.id },
+                        data: { isLocked: true }
+                    });
+                    updatedCount++;
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Marks successfully locked for ${officialDept} Sem ${semester} Section ${section}. Promotions can now proceed.`,
+            updatedCount
+        });
+    } catch (error) {
+        handleError(res, error, "Failed to lock results");
+    }
+};
+
+/**
+ * POST /api/exam/unlock
+ */
+exports.unlockResults = async (req, res) => {
+    try {
+        const { department, year, semester, section } = req.body;
+        const deptFilter = await getDeptCriteria(department);
+
+        const deptDef = await prisma.department.findFirst({
+            where: { OR: [{ name: department }, { code: department }] }
+        });
+        const officialDept = deptDef ? deptDef.name : department;
+
+        await prisma.semesterControl.updateMany({
+            where: {
+                department: officialDept,
+                year: parseInt(year),
+                semester: parseInt(semester),
+                section
+            },
+            data: { isLocked: false }
+        });
+
+        const students = await prisma.student.findMany({
+            where: {
+                ...deptFilter,
+                semester: parseInt(semester),
+                section
+            },
+            include: { marks: { include: { endSemMarks: true } } }
+        });
+
+        for (const student of students) {
+            for (const mark of student.marks) {
+                if (mark.endSemMarks) {
+                    await prisma.endSemMarks.update({
+                        where: { id: mark.endSemMarks.id },
+                        data: { isLocked: false }
+                    });
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Marks unlocked for ${officialDept} Sem ${semester} Section ${section}.`
+        });
+    } catch (error) {
+        handleError(res, error, "Failed to unlock results");
     }
 };
 

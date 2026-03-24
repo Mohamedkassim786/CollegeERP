@@ -1,318 +1,445 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, AlertTriangle, Eye, CheckCheck, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertTriangle, CheckCheck, AlertCircle, Settings2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getPromotionPreview, promoteAllStudents } from '../../../services/student.service';
-import { getDepartments, getSections } from '../../../services/department.service';
+import { executeGlobalPromotion, promoteFirstYearBatch, getPromotionPreview } from '../../../services/student.service';
+import { getDepartments } from '../../../services/department.service';
 import CustomSelect from '../../../components/CustomSelect';
-import { SEMESTER_OPTIONS } from '../../../utils/constants';
 
 const AutoPromote = () => {
-    const [form, setForm] = useState({ department: '', year: '', semester: '', section: '' });
-    const [preview, setPreview] = useState(null);
+    const [activeTab, setActiveTab] = useState('GLOBAL'); // 'GLOBAL' or 'FIRST_YEAR'
     const [loading, setLoading] = useState(false);
     const [promoting, setPromoting] = useState(false);
-    const [result, setResult] = useState(null);
-    const [error, setError] = useState('');
-    const [confirmState, setConfirmState] = useState(null);
+    
+    // Global State
+    const [globalPreview, setGlobalPreview] = useState(null);
+    const [unlockedCohorts, setUnlockedCohorts] = useState([]);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    
+    // First Year State
+    const [fyStudents, setFyStudents] = useState([]);
     const [departments, setDepartments] = useState([]);
-    const [dbSections, setDbSections] = useState([]);
+    const [assignments, setAssignments] = useState({}); // mapped by studentId
+    const [fyConfirmModal, setFyConfirmModal] = useState(false);
+    const [result, setResult] = useState(null);
 
     useEffect(() => {
-        const loadInfo = async () => {
-            setLoading(true);
-            try {
-                const [deptRes, secRes] = await Promise.all([
-                    getDepartments(),
-                    getSections()
-                ]);
-                setDepartments(deptRes.data || []);
-                setDbSections(secRes.data || []);
-            } catch (err) {
-                console.error("Failed to load info", err);
-                setError("Failed to load department structure. Please refresh.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadInfo();
+        loadDepartments();
     }, []);
 
-    const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+    useEffect(() => {
+        loadPreview();
+    }, [activeTab]);
+
+    const loadDepartments = async () => {
+        try {
+            const res = await getDepartments();
+            setDepartments(res.data || []);
+        } catch (err) {
+            toast.error("Failed to load departments.");
+        }
+    };
 
     const loadPreview = async () => {
-        setLoading(true); setError(''); setPreview(null); setResult(null);
+        setLoading(true);
+        setUnlockedCohorts([]);
+        setResult(null);
         try {
-            const res = await getPromotionPreview(form);
-            setPreview(res.data);
-            if (!res.data.students || res.data.students.length === 0) {
-                setError("No students found matching these criteria for promotion.");
+            const res = await getPromotionPreview({ mode: activeTab });
+            if (activeTab === 'GLOBAL') {
+                setGlobalPreview(res.data);
+            } else {
+                const studentsData = res.data.students || [];
+                setFyStudents(studentsData);
+                
+                // Pre-fill assignments with the student's current department and section!
+                const initialAssignments = {};
+                studentsData.forEach(s => {
+                    initialAssignments[s.id] = {
+                        departmentCode: s.department || '',
+                        departmentId: s.departmentId || '',
+                        section: s.section || ''
+                    };
+                });
+                setAssignments(initialAssignments);
             }
         } catch (e) {
-            setError(e.response?.data?.message || 'Failed to load preview.');
+            toast.error(e.response?.data?.message || 'Failed to load preview.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
-    const doPromote = async () => {
-        setPromoting(true); setError('');
+    // --- GLOBAL PROMOTION LOGIC ---
+    const confirmGlobal = () => setShowConfirmModal(true);
+
+    const executeGlobal = async () => {
+        setShowConfirmModal(false);
+        setPromoting(true);
+        setUnlockedCohorts([]);
+        
+        const toastId = toast.loading("Executing Global Progression...");
         try {
-            const res = await promoteAllStudents(form);
+            const res = await executeGlobalPromotion();
             setResult(res.data);
-            setPreview(null);
-            toast.success("Promotion completed successfully!");
+            toast.success(res.data.message, { id: toastId });
+            loadPreview();
         } catch (e) {
-            setError(e.response?.data?.message || 'Promotion failed.');
-            toast.error("Promotion failed.");
+            const data = e.response?.data;
+            toast.error(data?.message || "Global Promotion failed.", { id: toastId });
+            
+            if (data?.unlockedCohorts?.length > 0) {
+                setUnlockedCohorts(data.unlockedCohorts);
+            }
+        } finally {
+            setPromoting(false);
         }
-        setPromoting(false);
     };
 
-    // Derived options
-    const filteredSections = (() => {
-        const dept = departments.find(d => (d.code || d.name) === form.department);
-        const filtered = dbSections.filter(s => {
-            if (dept && s.departmentId !== dept.id) return false;
-            // Removed semester filter for section to show all sections of the dept
-            return true;
+    const [fyFilterSection, setFyFilterSection] = useState("");
+
+    const handleAssignmentChange = (studentId, key, value) => {
+        setAssignments(prev => ({
+            ...prev,
+            [studentId]: {
+                ...prev[studentId],
+                [key]: value
+            }
+        }));
+    };
+
+    // Calculate displayed students based on filter
+    const displayedStudents = fyFilterSection ? fyStudents.filter(s => s.section === fyFilterSection) : [];
+
+    const handleMasterSectionChange = (sectionVal) => {
+        const newAssignments = { ...assignments };
+        displayedStudents.forEach(s => {
+            if (newAssignments[s.id]) {
+                newAssignments[s.id].section = sectionVal;
+            }
         });
-        return [...new Set(filtered.map(s => s.name))];
-    })();
+        setAssignments(newAssignments);
+    };
 
-    const semesterOptions = (() => {
-        const dept = departments.find(d => (d.code || d.name) === form.department);
-        const degree = dept?.degree || 'B.E. (Default)';
-        return SEMESTER_OPTIONS[dept?.degree] || [1, 2, 3, 4, 5, 6, 7, 8];
-    })();
+    const confirmFirstYear = () => {
+        if (!fyFilterSection) return toast.error("Please select a Current Section to evaluate students.");
+        if (displayedStudents.length === 0) return toast.error("No students in this section to promote.");
 
-    return (
-        <div className="space-y-8 animate-fadeIn">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="p-4 bg-blue-50 rounded-2xl text-[#003B73]">
-                        <ArrowRight size={32} strokeWidth={3} />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-black text-[#003B73] tracking-tighter text-left">Auto Promote Base</h1>
-                        <p className="text-gray-500 font-bold text-sm uppercase tracking-widest text-left">Mass Student Progression Engine</p>
-                    </div>
-                </div>
-            </div>
+        // Validate that all DISPLAYED students have assignments
+        const missing = displayedStudents.some(s => !assignments[s.id]?.departmentCode || !assignments[s.id]?.section);
+        if (missing) return toast.error("Please allocate a target Department and Section for ALL displayed students.");
+        
+        setFyConfirmModal(true);
+    };
 
-            {/* Warning */}
-            <div className="bg-amber-50/50 backdrop-blur-sm border-2 border-amber-100/50 rounded-[32px] p-8 flex gap-6 shadow-xl shadow-amber-900/5 items-center">
-                <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center flex-shrink-0 animate-pulse">
-                    <AlertTriangle className="text-amber-600" size={32} />
-                </div>
-                <div className="space-y-1">
-                    <h3 className="font-black text-amber-900 text-lg uppercase tracking-tight text-left">Critical Migration Check</h3>
-                    <div className="text-amber-800/80 text-sm font-bold flex flex-wrap gap-x-6 gap-y-2 text-left">
-                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Approved Marks</span>
-                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Generated GPA</span>
-                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Arrear Sync</span>
-                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-amber-400 rounded-full" /> Final Year Exit</span>
-                    </div>
-                </div>
-            </div>
+    const executeFirstYear = async () => {
+        setFyConfirmModal(false);
+        setPromoting(true);
+        
+        const toastId = toast.loading("Branching First Year Students...");
+        
+        // Assemble payload ONLY for displayed students
+        const payload = Object.entries(assignments)
+            .filter(([studentId]) => displayedStudents.some(s => s.id === parseInt(studentId)))
+            .map(([studentId, data]) => ({
+                studentId: parseInt(studentId),
+                departmentCode: data.departmentCode,
+                departmentId: data.departmentId,
+                section: data.section
+            }));
 
-            {/* Filters */}
-            <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-2xl shadow-gray-200/50">
-                <div className="mb-6 flex gap-4">
-                    <button
-                        onClick={() => setForm({ department: 'FIRST_YEAR', year: 1, semester: '', section: '' })}
-                        className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${form.department === 'FIRST_YEAR' ? 'bg-[#003B73] text-white shadow-lg' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
-                    >
-                        First Year
-                    </button>
-                    <button
-                        onClick={() => setForm({ department: '', year: '', semester: '', section: '' })}
-                        className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${form.department !== 'FIRST_YEAR' ? 'bg-[#003B73] text-white shadow-lg' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
-                    >
-                        Higher Semesters
-                    </button>
-                </div>
-                
-                <div className="flex flex-col md:flex-row gap-6 w-full">
-                    {form.department !== 'FIRST_YEAR' && (
-                        <div className="space-y-2 flex-1 w-full">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Select Department</label>
-                            <CustomSelect value={form.department} onChange={e => set('department', e.target.value)}>
-                                <option value="">Choose Department...</option>
-                                {departments.filter(d => d.type !== 'Support' && d.name !== 'First Year' && d.code !== 'GEN1').map(d => (
-                                    <option key={d.id} value={d.code || d.name}>
-                                        {d.code || d.name}
-                                    </option>
-                                ))}
-                            </CustomSelect>
-                        </div>
-                    )}
+        try {
+            const res = await promoteFirstYearBatch({ assignments: payload });
+            setResult(res.data);
+            toast.success(res.data.message, { id: toastId });
+            setFyFilterSection(""); // reset filter after success
+            loadPreview();
+        } catch (e) {
+            toast.error(e.response?.data?.message || "First Year Branching failed.", { id: toastId });
+        } finally {
+            setPromoting(false);
+        }
+    };
+
+    // --- RENDERERS ---
+    const renderGlobalPromotion = () => (
+        <div className="space-y-6 animate-fadeIn">
+            <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-gray-200/50 border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="space-y-4 flex-1">
+                    <h2 className="text-3xl font-black text-[#003B73]">Global Omni-Promotion</h2>
+                    <p className="text-gray-500 font-medium">
+                        This powerful engine automatically advances ALL active students (Semesters 1 and 3 through 7) to their next immediate semester, preserving their existing sections and departments. It will also automatically graduate Semester 8 students.
+                    </p>
                     
-                    {form.department !== 'FIRST_YEAR' && (
-                        <div className="space-y-2 flex-1 w-full">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Academic Year</label>
-                            <CustomSelect value={form.year} onChange={e => set('year', e.target.value)}>
-                                <option value="">Current Years...</option>
-                                {[2, 3, 4].map(y => <option key={y} value={y}>Year {y}</option>)}
-                            </CustomSelect>
+                    {globalPreview && (
+                        <div className="flex gap-6 mt-6">
+                            <div className="bg-blue-50 px-6 py-4 rounded-2xl flex-1 border border-blue-100">
+                                <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest">Ready for Advance</p>
+                                <p className="text-3xl font-black text-[#003B73]">{globalPreview.totalPromoting}</p>
+                            </div>
+                            <div className="bg-purple-50 px-6 py-4 rounded-2xl flex-1 border border-purple-100">
+                                <p className="text-[10px] font-black uppercase text-purple-500 tracking-widest">Graduating Out</p>
+                                <p className="text-3xl font-black text-purple-900">{globalPreview.totalGraduating}</p>
+                            </div>
                         </div>
                     )}
-
-                    <div className="space-y-2 flex-1 w-full">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Target Semester</label>
-                        <CustomSelect value={form.semester} onChange={e => set('semester', e.target.value)}>
-                            <option value="">Select Semester...</option>
-                            {form.department === 'FIRST_YEAR' ? (
-                                [1, 2].map(s => <option key={s} value={s}>Semester {s}</option>)
-                            ) : (
-                                semesterOptions.filter(s => s > 2).map(s => (
-                                    <option key={s} value={s}>Semester {s}</option>
-                                ))
-                            )}
-                        </CustomSelect>
-                    </div>
-
-                    <div className="space-y-2 flex-1 w-full">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-left block">Section Filter</label>
-                        <CustomSelect value={form.section} onChange={e => set('section', e.target.value)}>
-                            <option value="">All Sections</option>
-                            {form.department === 'FIRST_YEAR' 
-                                ? dbSections.filter(s => s.type === 'COMMON' && s.semester == (form.semester || 1)).map(s => <option key={s.id} value={s.name}>{s.name}</option>)
-                                : filteredSections.map(s => <option key={s} value={s}>{s}</option>)
-                            }
-                        </CustomSelect>
-                    </div>
                 </div>
                 
-                <div className="mt-8 flex justify-end gap-4 border-t border-gray-50 pt-8">
+                <div className="bg-[#003B73] p-10 rounded-[32px] w-full md:w-[350px] shadow-lg shadow-blue-900/20 text-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition-colors pointer-events-none"></div>
+                    <ArrowRight className="text-white/20 absolute -right-4 -bottom-4 w-32 h-32" />
+                    
+                    <p className="text-white/60 font-black text-[10px] uppercase tracking-widest mb-6 relative z-10">Master Control</p>
                     <button 
-                        onClick={loadPreview} 
-                        disabled={loading || !form.semester || (form.department !== 'FIRST_YEAR' && !form.department)}
-                        className="bg-blue-50 text-[#003B73] px-10 h-[56px] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 w-full md:w-auto"
+                        onClick={confirmGlobal}
+                        disabled={loading || promoting || (globalPreview?.totalPromoting === 0 && globalPreview?.totalGraduating === 0)}
+                        className="w-full bg-white text-[#003B73] hover:bg-gray-50 px-8 py-5 rounded-[20px] font-black text-sm uppercase tracking-widest transition-transform active:scale-95 disabled:opacity-50 relative z-10 flex items-center justify-center gap-3"
                     >
-                        {loading ? 'Initializing...' : <><Eye size={18} /> Run Preview Analysis</>}
+                        {promoting ? 'Executing...' : 'EXECUTE OMNI-PROMOTE'}
                     </button>
+                    {!loading && globalPreview?.totalPromoting === 0 && globalPreview?.totalGraduating === 0 && (
+                        <p className="text-red-300 text-[10px] uppercase tracking-wider font-bold mt-4">No eligible students detected.</p>
+                    )}
                 </div>
             </div>
 
-            {error && <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">{error}</div>}
-
-            {/* Result */}
-            {result && (
-                <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[32px] p-10 text-center shadow-xl shadow-emerald-900/5 animate-scaleIn">
-                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCheck className="text-emerald-600" size={40} />
+            {unlockedCohorts.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-[32px] p-8 animate-fadeInUp shadow-xl shadow-red-900/5">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center shrink-0">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-red-900 tracking-tight">System Lock Violation Detected</h3>
+                            <p className="text-red-700 text-sm font-semibold">The promotion engine was aborted because the following cohorts have not been officially locked by the examination controller.</p>
+                        </div>
                     </div>
-                    <h2 className="text-2xl font-black text-emerald-900 mb-2">Operation Successful</h2>
-                    <p className="text-emerald-700 font-medium max-w-md mx-auto">{result.message}</p>
-                    <button onClick={() => setResult(null)} className="mt-8 px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all">DISMISS</button>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {unlockedCohorts.map((cohort, i) => (
+                            <div key={i} className="bg-white border border-red-100 px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm">
+                                <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                                <span className="font-bold text-red-950 text-sm">{cohort}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
+        </div>
+    );
 
-            {/* Preview Table */}
-            {preview && !result && (
-                <div className="bg-white rounded-[40px] shadow-2xl shadow-gray-200/50 border border-gray-100 overflow-hidden animate-fadeInUp">
-                    <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-gray-50/50 to-transparent">
-                        <div className="space-y-1">
-                            <p className="font-black text-gray-900 text-2xl tracking-tight text-left">
-                                {preview.totalStudents} Students Detected
-                            </p>
-                            <p className="font-bold text-sm text-gray-400 uppercase tracking-widest flex items-center gap-2 text-left">
-                                {preview.isGraduating ? (
-                                    <><span className="text-purple-600">Action: Final Graduation (Passed Out)</span></>
-                                ) : (
-                                    <><span>Target: Progression to</span> <span className="text-blue-600">Semester {preview.nextSemester}</span></>
-                                )}
-                            </p>
-                        </div>
-                        <button 
-                            onClick={() => {
-                                toast.custom((t) => (
-                                    <div
-                                        className={`${
-                                            t.visible ? 'animate-enter' : 'animate-leave'
-                                        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+    const renderFirstYearPromotion = () => {
+        const availableFySections = [...new Set(fyStudents.map(s => s.section))].filter(Boolean).sort();
+
+        return (
+            <div className="space-y-6 animate-fadeIn">
+                <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-gray-200/50 border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="space-y-4 flex-1">
+                        <h2 className="text-3xl font-black text-[#003B73]">First Year Branching</h2>
+                        <p className="text-gray-500 font-medium">
+                            Semester 2 students must be explicitly assigned to their core academic departments and target sections as they transition into Year 2 (Semester 3).
+                        </p>
+                        <div className="flex flex-wrap items-center gap-4 mt-6">
+                            <div className="bg-white px-6 py-4 rounded-2xl border-2 border-dashed border-gray-200 min-w-[200px] flex flex-col justify-center">
+                                <p className="text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Filter Current Section</p>
+                                <CustomSelect 
+                                    value={fyFilterSection}
+                                    onChange={(e) => setFyFilterSection(e.target.value)}
+                                    className="w-full bg-gray-50 font-bold border-2 border-transparent focus:border-[#003B73]"
+                                >
+                                    <option value="">-- Choose Section --</option>
+                                    {availableFySections.map(sec => <option key={sec} value={sec}>Current Sec {sec}</option>)}
+                                </CustomSelect>
+                            </div>
+                            
+                            <div className="bg-amber-50 px-6 py-4 rounded-2xl border border-amber-100 min-w-[150px]">
+                                <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest">Pending in Sec {fyFilterSection || '?'}</p>
+                                <p className="text-3xl font-black text-amber-900">{displayedStudents.length}</p>
+                            </div>
+                            
+                            {displayedStudents.length > 0 && (
+                                <div className="bg-blue-50 px-6 py-4 rounded-2xl border border-blue-100 flex-1 min-w-[200px] flex flex-col justify-center">
+                                    <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-2">Master Target Sec (Optional)</p>
+                                    <CustomSelect 
+                                        onChange={(e) => handleMasterSectionChange(e.target.value)}
+                                        className="w-full bg-white font-bold"
                                     >
-                                        <div className="flex-1 w-0 p-4">
-                                            <div className="flex items-start">
-                                                <div className="flex-shrink-0 pt-0.5">
-                                                    <AlertCircle className="h-6 w-6 text-red-400" aria-hidden="true" />
-                                                </div>
-                                                <div className="ml-3 flex-1">
-                                                    <p className="text-sm font-medium text-gray-900">
-                                                        Critical Action Required
-                                                    </p>
-                                                    <p className="mt-1 text-sm text-gray-500">
-                                                        This will promote {preview?.totalStudents} students. This cannot be undone. All current year data will be archived.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex border-l border-gray-200">
-                                            <button
-                                                onClick={() => {
-                                                    doPromote();
-                                                    toast.dismiss(t.id);
-                                                }}
-                                                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                            >
-                                                Confirm & Execute
-                                            </button>
-                                            <button
-                                                onClick={() => toast.dismiss(t.id)}
-                                                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                ), { duration: Infinity });
-                            }}
-                            disabled={promoting}
-                            className="px-10 h-[60px] bg-[#003B73] text-white rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-[#002850] transition-all disabled:opacity-60 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/20 active:scale-95"
-                        >
-                            {promoting ? (
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <><ArrowRight size={18} /> {preview.isGraduating ? 'CONFIRM GRADUATION' : 'EXECUTE PROMOTION'}</>
+                                        <option value="">-- Apply Sec to All Displayed --</option>
+                                        {['A', 'B', 'C', 'D'].map(sec => <option key={sec} value={sec}>Section {sec}</option>)}
+                                    </CustomSelect>
+                                </div>
                             )}
-                        </button>
+                        </div>
                     </div>
+                
+                <div className="bg-amber-500 p-10 rounded-[32px] w-full md:w-[350px] shadow-lg shadow-amber-900/20 text-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-white/10 group-hover:bg-white/20 transition-colors pointer-events-none"></div>
+                    <Users className="text-amber-900/20 absolute -left-4 -bottom-4 w-32 h-32" />
+                    
+                    <p className="text-amber-950/60 font-black text-[10px] uppercase tracking-widest mb-6 relative z-10">Department Allocation</p>
+                    <button 
+                        onClick={confirmFirstYear}
+                        disabled={loading || promoting || fyStudents.length === 0}
+                        className="w-full bg-amber-900 text-white hover:bg-amber-950 px-8 py-5 rounded-[20px] font-black text-sm uppercase tracking-widest transition-transform active:scale-95 disabled:opacity-50 relative z-10 flex items-center justify-center gap-3"
+                    >
+                        {promoting ? 'Executing...' : 'DEPLOY CADETS'}
+                    </button>
+                </div>
+            </div>
 
+            {fyStudents.length > 0 && (
+                <div className="bg-white rounded-[40px] shadow-xl border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/50 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">
                                     <th className="px-8 py-5">Roll Number</th>
-                                    <th className="px-8 py-5 text-left">Student Name</th>
-                                    <th className="px-8 py-5 text-center">Section</th>
-                                    <th className="px-8 py-5 text-center font-black text-blue-600">Current Sem</th>
+                                    <th className="px-8 py-5">Student Name</th>
+                                    <th className="px-8 py-5 text-center w-64">Target Dept</th>
+                                    <th className="px-8 py-5 text-center w-40">Target Sec</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {preview.students.slice(0, 50).map((s, i) => (
-                                    <tr key={s.id} className="hover:bg-blue-50/30 transition-all duration-150 hover:translate-x-1 group">
-                                        <td className="px-8 py-5 font-mono text-sm text-[#003B73] font-bold group-hover:scale-105 transition-transform origin-left">{s.rollNo}</td>
-                                        <td className="px-8 py-5 font-bold text-gray-800 text-sm">{s.name}</td>
-                                        <td className="px-8 py-5 text-center">
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 font-bold text-xs">
-                                                {s.section}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-5 text-center">
-                                            <span className="font-black text-gray-900 bg-gray-50 px-3 py-1 rounded-md border border-gray-100 italic">
-                                                {s.semester}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {fyStudents.map(s => {
+                                    const deptVal = assignments[s.id]?.departmentCode || "";
+                                    const secVal = assignments[s.id]?.section || "";
+                                    const selectedDept = departments.find(d => d.code === deptVal || d.name === deptVal);
+                                    const availableSections = selectedDept?.sections ? selectedDept.sections.split(',') : ['A', 'B', 'C'];
+                                    
+                                    return (
+                                        <tr key={s.id} className="hover:bg-blue-50/30 transition-colors">
+                                            <td className="px-8 py-5 font-mono text-sm text-[#003B73] font-bold">{s.rollNo}</td>
+                                            <td className="px-8 py-5 font-bold text-gray-800 text-sm">{s.name}</td>
+                                            <td className="px-8 py-3">
+                                                <CustomSelect 
+                                                    value={assignments[s.id]?.departmentId || ""}
+                                                    onChange={(e) => {
+                                                        const id = parseInt(e.target.value);
+                                                        const dept = departments.find(d => d.id === id);
+                                                        handleAssignmentChange(s.id, 'departmentId', id);
+                                                        handleAssignmentChange(s.id, 'departmentCode', dept?.name || ""); // Standardize to Full Name
+                                                        // reset section
+                                                        handleAssignmentChange(s.id, 'section', '');
+                                                    }}
+                                                    className="w-full"
+                                                >
+                                                    <option value="">Select Dept</option>
+                                                    {departments.filter(d => d.type !== 'Support' && d.name !== 'First Year' && d.code !== 'GEN1').map(d => (
+                                                        <option key={d.id} value={d.id}>{d.code || d.name}</option>
+                                                    ))}
+                                                </CustomSelect>
+                                            </td>
+                                            <td className="px-8 py-3">
+                                                <CustomSelect 
+                                                    value={secVal}
+                                                    onChange={e => handleAssignmentChange(s.id, 'section', e.target.value)}
+                                                    className="w-full"
+                                                    disabled={!deptVal}
+                                                >
+                                                    <option value="">Sec</option>
+                                                    {availableSections.map(sec => <option key={sec} value={sec}>{sec}</option>)}
+                                                </CustomSelect>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
-                    
-                    {preview.students.length > 50 && (
-                        <div className="p-6 bg-gray-50/50 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center border-t border-gray-100">
-                            + {preview.students.length - 50} more students in queue
+                </div>
+            )}
+        </div>
+    );
+    };
+
+    return (
+        <div className="space-y-8 animate-fadeIn">
+            <div className="flex items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-blue-50 rounded-2xl text-[#003B73]">
+                        <Settings2 size={32} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-black text-[#003B73] tracking-tighter">Auto Promotion Engine</h1>
+                        <p className="text-gray-500 font-bold text-[10px] uppercase tracking-[0.2em] mt-1">Mass Academic Progression System</p>
+                    </div>
+                </div>
+
+                <div className="flex bg-gray-100/50 p-2 rounded-2xl">
+                    <button 
+                        onClick={() => setActiveTab('GLOBAL')}
+                        className={`px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'GLOBAL' ? 'bg-white text-[#003B73] shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Global Advance
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('FIRST_YEAR')}
+                        className={`px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'FIRST_YEAR' ? 'bg-white text-[#003B73] shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        First Year Branching
+                    </button>
+                </div>
+            </div>
+
+            {loading && <div className="text-center py-20 animate-pulse font-black text-gray-300 uppercase tracking-widest text-sm">CALIBRATING SYSTEM DATA...</div>}
+
+            {result && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-[32px] p-10 text-center shadow-xl shadow-emerald-900/5 animate-scaleIn mt-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                    <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6 relative z-10">
+                        <CheckCheck className="text-emerald-600" size={40} />
+                    </div>
+                    <h2 className="text-2xl font-black text-emerald-900 mb-2 relative z-10 tracking-tight">Operation Successful</h2>
+                    <p className="text-emerald-700 font-bold max-w-lg mx-auto relative z-10 text-sm">{result.message}</p>
+                    <button onClick={() => setResult(null)} className="mt-8 px-10 py-4 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 focus:outline-none">ACKNOWLEDGE</button>
+                </div>
+            )}
+
+            {!loading && !result && activeTab === 'GLOBAL' && renderGlobalPromotion()}
+            {!loading && !result && activeTab === 'FIRST_YEAR' && renderFirstYearPromotion()}
+
+            {/* Global Confirm Modal */}
+            {showConfirmModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowConfirmModal(false)}></div>
+                    <div className="bg-white rounded-[32px] w-[90%] max-w-md p-8 relative z-10 shadow-2xl animate-scaleIn border border-gray-100">
+                        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-[20px] flex items-center justify-center mb-6 mx-auto animate-pulse">
+                            <AlertTriangle size={32} strokeWidth={2.5} />
                         </div>
-                    )}
+                        <h2 className="text-2xl font-black text-center text-gray-900 mb-2 tracking-tight">System Notice</h2>
+                        <div className="bg-red-50 border border-red-100 p-5 rounded-[20px] mb-8 mt-6">
+                            <p className="text-sm text-red-800 text-center font-black uppercase tracking-widest">Global Lock Validation</p>
+                            <p className="text-xs text-red-600/80 text-center mt-3 font-semibold uppercase tracking-wider">
+                                We are about to execute promotion on the entire university database. The system will first check if all semesters are firmly locked. If any are open, the operation will be aborted. Proceed?
+                            </p>
+                        </div>
+                        <div className="flex gap-4">
+                            <button onClick={() => setShowConfirmModal(false)} className="flex-1 py-4 font-black text-xs uppercase tracking-widest rounded-[20px] bg-gray-100 text-gray-600 hover:bg-gray-200">Cancel</button>
+                            <button onClick={executeGlobal} className="flex-[1.5] py-4 font-black text-xs uppercase tracking-widest rounded-[20px] bg-red-500 hover:bg-red-600 text-white shadow-lg flex justify-center items-center">Engage Validation</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* First Year Confirm Modal */}
+            {fyConfirmModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setFyConfirmModal(false)}></div>
+                    <div className="bg-white rounded-[32px] w-[90%] max-w-md p-8 relative z-10 shadow-2xl animate-scaleIn border border-amber-100">
+                        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-[20px] flex items-center justify-center mb-6 mx-auto">
+                            <Users size={32} strokeWidth={2.5} />
+                        </div>
+                        <h2 className="text-2xl font-black text-center text-amber-900 mb-2 tracking-tight">Final Authorization</h2>
+                        <div className="bg-amber-50 border border-amber-100 p-5 rounded-[20px] mb-8 mt-6">
+                            <p className="text-sm text-amber-800 text-center font-black uppercase tracking-widest">Execute Department Branching</p>
+                            <p className="text-xs text-amber-700/80 text-center mt-3 font-semibold uppercase tracking-wider">
+                                This will migrate all First Year Sem 2 students into Sem 3 inside their assigned core departments. Cannot be undone.
+                            </p>
+                        </div>
+                        <div className="flex gap-4">
+                            <button onClick={() => setFyConfirmModal(false)} className="flex-1 py-4 font-black text-xs uppercase tracking-widest rounded-[20px] bg-gray-100 text-gray-600 hover:bg-gray-200">Cancel</button>
+                            <button onClick={executeFirstYear} className="flex-[1.5] py-4 font-black text-xs uppercase tracking-widest rounded-[20px] bg-amber-600 hover:bg-amber-700 text-white shadow-lg flex justify-center items-center">Allocate Cadets</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
